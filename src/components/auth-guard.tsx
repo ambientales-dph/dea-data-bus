@@ -15,14 +15,20 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useUser();
   const [error, setError] = useState<string | null>(null);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
+  // Aseguramos que el componente esté montado en el cliente para evitar errores de hidratación
   useEffect(() => {
-    if (user && !isUserWhitelisted(user.email)) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && user && !isUserWhitelisted(user.email)) {
       signOut(auth);
       setError('Acceso denegado: Su correo electrónico no está en la lista de permitidos.');
     }
-  }, [user, auth]);
+  }, [user, auth, mounted]);
 
   const handleLogin = async () => {
     setIsAuthorizing(true);
@@ -62,13 +68,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (authLoading || isAuthorizing) {
+  // Durante la hidratación (SSR y primer renderizado cliente), mostramos un estado neutro
+  if (!mounted || authLoading || isAuthorizing) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Leaf className="h-12 w-12 animate-bounce text-primary" />
           <p className="text-muted-foreground animate-pulse font-medium">
-            {isAuthorizing ? 'Autenticando...' : 'Cargando GeoDatos Ambiental...'}
+            {!mounted ? 'Cargando GeoDatos Ambiental...' : isAuthorizing ? 'Autenticando...' : 'Verificando sesión...'}
           </p>
         </div>
       </div>
