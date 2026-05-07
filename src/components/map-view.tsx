@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -202,16 +201,16 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-lg shadow-inner bg-muted/20 border-2 border-primary/10 flex flex-col">
-      {/* Buscador de Lugares Integrado (Soldado arriba y a los lados) */}
+      {/* Buscador de Lugares Compacto */}
       <div className="absolute top-0 left-0 right-0 z-[30]">
         <div className="relative group">
           <div className="flex items-center bg-white/95 backdrop-blur shadow-sm border-b border-primary/20 transition-all focus-within:ring-2 focus-within:ring-primary/50">
-            <div className="pl-4 text-primary">
-              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            <div className="pl-3 text-primary">
+              {isSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
             </div>
             <Input 
-              placeholder="Buscar ciudad, calle o paraje..." 
-              className="border-0 focus-visible:ring-0 h-10 text-xs bg-transparent w-full"
+              placeholder="Buscar ubicación..." 
+              className="border-0 focus-visible:ring-0 h-8 text-[11px] bg-transparent w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => searchQuery.length >= 3 && setShowResults(true)}
@@ -220,16 +219,16 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
           {showResults && searchResults.length > 0 && (
             <Card className="absolute top-full left-0 right-0 rounded-t-none shadow-2xl border-x-0 border-t-0 border-b border-primary/10 overflow-hidden">
-              <ScrollArea className="max-h-[300px]">
+              <ScrollArea className="max-h-[250px]">
                 <div className="p-1">
                   {searchResults.map((result, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleSelectResult(result)}
-                      className="w-full text-left p-3 hover:bg-primary/5 rounded-lg transition-colors flex items-start gap-3 border-b last:border-0 border-muted"
+                      className="w-full text-left p-2 hover:bg-primary/5 rounded-lg transition-colors flex items-start gap-2 border-b last:border-0 border-muted"
                     >
-                      <MapPin className="h-4 w-4 mt-1 text-primary shrink-0" />
-                      <span className="text-xs font-medium leading-tight">{result.display_name}</span>
+                      <MapPin className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                      <span className="text-[10px] font-medium leading-tight">{result.display_name}</span>
                     </button>
                   ))}
                 </div>
@@ -241,16 +240,16 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       <div ref={mapRef} className="absolute inset-0 z-10" />
       
-      {/* Leyenda simplificada */}
-      <div className="absolute bottom-4 right-4 z-20 rounded-xl bg-white/95 p-3 shadow-xl backdrop-blur-md border border-primary/10">
-        <div className="space-y-2">
-          <div className="flex items-center justify-end gap-3">
-            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Estación Existente</span>
-            <div className="w-2.5 h-2.5 rounded-full bg-[#4E97CA] border-2 border-white shadow-sm"></div> 
+      {/* Leyenda compacta */}
+      <div className="absolute bottom-4 right-4 z-20 rounded-xl bg-white/95 p-2 shadow-xl backdrop-blur-md border border-primary/10">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Estación</span>
+            <div className="w-2 h-2 rounded-full bg-[#4E97CA] border border-white shadow-sm"></div> 
           </div>
-          <div className="flex items-center justify-end gap-3">
-            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Punto de selección</span>
-            <div className="w-2.5 h-2.5 rounded-full bg-[#ef4444] border-2 border-white shadow-sm"></div> 
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Selección</span>
+            <div className="w-2 h-2 rounded-full bg-[#ef4444] border border-white shadow-sm"></div> 
           </div>
         </div>
       </div>
