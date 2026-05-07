@@ -6,13 +6,15 @@ import { AuthGuard } from '@/components/auth-guard';
 import { MapView } from '@/components/map-view';
 import { DataEntryForm } from '@/components/data-entry-form';
 import { Button } from '@/components/ui/button';
-import { auth } from '@/lib/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { LogOut, Leaf, User } from 'lucide-react';
+import { LogOut, Leaf } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function Home() {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lon: number } | null>(null);
+  const auth = useAuth();
+  const { user } = useUser();
 
   const handleLocationSelect = (lat: number, lon: number) => {
     setSelectedLocation({ lat, lon });
@@ -39,8 +41,8 @@ export default function Home() {
           
           <div className="flex items-center gap-4">
             <div className="hidden md:flex flex-col items-end">
-              <span className="text-sm font-medium">{auth.currentUser?.displayName || 'Usuario'}</span>
-              <span className="text-xs text-muted-foreground">{auth.currentUser?.email}</span>
+              <span className="text-sm font-medium">{user?.displayName || 'Usuario'}</span>
+              <span className="text-xs text-muted-foreground">{user?.email}</span>
             </div>
             <div className="h-8 w-[1px] bg-border hidden md:block"></div>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">

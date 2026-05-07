@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { aiGuidedParameterSelection, AiGuidedParameterSelectionOutput } from '@/ai/flows/ai-guided-parameter-selection-flow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,8 @@ export function DataEntryForm({
   location: { lat: number, lon: number } | null 
 }) {
   const { toast } = useToast();
+  const db = useFirestore();
+  const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AiGuidedParameterSelectionOutput | null>(null);
@@ -48,18 +50,6 @@ export function DataEntryForm({
       value: '',
     },
   });
-
-  // Sync form with map click
-  useState(() => {
-    if (location) {
-      form.setValue('latitude', location.lat);
-      form.setValue('longitude', location.lon);
-    }
-  });
-
-  // Watch location change
-  const currentLat = location?.lat || 0;
-  const currentLon = location?.lon || 0;
 
   const handleAiSuggest = async () => {
     if (!location) {
@@ -93,16 +83,16 @@ export function DataEntryForm({
   const onSubmit = async (data: FormValues) => {
     setLoading(true);
     try {
-      await addDoc(collection(db, 'samples'), {
+      addDoc(collection(db, 'samples'), {
         ...data,
         location: { lat: data.latitude, lon: data.longitude },
         timestamp: serverTimestamp(),
-        userId: auth.currentUser?.uid,
-        userEmail: auth.currentUser?.email,
+        userId: user?.uid,
+        userEmail: user?.email,
       });
       toast({
         title: "Éxito",
-        description: "Datos guardados correctamente en Firestore.",
+        description: "Datos guardados correctamente.",
       });
       form.reset({
         ...form.getValues(),

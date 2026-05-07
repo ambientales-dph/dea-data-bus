@@ -1,0 +1,31 @@
+
+{
+  "entities": {
+    "Sample": {
+      "title": "Sample",
+      "description": "Muestra de datos ambientales recolectada en una ubicación específica.",
+      "type": "object",
+      "properties": {
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "medium": { "type": "string", "enum": ["water", "air", "soil"] },
+        "parameterType": { "type": "string" },
+        "analyte": { "type": "string" },
+        "value": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" }
+      },
+      "required": ["latitude", "longitude", "medium", "parameterType", "analyte", "value"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/samples/{sampleId}": {
+      "schema": "#/entities/Sample",
+      "description": "Colección de muestras ambientales."
+    }
+  }
+}

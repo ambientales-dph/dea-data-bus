@@ -2,38 +2,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/firebase';
+import { signInWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
+import { useAuth, useUser } from '@/firebase';
 import { isUserWhitelisted } from '@/app/lib/auth-config';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogIn, ShieldAlert, Leaf } from 'lucide-react';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const auth = useAuth();
+  const { user, loading: authLoading } = useUser();
   const [error, setError] = useState<string | null>(null);
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser && !isUserWhitelisted(currentUser.email)) {
-        signOut(auth);
-        setError('Acceso denegado: Su correo electrónico no está en la lista de permitidos.');
-        setUser(null);
-      } else {
-        setUser(currentUser);
-        setError(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+    if (user && !isUserWhitelisted(user.email)) {
+      signOut(auth);
+      setError('Acceso denegado: Su correo electrónico no está en la lista de permitidos.');
+    }
+  }, [user, auth]);
 
   const handleLogin = async () => {
-    setLoading(true);
+    setIsAuthorizing(true);
+    setError(null);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
       if (!isUserWhitelisted(result.user.email)) {
         await signOut(auth);
         setError('Acceso denegado: Su correo electrónico no está en la lista de permitidos.');
@@ -41,11 +35,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     } catch (err) {
       setError('Error al iniciar sesión con Google.');
     } finally {
-      setLoading(false);
+      setIsAuthorizing(false);
     }
   };
 
-  if (loading) {
+  if (authLoading || isAuthorizing) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -56,7 +50,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) {
+  if (!user || (user && !isUserWhitelisted(user.email))) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full shadow-xl border-t-4 border-t-primary">
