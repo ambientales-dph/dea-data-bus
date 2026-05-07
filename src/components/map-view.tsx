@@ -207,11 +207,11 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         <div className="relative group">
           <div className="flex items-center bg-white/95 backdrop-blur shadow-sm border-b border-primary/20 transition-all focus-within:ring-2 focus-within:ring-primary/50">
             <div className="pl-4 text-primary">
-              {isSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             </div>
             <Input 
               placeholder="Buscar ciudad, calle o paraje..." 
-              className="border-0 focus-visible:ring-0 h-12 text-sm bg-transparent w-full"
+              className="border-0 focus-visible:ring-0 h-10 text-xs bg-transparent w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => searchQuery.length >= 3 && setShowResults(true)}
@@ -241,17 +241,16 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       <div ref={mapRef} className="absolute inset-0 z-10" />
       
-      {/* Leyenda */}
-      <div className="absolute bottom-4 right-4 z-20 rounded-xl bg-white/95 p-4 shadow-xl backdrop-blur-md border border-primary/10 min-w-[180px]">
-        <div className="font-bold text-primary text-sm mb-3 text-right font-headline">Guía del Mapa</div>
+      {/* Leyenda simplificada */}
+      <div className="absolute bottom-4 right-4 z-20 rounded-xl bg-white/95 p-3 shadow-xl backdrop-blur-md border border-primary/10">
         <div className="space-y-2">
           <div className="flex items-center justify-end gap-3">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Estación Existente</span>
-            <div className="w-3 h-3 rounded-full bg-[#4E97CA] border-2 border-white shadow-sm"></div> 
+            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Estación Existente</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#4E97CA] border-2 border-white shadow-sm"></div> 
           </div>
           <div className="flex items-center justify-end gap-3">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Punto de selección</span>
-            <div className="w-3 h-3 rounded-full bg-[#ef4444] border-2 border-white shadow-sm"></div> 
+            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Punto de selección</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#ef4444] border-2 border-white shadow-sm"></div> 
           </div>
         </div>
       </div>
