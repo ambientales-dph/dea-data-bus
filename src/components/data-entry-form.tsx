@@ -1,11 +1,12 @@
+
 'use client';
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { collection, doc, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,64 +58,77 @@ export function DataEntryForm({
     },
   });
 
-  const handleCreateStation = async (data: StationValues) => {
+  const handleCreateStation = (data: StationValues) => {
     if (!selectedPoint) return;
-    setLoading(true);
-    try {
-      const docRef = await addDoc(collection(db, 'stations'), {
-        name: data.name,
-        latitude: selectedPoint.lat,
-        longitude: selectedPoint.lon,
-        userId: user?.uid,
-        userEmail: user?.email,
-        createdAt: serverTimestamp(),
+    
+    const stationRef = doc(collection(db, 'stations'));
+    const stationData = {
+      name: data.name,
+      latitude: selectedPoint.lat,
+      longitude: selectedPoint.lon,
+      userId: user?.uid,
+      userEmail: user?.email,
+      createdAt: serverTimestamp(),
+    };
+
+    // Respuesta inmediata en la UI
+    onStationCreated(stationRef.id, data.name);
+    toast({
+      title: "Estación registrada",
+      description: `Se ha iniciado el registro de: ${data.name}`,
+    });
+    stationForm.reset();
+
+    // Operación en segundo plano (siguiendo lineamientos de no await)
+    setDoc(stationRef, stationData)
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: stationRef.path,
+          operation: 'create',
+          requestResourceData: stationData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      onStationCreated(docRef.id, data.name);
-      toast({
-        title: "Estación creada",
-        description: `Se ha registrado la estación: ${data.name}`,
-      });
-      stationForm.reset();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo crear la estación.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
-  const onSampleSubmit = async (data: SampleValues) => {
+  const onSampleSubmit = (data: SampleValues) => {
     if (!selectedPoint?.stationId) return;
-    setLoading(true);
-    try {
-      await addDoc(collection(db, 'samples'), {
-        ...data,
-        stationId: selectedPoint.stationId,
-        timestamp: serverTimestamp(),
-        userId: user?.uid,
-        userEmail: user?.email,
+    
+    const sampleData = {
+      ...data,
+      stationId: selectedPoint.stationId,
+      timestamp: serverTimestamp(),
+      userId: user?.uid,
+      userEmail: user?.email,
+    };
+
+    const samplesCol = collection(db, 'samples');
+    
+    toast({
+      title: "Enviando medición",
+      description: "Los datos se están procesando...",
+    });
+
+    addDoc(samplesCol, sampleData)
+      .then(() => {
+        toast({
+          title: "Medición guardada",
+          description: "Los datos se han vinculado correctamente.",
+        });
+        sampleForm.reset({
+          ...sampleForm.getValues(),
+          analyte: '',
+          value: '',
+        });
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: 'samples',
+          operation: 'create',
+          requestResourceData: sampleData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      toast({
-        title: "Medición guardada",
-        description: "Los datos se han vinculado a la estación correctamente.",
-      });
-      sampleForm.reset({
-        ...sampleForm.getValues(),
-        analyte: '',
-        value: '',
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Hubo un problema al guardar la medición.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   if (!selectedPoint) {
@@ -135,7 +149,6 @@ export function DataEntryForm({
 
   return (
     <div className="space-y-6">
-      {/* Información del Punto Seleccionado */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2 text-primary">
@@ -157,7 +170,6 @@ export function DataEntryForm({
       </Card>
 
       {!selectedPoint.stationId ? (
-        /* Formulario para Crear Estación */
         <Card className="border-t-4 border-t-accent shadow-lg">
           <CardHeader>
             <CardTitle className="text-md">Definir Estación</CardTitle>
@@ -176,15 +188,14 @@ export function DataEntryForm({
                   <p className="text-xs text-destructive">{stationForm.formState.errors.name.message}</p>
                 )}
               </div>
-              <Button type="submit" disabled={loading} className="w-full bg-accent hover:bg-accent/90 text-white">
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white">
+                <Send className="mr-2 h-4 w-4" />
                 Guardar Punto en Mapa
               </Button>
             </form>
           </CardContent>
         </Card>
       ) : (
-        /* Formulario para Cargar Mediciones */
         <div className="space-y-6">
           <Separator />
           <div className="flex items-center gap-2 mb-2">
@@ -246,8 +257,8 @@ export function DataEntryForm({
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90 text-white font-bold">
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold">
+              <Send className="mr-2 h-4 w-4" />
               Guardar en la Estación
             </Button>
           </form>
