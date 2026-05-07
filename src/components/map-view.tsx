@@ -12,7 +12,7 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
-import { Style, Icon, Text, Fill } from 'ol/style';
+import { Style, Text, Fill, Circle as CircleStyle, Stroke } from 'ol/style';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
@@ -53,8 +53,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         selectionLayer,
       ],
       view: new View({
-        center: fromLonLat([-60.0, -34.0]),
-        zoom: 4,
+        center: fromLonLat([-60.0, -37.0]), // Centrado en Provincia de Buenos Aires
+        zoom: 6, // Zoom para ver toda la provincia
       }),
     });
 
@@ -99,18 +99,17 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       feature.setStyle(
         new Style({
-          image: new Icon({
-            anchor: [0.5, 1],
-            src: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-            scale: 0.04,
-            color: '#4E97CA'
+          image: new CircleStyle({
+            radius: 7,
+            fill: new Fill({ color: '#4E97CA' }),
+            stroke: new Stroke({ color: 'white', width: 2 }),
           }),
           text: new Text({
             text: station.name,
-            offsetY: -45,
-            font: 'bold 12px Inter, sans-serif',
+            offsetY: -15,
+            font: 'bold 10px Inter, sans-serif',
             fill: new Fill({ color: '#1e3a8a' }),
-            padding: [2, 5, 2, 5],
+            padding: [2, 4, 2, 4],
           })
         })
       );
@@ -132,11 +131,10 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       feature.setStyle(
         new Style({
-          image: new Icon({
-            anchor: [0.5, 1],
-            src: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-            scale: 0.05,
-            color: '#ef4444' // Rojo para indicar selección/nuevo
+          image: new CircleStyle({
+            radius: 8,
+            fill: new Fill({ color: '#ef4444' }),
+            stroke: new Stroke({ color: 'white', width: 2 }),
           }),
         })
       );
@@ -148,13 +146,17 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   return (
     <div className="relative h-full w-full overflow-hidden rounded-lg shadow-inner bg-muted/20 border-2 border-primary/10">
       <div ref={mapRef} className="absolute inset-0" />
-      <div className="absolute top-4 left-4 z-10 rounded-md bg-white/90 p-3 text-xs shadow-lg backdrop-blur-sm border border-primary/20">
-        <div className="font-bold text-primary mb-1">Guía del Mapa</div>
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-3 h-3 rounded-full bg-[#4E97CA]"></div> Estación Existente
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#ef4444]"></div> Punto de nueva estación
+      <div className="absolute top-4 left-4 z-10 rounded-xl bg-white/95 p-4 shadow-xl backdrop-blur-md border border-primary/10 min-w-[180px]">
+        <div className="font-bold text-primary text-sm mb-3">Guía del Mapa</div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="w-4 h-4 rounded-full bg-[#4E97CA] border-2 border-white shadow-sm"></div> 
+            <span className="text-xs font-medium text-muted-foreground">Estación Existente</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-4 h-4 rounded-full bg-[#ef4444] border-2 border-white shadow-sm"></div> 
+            <span className="text-xs font-medium text-muted-foreground">Punto de nueva estación</span>
+          </div>
         </div>
       </div>
     </div>
