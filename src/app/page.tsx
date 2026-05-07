@@ -1,3 +1,80 @@
+
+'use client';
+
+import { useState } from 'react';
+import { AuthGuard } from '@/components/auth-guard';
+import { MapView } from '@/components/map-view';
+import { DataEntryForm } from '@/components/data-entry-form';
+import { Button } from '@/components/ui/button';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
+import { LogOut, Leaf, User } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 export default function Home() {
-  return <></>;
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lon: number } | null>(null);
+
+  const handleLocationSelect = (lat: number, lon: number) => {
+    setSelectedLocation({ lat, lon });
+  };
+
+  const handleLogout = () => {
+    signOut(auth);
+  };
+
+  return (
+    <AuthGuard>
+      <div className="flex h-screen w-full flex-col bg-background overflow-hidden">
+        {/* Header */}
+        <header className="flex h-16 items-center justify-between border-b bg-white px-6 shadow-sm z-20">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
+              <Leaf className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold font-headline text-primary tracking-tight">GeoDatos Ambiental</h1>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Plataforma de Monitoreo</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex flex-col items-end">
+              <span className="text-sm font-medium">{auth.currentUser?.displayName || 'Usuario'}</span>
+              <span className="text-xs text-muted-foreground">{auth.currentUser?.email}</span>
+            </div>
+            <div className="h-8 w-[1px] bg-border hidden md:block"></div>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              Salir
+            </Button>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Panel: Map */}
+          <div className="relative flex-[7] p-4">
+            <MapView 
+              onLocationSelect={handleLocationSelect} 
+              selectedLocation={selectedLocation ? [selectedLocation.lat, selectedLocation.lon] : null} 
+            />
+          </div>
+
+          {/* Right Panel: Form */}
+          <div className="flex-[3] border-l bg-white shadow-xl flex flex-col min-w-[400px]">
+            <ScrollArea className="flex-1 p-6">
+              <div className="max-w-2xl mx-auto">
+                <DataEntryForm location={selectedLocation} />
+              </div>
+            </ScrollArea>
+            <footer className="p-4 border-t bg-muted/10 text-center">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
+                © {new Date().getFullYear()} GeoDatos Ambiental - Sistema de Gestión de Datos
+              </p>
+            </footer>
+          </div>
+        </div>
+      </div>
+    </AuthGuard>
+  );
 }
