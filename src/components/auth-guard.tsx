@@ -18,7 +18,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
-  // Aseguramos que el componente esté montado en el cliente para evitar errores de hidratación
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -68,14 +67,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Durante la hidratación (SSR y primer renderizado cliente), mostramos un estado neutro
   if (!mounted || authLoading || isAuthorizing) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Leaf className="h-12 w-12 animate-bounce text-primary" />
           <p className="text-muted-foreground animate-pulse font-medium">
-            {!mounted ? 'Cargando GeoDatos Ambiental...' : isAuthorizing ? 'Autenticando...' : 'Verificando sesión...'}
+            {!mounted ? 'Cargando DEA Data Bus...' : isAuthorizing ? 'Autenticando...' : 'Verificando sesión...'}
           </p>
         </div>
       </div>
@@ -90,7 +88,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
               <Leaf className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-bold font-headline">GeoDatos Ambiental</CardTitle>
+            <CardTitle className="text-2xl font-bold font-headline">DEA Data Bus</CardTitle>
             <CardDescription>
               Plataforma de gestión de datos ambientales.
             </CardDescription>

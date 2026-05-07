@@ -41,7 +41,7 @@ export default function Home() {
               <Leaf className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold font-headline text-primary tracking-tight">GeoDatos Ambiental</h1>
+              <h1 className="text-xl font-bold font-headline text-primary tracking-tight">DEA Data Bus</h1>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Plataforma de Monitoreo</p>
             </div>
           </div>
@@ -85,7 +85,7 @@ export default function Home() {
             </ScrollArea>
             <footer className="p-4 border-t bg-muted/10 text-center">
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
-                © {new Date().getFullYear()} GeoDatos Ambiental - Sistema de Gestión de Datos
+                © {new Date().getFullYear()} DEA Data Bus - Sistema de Gestión de Datos
               </p>
             </footer>
           </div>

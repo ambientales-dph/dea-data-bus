@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'GeoDatos Ambiental',
+  title: 'DEA Data Bus',
   description: 'Remote environmental data collection and monitoring platform',
 };
 
