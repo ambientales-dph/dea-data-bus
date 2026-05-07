@@ -7,13 +7,15 @@ import { useAuth, useUser } from '@/firebase';
 import { isUserWhitelisted } from '@/app/lib/auth-config';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogIn, ShieldAlert, Leaf, Loader2 } from 'lucide-react';
+import { LogIn, ShieldAlert, Leaf, Loader2, Copy } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const { user, loading: authLoading } = useUser();
   const [error, setError] = useState<string | null>(null);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user && !isUserWhitelisted(user.email)) {
@@ -35,18 +37,28 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       }
     } catch (err: any) {
       console.error("Auth Error:", err);
-      // Manejo de errores específicos para ayudar al usuario
       if (err.code === 'auth/operation-not-allowed') {
-        setError('Error: El proveedor de Google no está habilitado en Firebase Console.');
+        setError('Error: El proveedor de Google no está habilitado en Firebase Console (Authentication > Sign-in method).');
       } else if (err.code === 'auth/popup-blocked') {
-        setError('Error: El navegador bloqueó la ventana emergente de inicio de sesión.');
+        setError('Error: El navegador bloqueó la ventana emergente. Por favor, permita las ventanas emergentes.');
       } else if (err.code === 'auth/unauthorized-domain') {
-        setError('Error: Este dominio no está autorizado en Firebase Console (Authentication > Settings).');
+        const domain = typeof window !== 'undefined' ? window.location.hostname : '';
+        setError(`Error: El dominio "${domain}" no está autorizado en Firebase Console.`);
       } else {
         setError(`Error al iniciar sesión: ${err.message || 'Error desconocido'}`);
       }
     } finally {
       setIsAuthorizing(false);
+    }
+  };
+
+  const copyDomain = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.hostname);
+      toast({
+        title: "Copiado",
+        description: "Dominio copiado al portapapeles. Pégalo en Authorized Domains.",
+      });
     }
   };
 
@@ -73,14 +85,27 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             </div>
             <CardTitle className="text-2xl font-bold font-headline">GeoDatos Ambiental</CardTitle>
             <CardDescription>
-              Plataforma de gestión de datos ambientales. Inicie sesión para continuar.
+              Plataforma de gestión de datos ambientales.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
-              <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
-                <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" />
-                <span className="leading-tight">{error}</span>
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
+                  <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span className="leading-tight">{error}</span>
+                </div>
+                {error.includes('no está autorizado') && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-xs" 
+                    onClick={copyDomain}
+                  >
+                    <Copy className="mr-2 h-3 w-3" />
+                    Copiar dominio actual
+                  </Button>
+                )}
               </div>
             )}
             <Button 
@@ -97,7 +122,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
               Ingresar con Google
             </Button>
             <p className="text-xs text-center text-muted-foreground mt-4">
-              Solo personal autorizado tiene acceso a esta plataforma.
+              Solo personal autorizado tiene acceso.
             </p>
           </CardContent>
         </Card>
