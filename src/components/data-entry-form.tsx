@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -7,14 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
-import { aiGuidedParameterSelection, AiGuidedParameterSelectionOutput } from '@/ai/flows/ai-guided-parameter-selection-flow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, MapPin, Send, Loader2, Info, PlusCircle, Database } from 'lucide-react';
+import { MapPin, Send, Loader2, PlusCircle, Database } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 
@@ -43,8 +41,6 @@ export function DataEntryForm({
   const db = useFirestore();
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<AiGuidedParameterSelectionOutput | null>(null);
 
   const stationForm = useForm<StationValues>({
     resolver: zodResolver(stationSchema),
@@ -87,28 +83,6 @@ export function DataEntryForm({
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleAiSuggest = async () => {
-    if (!selectedPoint) return;
-
-    setAiLoading(true);
-    try {
-      const result = await aiGuidedParameterSelection({
-        latitude: selectedPoint.lat,
-        longitude: selectedPoint.lon,
-        environmentalMedium: sampleForm.getValues('medium'),
-      });
-      setAiSuggestions(result);
-    } catch (error) {
-      toast({
-        title: "Error de IA",
-        description: "No se pudieron obtener sugerencias.",
-        variant: "destructive"
-      });
-    } finally {
-      setAiLoading(false);
     }
   };
 
@@ -187,7 +161,7 @@ export function DataEntryForm({
         <Card className="border-t-4 border-t-accent shadow-lg">
           <CardHeader>
             <CardTitle className="text-md">Definir Estación</CardTitle>
-            <CardDescription>Nombre este punto para guardarlo permanentemente.</CardDescription>
+            <CardDescription>Nombre este punto para guardarlo permanentemente en la base de datos.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-4">
@@ -272,54 +246,11 @@ export function DataEntryForm({
               </div>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90 text-white font-bold">
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                Guardar en la Estación
-              </Button>
-
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handleAiSuggest}
-                disabled={aiLoading}
-                className="w-full border-accent/50 text-primary hover:bg-accent/5"
-              >
-                {aiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4 text-accent" />}
-                IA: Sugerencias de analitos
-              </Button>
-            </div>
+            <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90 text-white font-bold">
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              Guardar en la Estación
+            </Button>
           </form>
-
-          {aiSuggestions && (
-            <Card className="border-accent/30 bg-accent/5 overflow-hidden">
-              <div className="p-4 space-y-3">
-                <p className="text-xs font-semibold text-accent flex items-center gap-2">
-                  <Sparkles className="h-3 w-3" />
-                  Sugerencias para esta estación
-                </p>
-                <div className="space-y-2">
-                  {aiSuggestions.parameters.map((p, idx) => (
-                    <div key={idx} className="bg-white rounded border border-accent/10 p-2 text-xs">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-bold text-primary">{p.name}</span>
-                        <span className="bg-muted px-2 py-0.5 rounded text-[10px] font-mono">{p.typicalRange}</span>
-                      </div>
-                      <p className="text-muted-foreground mb-2">{p.rationale}</p>
-                      <Button 
-                        variant="link" 
-                        size="sm" 
-                        className="h-auto p-0 text-accent text-[10px]"
-                        onClick={() => sampleForm.setValue('analyte', p.name)}
-                      >
-                        Autocompletar analito
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          )}
         </div>
       )}
     </div>
