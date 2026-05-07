@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -121,7 +122,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           text: new Text({
             text: station.name,
             offsetY: -12,
-            font: 'bold 10px Inter, sans-serif',
+            font: 'bold 10px "Encode Sans", sans-serif',
             fill: new Fill({ color: '#1e3a8a' }),
             padding: [2, 4, 2, 4],
           })

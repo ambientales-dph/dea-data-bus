@@ -11,8 +11,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'],
+        body: ['"Encode Sans"', 'sans-serif'],
+        headline: ['"Encode Sans"', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
