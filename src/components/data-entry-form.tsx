@@ -78,6 +78,7 @@ const WATER_ANALYTES = [
 ];
 
 const MICROBIOLOGICAL_WATER_ANALYTES = [
+  // Fitoplancton
   { name: 'Anabaena sp', unit: 'indiv./litro' },
   { name: 'Aphanizomenon sp', unit: 'indiv./litro' },
   { name: 'aff Aphanocapsa', unit: 'indiv./litro' },
@@ -187,6 +188,40 @@ const MICROBIOLOGICAL_WATER_ANALYTES = [
   { name: 'Tetraedron aff minimum', unit: 'indiv./litro' },
   { name: 'Tetrastrum aff staurogeniaeforme', unit: 'indiv./litro' },
   { name: 'Tetrastrum sp. 2', unit: 'indiv./litro' },
+  // Zooplancton
+  { name: 'Ciliophora indeterminado', unit: 'indiv./litro' },
+  { name: 'Didinium aff. nasatum', unit: 'indiv./litro' },
+  { name: 'Epistylis sp.', unit: 'indiv./litro' },
+  { name: 'Halteria simplex', unit: 'indiv./litro' },
+  { name: 'Litonotus sp.', unit: 'indiv./litro' },
+  { name: 'Paramecium caudatum', unit: 'indiv./litro' },
+  { name: 'Strobilidium sp.', unit: 'indiv./litro' },
+  { name: 'Tokophrya sp.', unit: 'indiv./litro' },
+  { name: 'Vorticella campanula', unit: 'indiv./litro' },
+  { name: 'Vorticella sp.', unit: 'indiv./litro' },
+  { name: 'Zooides libres', unit: 'indiv./litro' },
+  { name: 'A. hemisphaerica', unit: 'indiv./litro' },
+  { name: 'Bdeloideo', unit: 'indiv./litro' },
+  { name: 'Brachionus angularis', unit: 'indiv./litro' },
+  { name: 'B. calyciflorus', unit: 'indiv./litro' },
+  { name: 'B. caudatus', unit: 'indiv./litro' },
+  { name: 'B. ibericus', unit: 'indiv./litro' },
+  { name: 'B. plicatilis', unit: 'indiv./litro' },
+  { name: 'B. urceolaris', unit: 'indiv./litro' },
+  { name: 'Cephalodella sp1', unit: 'indiv./litro' },
+  { name: 'Cephalodella sp2', unit: 'indiv./litro' },
+  { name: 'Filinia longiseta', unit: 'indiv./litro' },
+  { name: 'F. terminalis', unit: 'indiv./litro' },
+  { name: 'K. tropica', unit: 'indiv./litro' },
+  { name: 'K. quadrata', unit: 'indiv./litro' },
+  { name: 'L. patella', unit: 'indiv./litro' },
+  { name: 'Notholca acuminata', unit: 'indiv./litro' },
+  { name: 'N. squamula', unit: 'indiv./litro' },
+  { name: 'Polyarthra vulgaris', unit: 'indiv./litro' },
+  { name: 'Proalides sp.', unit: 'indiv./litro' },
+  { name: 'Synchaeta sp.', unit: 'indiv./litro' },
+  { name: 'Cyclopoida sp 1', unit: 'indiv./litro' },
+  { name: 'Cyclopoida sp 2', unit: 'indiv./litro' },
 ];
 
 const stationSchema = z.object({
