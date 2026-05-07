@@ -3,29 +3,29 @@
   "entities": {
     "Station": {
       "title": "Station",
-      "description": "Una ubicación fija de monitoreo ambiental.",
+      "description": "Una ubicación fija de monitoreo ambiental (punto de muestreo).",
       "type": "object",
       "properties": {
-        "name": { "type": "string" },
-        "latitude": { "type": "number" },
-        "longitude": { "type": "number" },
-        "userId": { "type": "string" },
-        "userEmail": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "name": { "type": "string", "description": "Denominación de la estación." },
+        "latitude": { "type": "number", "description": "Latitud geográfica." },
+        "longitude": { "type": "number", "description": "Longitud geográfica." },
+        "userId": { "type": "string", "description": "ID del usuario que creó la estación." },
+        "userEmail": { "type": "string", "description": "Email del usuario creador." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Fecha de creación." }
       },
       "required": ["name", "latitude", "longitude"]
     },
     "Sample": {
       "title": "Sample",
-      "description": "Medición de un analito en una estación específica.",
+      "description": "Medición de un parámetro específico en una estación.",
       "type": "object",
       "properties": {
-        "stationId": { "type": "string" },
-        "medium": { "type": "string", "enum": ["water", "air", "soil"] },
-        "parameterType": { "type": "string" },
-        "analyte": { "type": "string" },
-        "value": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
+        "stationId": { "type": "string", "description": "Referencia a la estación de origen." },
+        "medium": { "type": "string", "enum": ["water", "air", "soil"], "description": "Medio ambiental (Agua, Aire, Suelo)." },
+        "parameterType": { "type": "string", "description": "Categoría del parámetro (Fisicoquímico, etc)." },
+        "analyte": { "type": "string", "description": "Nombre del analito (pH, Pb, etc)." },
+        "value": { "type": "string", "description": "Valor numérico o resultado de la medición." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Momento de la toma de muestra." },
         "userId": { "type": "string" },
         "userEmail": { "type": "string" }
       },
@@ -37,12 +37,12 @@
   },
   "firestore": {
     "/stations/{stationId}": {
-      "schema": "#/entities/Station",
-      "description": "Colección de estaciones de monitoreo."
+      "schema": "#/backend/entities/Station",
+      "description": "Colección de puntos de muestreo fijos."
     },
     "/samples/{sampleId}": {
-      "schema": "#/entities/Sample",
-      "description": "Colección de mediciones ambientales."
+      "schema": "#/backend/entities/Sample",
+      "description": "Colección de resultados de laboratorio y mediciones de campo."
     }
   }
 }

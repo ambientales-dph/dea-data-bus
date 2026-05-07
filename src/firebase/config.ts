@@ -1,6 +1,10 @@
 
 'use client';
 
+/**
+ * Configuración de Firebase obtenida de las variables de entorno.
+ * Asegúrate de que estas variables estén definidas en tu archivo .env
+ */
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
