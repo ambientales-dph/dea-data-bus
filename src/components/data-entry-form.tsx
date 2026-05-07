@@ -18,6 +18,23 @@ import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 
 const WATER_ANALYTES = [
+  { name: 'Temperatura', unit: '°C' },
+  { name: 'Ph', unit: 'upH' },
+  { name: 'Salinidad', unit: 'PSU' },
+  { name: 'Conductividad', unit: 'mS/cm' },
+  { name: 'Solidos Disueltos Totales', unit: 'g/l' },
+  { name: 'Oxigeno Disuelto', unit: 'mg/l' },
+  { name: 'Saturación de oxigeno in situ', unit: '%' },
+  { name: 'Profundidad disco Secchi', unit: 'cm' },
+  { name: 'Turbiedad', unit: 'NTU' },
+  { name: 'Caudal', unit: 'm3/s' },
+  { name: 'Precipitaciones', unit: 'mml' },
+  { name: 'Q estimado', unit: 'm3/s' },
+  { name: 'Q Instantaneo', unit: 'm3/s' },
+  { name: 'H (nivel hidrometrico rio Salado)', unit: 'm IGM' },
+  { name: 'H g (nivel del rio Salado)', unit: 'm' },
+  { name: 'Transparencia', unit: 'cm' },
+  { name: 'Velocidad de corriente', unit: 'm/s' },
   { name: 'Turbidez/Turbiedad', unit: 'NTU' },
   { name: 'Sólidos sedimentables 10m', unit: 'mg/l' },
   { name: 'Sólidos sedimentables 1h', unit: 'mg/l' },
