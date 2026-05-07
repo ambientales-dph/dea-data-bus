@@ -8,16 +8,23 @@ import { DataEntryForm } from '@/components/data-entry-form';
 import { Button } from '@/components/ui/button';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { LogOut, Leaf } from 'lucide-react';
+import { LogOut, Leaf, Info } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+export interface SelectedPoint {
+  lat: number;
+  lon: number;
+  stationId?: string;
+  name?: string;
+}
+
 export default function Home() {
-  const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lon: number } | null>(null);
+  const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
   const auth = useAuth();
   const { user } = useUser();
 
-  const handleLocationSelect = (lat: number, lon: number) => {
-    setSelectedLocation({ lat, lon });
+  const handlePointSelect = (point: SelectedPoint) => {
+    setSelectedPoint(point);
   };
 
   const handleLogout = () => {
@@ -57,16 +64,23 @@ export default function Home() {
           {/* Left Panel: Map */}
           <div className="relative flex-[7] p-4">
             <MapView 
-              onLocationSelect={handleLocationSelect} 
-              selectedLocation={selectedLocation ? [selectedLocation.lat, selectedLocation.lon] : null} 
+              onPointSelect={handlePointSelect} 
+              selectedPoint={selectedPoint} 
             />
           </div>
 
           {/* Right Panel: Form */}
-          <div className="flex-[3] border-l bg-white shadow-xl flex flex-col min-w-[400px]">
-            <ScrollArea className="flex-1 p-6">
-              <div className="max-w-2xl mx-auto">
-                <DataEntryForm location={selectedLocation} />
+          <div className="flex-[3] border-l bg-white shadow-xl flex flex-col min-w-[420px]">
+            <ScrollArea className="flex-1">
+              <div className="p-6">
+                <DataEntryForm 
+                  selectedPoint={selectedPoint} 
+                  onStationCreated={(id, name) => {
+                    if (selectedPoint) {
+                      setSelectedPoint({ ...selectedPoint, stationId: id, name });
+                    }
+                  }}
+                />
               </div>
             </ScrollArea>
             <footer className="p-4 border-t bg-muted/10 text-center">

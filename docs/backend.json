@@ -1,13 +1,26 @@
 
 {
   "entities": {
-    "Sample": {
-      "title": "Sample",
-      "description": "Muestra de datos ambientales recolectada en una ubicación específica.",
+    "Station": {
+      "title": "Station",
+      "description": "Una ubicación fija de monitoreo ambiental.",
       "type": "object",
       "properties": {
+        "name": { "type": "string" },
         "latitude": { "type": "number" },
         "longitude": { "type": "number" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "latitude", "longitude"]
+    },
+    "Sample": {
+      "title": "Sample",
+      "description": "Medición de un analito en una estación específica.",
+      "type": "object",
+      "properties": {
+        "stationId": { "type": "string" },
         "medium": { "type": "string", "enum": ["water", "air", "soil"] },
         "parameterType": { "type": "string" },
         "analyte": { "type": "string" },
@@ -16,16 +29,20 @@
         "userId": { "type": "string" },
         "userEmail": { "type": "string" }
       },
-      "required": ["latitude", "longitude", "medium", "parameterType", "analyte", "value"]
+      "required": ["stationId", "medium", "parameterType", "analyte", "value"]
     }
   },
   "auth": {
     "providers": ["google.com"]
   },
   "firestore": {
+    "/stations/{stationId}": {
+      "schema": "#/entities/Station",
+      "description": "Colección de estaciones de monitoreo."
+    },
     "/samples/{sampleId}": {
       "schema": "#/entities/Sample",
-      "description": "Colección de muestras ambientales."
+      "description": "Colección de mediciones ambientales."
     }
   }
 }
