@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useMemo } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, doc, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -13,9 +13,52 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, Loader2, PlusCircle, Database } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, Beaker } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
+
+const WATER_ANALYTES = [
+  { name: 'Turbidez/Turbiedad', unit: 'NTU' },
+  { name: 'Sólidos sedimentables 10m', unit: 'mg/l' },
+  { name: 'Sólidos sedimentables 1h', unit: 'mg/l' },
+  { name: 'Solidos Suspendidos', unit: 'mg/l' },
+  { name: 'Sólidos totales secados a 105°C-180°C', unit: 'mg/l' },
+  { name: 'Cloruros', unit: 'mg/l' },
+  { name: 'Sulfatos', unit: 'mg/l' },
+  { name: 'Nitrogeno Amoniacal', unit: 'mg/l' },
+  { name: 'Amonio', unit: 'mg/l' },
+  { name: 'Nitrogeno total', unit: 'mg/l' },
+  { name: 'Fosforo total', unit: 'mg/l' },
+  { name: 'Fosforo reactivo soluble', unit: 'mg/l' },
+  { name: 'Clorofila a', unit: 'ug/l' },
+  { name: 'Materia organica', unit: 'mg/l' },
+  { name: 'DB05', unit: 'mg/l' },
+  { name: 'DQO', unit: 'mg/l' },
+  { name: 'Dureza Total', unit: 'mg/l' },
+  { name: 'Nitratos', unit: 'mg/l' },
+  { name: 'Arsenico', unit: 'mg/ml' },
+  { name: 'Cadmio', unit: 'ug/l' },
+  { name: 'Cobre', unit: 'mg/l' },
+  { name: 'Cromo', unit: 'mg/l' },
+  { name: 'Hierro', unit: 'mg/l' },
+  { name: 'Magnesio', unit: 'mg/l' },
+  { name: 'Mercurio', unit: 'mg/l' },
+  { name: 'Níquel', unit: 'mg/l' },
+  { name: 'Plomo', unit: 'mg/l' },
+  { name: 'Zinc', unit: 'mg/l' },
+  { name: 'Carbonatos', unit: 'mg/l' },
+  { name: 'Bicarbonatos', unit: 'mg/l' },
+  { name: 'Amoníaco', unit: 'mg/l' },
+  { name: 'Fluoruros', unit: 'mg/l' },
+  { name: 'Nitritos', unit: 'mg/l' },
+  { name: 'Sodio', unit: 'mg/l' },
+  { name: 'Potasio', unit: 'mg/l' },
+  { name: 'Glifosato', unit: 'mg/l' },
+  { name: 'Alcalinidad Tot', unit: 'mg/l' },
+  { name: '% Saturación de O2 a 20°', unit: '%' },
+  { name: 'PRS', unit: 'ug/L' },
+  { name: 'Solidos Sedimentados', unit: 'mg/l' },
+];
 
 const stationSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -24,8 +67,9 @@ const stationSchema = z.object({
 const sampleSchema = z.object({
   medium: z.enum(['water', 'air', 'soil']),
   parameterType: z.string().min(1, 'Seleccione un tipo de parámetro'),
-  analyte: z.string().min(1, 'Ingrese el analito'),
+  analyte: z.string().min(1, 'Ingrese o seleccione el analito'),
   value: z.string().min(1, 'Ingrese un valor'),
+  unit: z.string().optional(),
 });
 
 type StationValues = z.infer<typeof stationSchema>;
@@ -41,7 +85,6 @@ export function DataEntryForm({
   const { toast } = useToast();
   const db = useFirestore();
   const { user } = useUser();
-  const [loading, setLoading] = useState(false);
 
   const stationForm = useForm<StationValues>({
     resolver: zodResolver(stationSchema),
@@ -55,8 +98,27 @@ export function DataEntryForm({
       parameterType: '',
       analyte: '',
       value: '',
+      unit: '',
     },
   });
+
+  const selectedMedium = useWatch({
+    control: sampleForm.control,
+    name: 'medium',
+  });
+
+  const selectedAnalyte = useWatch({
+    control: sampleForm.control,
+    name: 'analyte',
+  });
+
+  const currentUnit = useMemo(() => {
+    if (selectedMedium === 'water') {
+      const found = WATER_ANALYTES.find(a => a.name === selectedAnalyte);
+      return found?.unit || '';
+    }
+    return '';
+  }, [selectedMedium, selectedAnalyte]);
 
   const handleCreateStation = (data: StationValues) => {
     if (!selectedPoint) return;
@@ -71,7 +133,6 @@ export function DataEntryForm({
       createdAt: serverTimestamp(),
     };
 
-    // Respuesta inmediata en la UI
     onStationCreated(stationRef.id, data.name);
     toast({
       title: "Estación registrada",
@@ -79,7 +140,6 @@ export function DataEntryForm({
     });
     stationForm.reset();
 
-    // Operación en segundo plano (siguiendo lineamientos de no await)
     setDoc(stationRef, stationData)
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
@@ -96,6 +156,7 @@ export function DataEntryForm({
     
     const sampleData = {
       ...data,
+      unit: currentUnit || data.unit,
       stationId: selectedPoint.stationId,
       timestamp: serverTimestamp(),
       userId: user?.uid,
@@ -199,7 +260,7 @@ export function DataEntryForm({
         <div className="space-y-6">
           <Separator />
           <div className="flex items-center gap-2 mb-2">
-            <Send className="h-5 w-5 text-primary" />
+            <Beaker className="h-5 w-5 text-primary" />
             <h3 className="font-bold text-primary">Registrar Medición</h3>
           </div>
 
@@ -207,7 +268,10 @@ export function DataEntryForm({
             <div className="space-y-4 bg-muted/20 p-4 rounded-xl border border-muted-foreground/10">
               <div className="space-y-2">
                 <Label htmlFor="medium">Medio Ambiental</Label>
-                <Select onValueChange={(v) => sampleForm.setValue('medium', v as any)} defaultValue="water">
+                <Select onValueChange={(v) => {
+                  sampleForm.setValue('medium', v as any);
+                  sampleForm.setValue('analyte', '');
+                }} defaultValue="water">
                   <SelectTrigger className="bg-white">
                     <SelectValue placeholder="Seleccione el medio" />
                   </SelectTrigger>
@@ -238,26 +302,48 @@ export function DataEntryForm({
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="analyte">Analito / Parámetro</Label>
-                  <Input 
-                    id="analyte" 
-                    className="bg-white"
-                    placeholder="Ej: pH, Turbiedad, Plomo"
-                    {...sampleForm.register('analyte')} 
-                  />
+                  {selectedMedium === 'water' ? (
+                    <Select onValueChange={(v) => sampleForm.setValue('analyte', v)}>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Seleccione el analito" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {WATER_ANALYTES.map((a) => (
+                          <SelectItem key={a.name} value={a.name}>
+                            {a.name} ({a.unit})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input 
+                      id="analyte" 
+                      className="bg-white"
+                      placeholder="Ej: pH, Turbiedad, Plomo"
+                      {...sampleForm.register('analyte')} 
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="value">Valor Medido</Label>
-                  <Input 
-                    id="value" 
-                    className="bg-white"
-                    placeholder="Ej: 7.2"
-                    {...sampleForm.register('value')} 
-                  />
+                  <Label htmlFor="value">Valor Medido {currentUnit && `(${currentUnit})`}</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      id="value" 
+                      className="bg-white flex-1"
+                      placeholder="Ej: 7.2"
+                      {...sampleForm.register('value')} 
+                    />
+                    {currentUnit && (
+                      <div className="bg-muted px-3 flex items-center rounded-md border text-xs font-bold text-muted-foreground whitespace-nowrap">
+                        {currentUnit}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold">
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold shadow-md">
               <Send className="mr-2 h-4 w-4" />
               Guardar en la Estación
             </Button>
