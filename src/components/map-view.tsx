@@ -18,6 +18,7 @@ import { SelectedPoint } from '@/app/page';
 import { Input } from '@/components/ui/input';
 import { Search, MapPin, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card } from '@/components/ui/card';
 
 interface MapViewProps {
   onPointSelect: (point: SelectedPoint) => void;
@@ -94,7 +95,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     return () => {
       map.setTarget(undefined);
     };
-  }, []);
+  }, [onPointSelect]);
 
   // Actualizar estaciones en el mapa
   useEffect(() => {
@@ -200,16 +201,16 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-lg shadow-inner bg-muted/20 border-2 border-primary/10 flex flex-col">
-      {/* Buscador de Lugares */}
-      <div className="absolute top-4 left-4 right-4 z-[30]">
+      {/* Buscador de Lugares Integrado (Soldado arriba y a los lados) */}
+      <div className="absolute top-0 left-0 right-0 z-[30]">
         <div className="relative group">
-          <div className="flex items-center bg-white/95 backdrop-blur shadow-lg rounded-xl border border-primary/20 overflow-hidden transition-all focus-within:ring-2 focus-within:ring-primary/50">
+          <div className="flex items-center bg-white/95 backdrop-blur shadow-sm border-b border-primary/20 transition-all focus-within:ring-2 focus-within:ring-primary/50">
             <div className="pl-4 text-primary">
               {isSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
             </div>
             <Input 
               placeholder="Buscar ciudad, calle o paraje..." 
-              className="border-0 focus-visible:ring-0 h-12 text-sm bg-transparent"
+              className="border-0 focus-visible:ring-0 h-12 text-sm bg-transparent w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => searchQuery.length >= 3 && setShowResults(true)}
@@ -217,7 +218,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           </div>
 
           {showResults && searchResults.length > 0 && (
-            <Card className="absolute top-full left-0 right-0 mt-2 shadow-2xl border-primary/10 overflow-hidden">
+            <Card className="absolute top-full left-0 right-0 rounded-t-none shadow-2xl border-x-0 border-t-0 border-b border-primary/10 overflow-hidden">
               <ScrollArea className="max-h-[300px]">
                 <div className="p-1">
                   {searchResults.map((result, idx) => (
@@ -256,5 +257,3 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     </div>
   );
 }
-
-import { Card } from '@/components/ui/card';
