@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -100,13 +99,13 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       feature.setStyle(
         new Style({
           image: new CircleStyle({
-            radius: 7,
+            radius: 5, // Tamaño reducido de 7 a 5
             fill: new Fill({ color: '#4E97CA' }),
-            stroke: new Stroke({ color: 'white', width: 2 }),
+            stroke: new Stroke({ color: 'white', width: 1.5 }),
           }),
           text: new Text({
             text: station.name,
-            offsetY: -15,
+            offsetY: -12,
             font: 'bold 10px Inter, sans-serif',
             fill: new Fill({ color: '#1e3a8a' }),
             padding: [2, 4, 2, 4],
@@ -132,9 +131,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       feature.setStyle(
         new Style({
           image: new CircleStyle({
-            radius: 8,
+            radius: 6, // Tamaño reducido de 8 a 6
             fill: new Fill({ color: '#ef4444' }),
-            stroke: new Stroke({ color: 'white', width: 2 }),
+            stroke: new Stroke({ color: 'white', width: 1.5 }),
           }),
         })
       );
@@ -146,16 +145,18 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   return (
     <div className="relative h-full w-full overflow-hidden rounded-lg shadow-inner bg-muted/20 border-2 border-primary/10">
       <div ref={mapRef} className="absolute inset-0" />
-      <div className="absolute top-4 left-4 z-10 rounded-xl bg-white/95 p-4 shadow-xl backdrop-blur-md border border-primary/10 min-w-[180px]">
-        <div className="font-bold text-primary text-sm mb-3">Guía del Mapa</div>
+      
+      {/* Leyenda movida a la derecha inferior */}
+      <div className="absolute bottom-4 right-4 z-10 rounded-xl bg-white/95 p-4 shadow-xl backdrop-blur-md border border-primary/10 min-w-[180px]">
+        <div className="font-bold text-primary text-sm mb-3 text-right">Guía del Mapa</div>
         <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="w-4 h-4 rounded-full bg-[#4E97CA] border-2 border-white shadow-sm"></div> 
+          <div className="flex items-center justify-end gap-3">
             <span className="text-xs font-medium text-muted-foreground">Estación Existente</span>
+            <div className="w-3 h-3 rounded-full bg-[#4E97CA] border-2 border-white shadow-sm"></div> 
           </div>
-          <div className="flex items-center gap-3">
-            <div className="w-4 h-4 rounded-full bg-[#ef4444] border-2 border-white shadow-sm"></div> 
-            <span className="text-xs font-medium text-muted-foreground">Punto de nueva estación</span>
+          <div className="flex items-center justify-end gap-3">
+            <span className="text-xs font-medium text-muted-foreground">Punto de selección</span>
+            <div className="w-3 h-3 rounded-full bg-[#ef4444] border-2 border-white shadow-sm"></div> 
           </div>
         </div>
       </div>
