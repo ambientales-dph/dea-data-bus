@@ -4,7 +4,8 @@ export const AUTH_WHITELIST = [
   'admin@geodatos.com',
   'field.technician@environmental.org',
   'inspector@government.gov',
-  'luisbree@gmail.com'
+  'luisbree@gmail.com',
+  'mdlangeles.dph@gmail.com'
 ];
 
 export function isUserWhitelisted(email: string | null): boolean {
