@@ -75,7 +75,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       ],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
-        zoom: 5,
+        zoom: 6,
       }),
     });
 
@@ -116,7 +116,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         lon: station.longitude,
       });
 
-      // Definimos una función de estilo dinámica para manejar el zoom
       feature.setStyle((feat, resolution) => {
         const view = mapInstance.current?.getView();
         const zoom = view ? view.getZoomForResolution(resolution) : 0;
@@ -128,7 +127,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
             fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
             stroke: new Stroke({ color: 'white', width: 1.5 }),
           }),
-          text: zoom && zoom >= 12 ? new Text({
+          text: zoom && zoom >= 10 ? new Text({
             text: station.name,
             offsetY: -12,
             font: 'bold 10px "Encode Sans", sans-serif',
@@ -250,11 +249,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       <div className="absolute bottom-4 right-4 z-20 rounded-xl bg-white/95 p-2 shadow-xl backdrop-blur-md border border-primary/10">
         <div className="space-y-1.5">
           <div className="flex items-center justify-end gap-2">
-            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Estación</span>
             <div className="w-2 h-2 rounded-full bg-[#4E97CA] border border-white shadow-sm"></div> 
           </div>
           <div className="flex items-center justify-end gap-2">
-            <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Selección</span>
             <div className="w-2 h-2 rounded-full bg-[#ef4444] border border-white shadow-sm"></div> 
           </div>
         </div>
