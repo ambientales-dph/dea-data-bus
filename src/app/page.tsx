@@ -9,6 +9,7 @@ import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { LogOut, Leaf } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export interface SelectedPoint {
   lat: number;
@@ -49,15 +50,22 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex flex-col items-end">
-              <span className="text-sm font-medium">{user?.displayName || 'Usuario'}</span>
-              <span className="text-xs text-muted-foreground">{user?.email}</span>
-            </div>
-            <div className="h-8 w-[1px] bg-border hidden md:block"></div>
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
-              Cerrar sesión
+          <div className="flex items-center gap-3">
+            <Avatar className="h-9 w-9 border-2 border-primary/10 shadow-sm">
+              <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'Usuario'} />
+              <AvatarFallback className="bg-primary/5 text-primary font-bold text-xs">
+                {user?.email?.charAt(0).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="h-6 w-[1px] bg-border"></div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleLogout} 
+              className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              title="Cerrar sesión"
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </header>
