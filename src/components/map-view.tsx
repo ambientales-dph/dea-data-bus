@@ -123,9 +123,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
         return new Style({
           image: new CircleStyle({
-            radius: 5,
+            radius: 3.5, // Puntos más pequeños
             fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
-            stroke: new Stroke({ color: 'white', width: 1.5 }),
+            stroke: new Stroke({ color: 'white', width: 1 }),
           }),
           text: zoom && zoom >= 8 ? new Text({
             text: station.name,
@@ -153,7 +153,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       feature.setStyle(
         new Style({
           image: new CircleStyle({
-            radius: 6,
+            radius: 4.5, // Punto de selección más pequeño
             fill: new Fill({ color: '#ef4444' }),
             stroke: new Stroke({ color: 'white', width: 1.5 }),
           }),
@@ -246,12 +246,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       <div ref={mapRef} className="absolute inset-0 z-10" />
       
-      <div className="absolute bottom-4 right-4 z-20 rounded-xl bg-white/95 p-2 shadow-xl backdrop-blur-md border border-primary/10">
-        <div className="space-y-1.5">
+      <div className="absolute bottom-4 right-4 z-20 rounded-xl bg-white/95 p-3 shadow-xl backdrop-blur-md border border-primary/10">
+        <div className="space-y-2">
           <div className="flex items-center justify-end gap-2">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estaciones</span>
             <div className="w-2 h-2 rounded-full bg-[#4E97CA] border border-white shadow-sm"></div> 
           </div>
           <div className="flex items-center justify-end gap-2">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Selección</span>
             <div className="w-2 h-2 rounded-full bg-[#ef4444] border border-white shadow-sm"></div> 
           </div>
         </div>
