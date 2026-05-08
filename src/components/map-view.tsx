@@ -89,7 +89,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           if (label) {
             textStyle = new Text({
               text: label,
-              font: 'bold 10px "Encode Sans", sans-serif',
+              font: '10px "Encode Sans", sans-serif', // Se quita el "bold"
               fill: new Fill({ color: activeLayer === 'satellite' ? 'white' : '#0D9166' }),
               stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 3 }),
               overflow: true, 
