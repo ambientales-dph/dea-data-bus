@@ -75,7 +75,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       ],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
-        zoom: 6,
+        zoom: 5,
       }),
     });
 
@@ -108,7 +108,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     stationsSource.current.clear();
 
     stations?.forEach((station: any) => {
-      const isSelected = selectedPoint?.stationId === station.id;
       const feature = new Feature({
         geometry: new Point(fromLonLat([station.longitude, station.latitude])),
         name: station.name,
@@ -117,22 +116,27 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         lon: station.longitude,
       });
 
-      feature.setStyle(
-        new Style({
+      // Definimos una función de estilo dinámica para manejar el zoom
+      feature.setStyle((feat, resolution) => {
+        const view = mapInstance.current?.getView();
+        const zoom = view ? view.getZoomForResolution(resolution) : 0;
+        const isSelected = selectedPoint?.stationId === station.id;
+
+        return new Style({
           image: new CircleStyle({
             radius: 5,
             fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
             stroke: new Stroke({ color: 'white', width: 1.5 }),
           }),
-          text: new Text({
+          text: zoom && zoom >= 12 ? new Text({
             text: station.name,
             offsetY: -12,
             font: 'bold 10px "Encode Sans", sans-serif',
             fill: new Fill({ color: isSelected ? '#ef4444' : '#1e3a8a' }),
             padding: [2, 4, 2, 4],
-          })
-        })
-      );
+          }) : undefined
+        });
+      });
 
       stationsSource.current.addFeature(feature);
     });
