@@ -1,14 +1,13 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { AuthGuard } from '@/components/auth-guard';
 import { MapView } from '@/components/map-view';
 import { DataEntryForm } from '@/components/data-entry-form';
 import { Button } from '@/components/ui/button';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { LogOut, Leaf, Info } from 'lucide-react';
+import { LogOut, Leaf } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface SelectedPoint {
@@ -23,9 +22,13 @@ export default function Home() {
   const auth = useAuth();
   const { user } = useUser();
 
-  const handlePointSelect = (point: SelectedPoint) => {
+  const handlePointSelect = useCallback((point: SelectedPoint) => {
     setSelectedPoint(point);
-  };
+  }, []);
+
+  const handleStationCreated = useCallback((id: string, name: string) => {
+    setSelectedPoint(prev => prev ? { ...prev, stationId: id, name } : null);
+  }, []);
 
   const handleLogout = () => {
     signOut(auth);
@@ -75,11 +78,7 @@ export default function Home() {
               <div className="p-6">
                 <DataEntryForm 
                   selectedPoint={selectedPoint} 
-                  onStationCreated={(id, name) => {
-                    if (selectedPoint) {
-                      setSelectedPoint({ ...selectedPoint, stationId: id, name });
-                    }
-                  }}
+                  onStationCreated={handleStationCreated}
                 />
               </div>
             </ScrollArea>

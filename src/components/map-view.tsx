@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import 'ol/ol.css';
 import Map from 'ol/Map';
 import View from 'ol/View';
@@ -36,6 +36,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const mapInstance = useRef<Map | null>(null);
   const stationsSource = useRef<VectorSource>(new VectorSource());
   const selectionSource = useRef<VectorSource>(new VectorSource());
+  const onPointSelectRef = useRef(onPointSelect);
   const db = useFirestore();
 
   // Estados para el buscador
@@ -44,8 +45,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
-  // Escuchar todas las estaciones de Firestore
-  const { data: stations } = useCollection(query(collection(db, 'stations')));
+  // Mantener la referencia del callback actualizada sin disparar re-inicialización del mapa
+  useEffect(() => {
+    onPointSelectRef.current = onPointSelect;
+  }, [onPointSelect]);
+
+  // Escuchar todas las estaciones de Firestore con query memorizada
+  const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
+  const { data: stations } = useCollection(stationsQuery);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -77,7 +84,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       const feature = map.forEachFeatureAtPixel(event.pixel, (f) => f);
       
       if (feature && feature.get('stationId')) {
-        onPointSelect({
+        onPointSelectRef.current?.({
           lat: feature.get('lat'),
           lon: feature.get('lon'),
           stationId: feature.get('stationId'),
@@ -85,7 +92,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         });
       } else {
         const coords = toLonLat(event.coordinate);
-        onPointSelect({ lat: coords[1], lon: coords[0] });
+        onPointSelectRef.current?.({ lat: coords[1], lon: coords[0] });
       }
       setShowResults(false);
     });
@@ -95,7 +102,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     return () => {
       map.setTarget(undefined);
     };
-  }, [onPointSelect]);
+  }, []); // Solo se inicializa una vez
 
   // Actualizar estaciones en el mapa
   useEffect(() => {
@@ -134,10 +141,10 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
   // Mostrar el punto de selección actual
   useEffect(() => {
-    if (!selectionSource.current || !selectedPoint) return;
+    if (!selectionSource.current) return;
     selectionSource.current.clear();
     
-    if (!selectedPoint.stationId) {
+    if (selectedPoint && !selectedPoint.stationId) {
       const feature = new Feature({
         geometry: new Point(fromLonLat([selectedPoint.lon, selectedPoint.lat])),
       });
@@ -173,7 +180,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         setSearchResults(data);
         setShowResults(true);
       } catch (error) {
-        console.error('Error buscando ubicación:', error);
+        // Errores de búsqueda silenciosos para no interrumpir la experiencia
       } finally {
         setIsSearching(false);
       }
