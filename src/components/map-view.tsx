@@ -39,18 +39,15 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const onPointSelectRef = useRef(onPointSelect);
   const db = useFirestore();
 
-  // Estados para el buscador
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
-  // Mantener la referencia del callback actualizada sin disparar re-inicialización del mapa
   useEffect(() => {
     onPointSelectRef.current = onPointSelect;
   }, [onPointSelect]);
 
-  // Escuchar todas las estaciones de Firestore con query memorizada
   const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
   const { data: stations } = useCollection(stationsQuery);
 
@@ -59,10 +56,12 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     const stationsLayer = new VectorLayer({
       source: stationsSource.current,
+      zIndex: 1,
     });
 
     const selectionLayer = new VectorLayer({
       source: selectionSource.current,
+      zIndex: 2,
     });
 
     const map = new Map({
@@ -75,7 +74,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         selectionLayer,
       ],
       view: new View({
-        center: fromLonLat([-60.0, -37.0]), // Centrado en Provincia de Buenos Aires
+        center: fromLonLat([-60.0, -37.0]),
         zoom: 6,
       }),
     });
@@ -102,14 +101,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     return () => {
       map.setTarget(undefined);
     };
-  }, []); // Solo se inicializa una vez
+  }, []);
 
-  // Actualizar estaciones en el mapa
   useEffect(() => {
     if (!stationsSource.current) return;
     stationsSource.current.clear();
 
     stations?.forEach((station: any) => {
+      const isSelected = selectedPoint?.stationId === station.id;
       const feature = new Feature({
         geometry: new Point(fromLonLat([station.longitude, station.latitude])),
         name: station.name,
@@ -122,14 +121,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         new Style({
           image: new CircleStyle({
             radius: 5,
-            fill: new Fill({ color: '#4E97CA' }),
+            fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
             stroke: new Stroke({ color: 'white', width: 1.5 }),
           }),
           text: new Text({
             text: station.name,
             offsetY: -12,
             font: 'bold 10px "Encode Sans", sans-serif',
-            fill: new Fill({ color: '#1e3a8a' }),
+            fill: new Fill({ color: isSelected ? '#ef4444' : '#1e3a8a' }),
             padding: [2, 4, 2, 4],
           })
         })
@@ -137,9 +136,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       stationsSource.current.addFeature(feature);
     });
-  }, [stations]);
+  }, [stations, selectedPoint?.stationId]);
 
-  // Mostrar el punto de selección actual
   useEffect(() => {
     if (!selectionSource.current) return;
     selectionSource.current.clear();
@@ -163,7 +161,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     }
   }, [selectedPoint]);
 
-  // Lógica de búsqueda (Nominatim)
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (searchQuery.length < 3) {
@@ -180,7 +177,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         setSearchResults(data);
         setShowResults(true);
       } catch (error) {
-        // Errores de búsqueda silenciosos para no interrumpir la experiencia
+        // Silencio errores de búsqueda
       } finally {
         setIsSearching(false);
       }
@@ -208,7 +205,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-lg shadow-inner bg-muted/20 border-2 border-primary/10 flex flex-col">
-      {/* Buscador de Lugares Compacto */}
       <div className="absolute top-0 left-0 right-0 z-[30]">
         <div className="relative group">
           <div className="flex items-center bg-white/95 backdrop-blur shadow-sm border-b border-primary/20 transition-all focus-within:ring-2 focus-within:ring-primary/50">
@@ -247,7 +243,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       <div ref={mapRef} className="absolute inset-0 z-10" />
       
-      {/* Leyenda compacta */}
       <div className="absolute bottom-4 right-4 z-20 rounded-xl bg-white/95 p-2 shadow-xl backdrop-blur-md border border-primary/10">
         <div className="space-y-1.5">
           <div className="flex items-center justify-end gap-2">
