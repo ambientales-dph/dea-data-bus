@@ -57,7 +57,7 @@ export default function Home() {
             <div className="h-8 w-[1px] bg-border hidden md:block"></div>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
-              Salir
+              Cerrar sesión
             </Button>
           </div>
         </header>

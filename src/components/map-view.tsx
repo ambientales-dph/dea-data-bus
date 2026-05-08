@@ -215,7 +215,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
               {isSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
             </div>
             <Input 
-              placeholder="Buscar ubicación..." 
+              placeholder="Buscá una ubicación..." 
               className="border-0 focus-visible:ring-0 h-8 text-[11px] bg-transparent w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

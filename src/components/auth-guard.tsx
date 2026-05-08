@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -25,7 +24,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (mounted && user && !isUserWhitelisted(user.email)) {
       signOut(auth);
-      setError('Acceso denegado: Su correo electrónico no está en la lista de permitidos.');
+      setError('Acceso denegado: tu correo electrónico no está en la lista de permitidos.');
     }
   }, [user, auth, mounted]);
 
@@ -38,19 +37,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       
       if (!isUserWhitelisted(result.user.email)) {
         await signOut(auth);
-        setError('Acceso denegado: Su correo electrónico no está en la lista de permitidos.');
+        setError('Acceso denegado: tu correo electrónico no está en la lista de permitidos.');
       }
     } catch (err: any) {
       console.error("Auth Error:", err);
       if (err.code === 'auth/operation-not-allowed') {
-        setError('Error: El proveedor de Google no está habilitado en Firebase Console (Authentication > Sign-in method).');
+        setError('Error: el proveedor de Google no está habilitado en la consola de Firebase.');
       } else if (err.code === 'auth/popup-blocked') {
-        setError('Error: El navegador bloqueó la ventana emergente. Por favor, permita las ventanas emergentes.');
+        setError('Error: el navegador bloqueó la ventana emergente. Por favor, permití los pop-ups.');
       } else if (err.code === 'auth/unauthorized-domain') {
         const domain = typeof window !== 'undefined' ? window.location.hostname : '';
-        setError(`Error: El dominio "${domain}" no está autorizado en Firebase Console.`);
+        setError(`Error: el dominio "${domain}" no está autorizado en la consola de Firebase.`);
       } else {
-        setError(`Error al iniciar sesión: ${err.message || 'Error desconocido'}`);
+        setError(`Error al iniciar sesión: ${err.message || 'Ocurrió un error inesperado'}`);
       }
     } finally {
       setIsAuthorizing(false);
@@ -62,7 +61,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       navigator.clipboard.writeText(window.location.hostname);
       toast({
         title: "Copiado",
-        description: "Dominio copiado al portapapeles. Pégalo en Authorized Domains.",
+        description: "Dominio copiado al portapapeles. Pegalo en dominios autorizados.",
       });
     }
   };
@@ -73,7 +72,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col items-center gap-4">
           <Leaf className="h-12 w-12 animate-bounce text-primary" />
           <p className="text-muted-foreground animate-pulse font-medium">
-            {!mounted ? 'Cargando DEA Data Bus...' : isAuthorizing ? 'Autenticando...' : 'Verificando sesión...'}
+            {!mounted ? 'Cargando DEA Data Bus...' : isAuthorizing ? 'Autenticando...' : 'Verificando tu sesión...'}
           </p>
         </div>
       </div>
@@ -124,10 +123,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
               ) : (
                 <LogIn className="mr-2 h-5 w-5" />
               )}
-              Ingresar con Google
+              Ingresá con Google
             </Button>
             <p className="text-xs text-center text-muted-foreground mt-4">
-              Solo personal autorizado tiene acceso.
+              Solo personal autorizado tiene acceso al sistema.
             </p>
           </CardContent>
         </Card>

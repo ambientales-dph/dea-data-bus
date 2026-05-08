@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -229,9 +228,9 @@ const stationSchema = z.object({
 
 const sampleSchema = z.object({
   medium: z.enum(['water', 'air', 'soil']),
-  parameterType: z.string().min(1, 'Seleccione un tipo de parámetro'),
-  analyte: z.string().min(1, 'Ingrese o seleccione el analito'),
-  value: z.string().min(1, 'Ingrese un valor'),
+  parameterType: z.string().min(1, 'Seleccioná un tipo de parámetro'),
+  analyte: z.string().min(1, 'Ingresá o seleccioná el analito'),
+  value: z.string().min(1, 'Ingresá un valor'),
   unit: z.string().optional(),
 });
 
@@ -315,7 +314,7 @@ export function DataEntryForm({
     onStationCreated(stationRef.id, data.name);
     toast({
       title: "Estación registrada",
-      description: `Se ha iniciado el registro de: ${data.name}`,
+      description: `Se inició el registro de: ${data.name}`,
     });
     stationForm.reset();
 
@@ -353,7 +352,7 @@ export function DataEntryForm({
       .then(() => {
         toast({
           title: "Medición guardada",
-          description: "Los datos se han vinculado correctamente.",
+          description: "Los datos se vincularon correctamente.",
         });
         sampleForm.reset({
           ...sampleForm.getValues(),
@@ -378,9 +377,9 @@ export function DataEntryForm({
           <MapPin className="h-12 w-12 text-primary/40 animate-pulse" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-primary">Inicie la recolección</h3>
+          <h3 className="text-lg font-bold text-primary">Iniciá la recolección</h3>
           <p className="text-sm text-muted-foreground">
-            Haga clic en un punto del mapa para crear una nueva estación o seleccione una existente para cargar datos.
+            Hacé clic en un punto del mapa para crear una nueva estación o seleccioná una existente para cargar datos.
           </p>
         </div>
       </div>
@@ -423,7 +422,7 @@ export function DataEntryForm({
         <Card className="border-t-4 border-t-accent shadow-lg">
           <CardHeader>
             <CardTitle className="text-md">Definir Estación</CardTitle>
-            <CardDescription>Nombre este punto para guardarlo permanentemente en la base de datos.</CardDescription>
+            <CardDescription>Nombrá este punto para guardarlo permanentemente en la base de datos.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-4">
@@ -440,7 +439,7 @@ export function DataEntryForm({
               </div>
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white">
                 <Send className="mr-2 h-4 w-4" />
-                Guardar Punto en Mapa
+                Guardá el punto en el mapa
               </Button>
             </form>
           </CardContent>
@@ -462,7 +461,7 @@ export function DataEntryForm({
                   sampleForm.setValue('analyte', '');
                 }} defaultValue="water">
                   <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Seleccione el medio" />
+                    <SelectValue placeholder="Seleccioná el medio" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="water">Agua (Superficial/Subterránea)</SelectItem>
@@ -479,7 +478,7 @@ export function DataEntryForm({
                   sampleForm.setValue('analyte', '');
                 }}>
                   <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Seleccione categoría" />
+                    <SelectValue placeholder="Seleccioná una categoría" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="physicochemical">Fisicoquímico</SelectItem>
@@ -497,7 +496,7 @@ export function DataEntryForm({
                   {availableAnalytes.length > 0 ? (
                     <Select onValueChange={(v) => sampleForm.setValue('analyte', v)}>
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Seleccione el analito" />
+                        <SelectValue placeholder="Seleccioná el analito" />
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px]">
                         {availableAnalytes.map((a) => (
@@ -537,7 +536,7 @@ export function DataEntryForm({
 
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold shadow-md">
               <Send className="mr-2 h-4 w-4" />
-              Guardar en la Estación
+              Guardar en la estación
             </Button>
           </form>
         </div>

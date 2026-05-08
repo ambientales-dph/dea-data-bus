@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -19,8 +18,8 @@ export function FirebaseErrorListener() {
       // En producción o como fallback, mostramos un toast más descriptivo
       toast({
         variant: "destructive",
-        title: "Error de Permisos de Base de Datos",
-        description: "No tienes autorización para realizar esta operación. Verifica las reglas de seguridad.",
+        title: "Error de permisos",
+        description: "No tenés autorización para realizar esta operación. Verificá las reglas de seguridad.",
       });
     };
 
