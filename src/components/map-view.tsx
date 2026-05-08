@@ -6,6 +6,7 @@ import Map from 'ol/Map';
 import View from 'ol/View';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
+import XYZ from 'ol/source/XYZ';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
@@ -16,9 +17,12 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
 import { Input } from '@/components/ui/input';
-import { Search, MapPin, Loader2 } from 'lucide-react';
+import { Search, MapPin, Loader2, Layers, Map as MapIcon, Satellite } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface MapViewProps {
   onPointSelect: (point: SelectedPoint) => void;
@@ -31,6 +35,8 @@ interface SearchResult {
   lon: string;
 }
 
+type BaseLayerType = 'osm' | 'grayscale' | 'satellite';
+
 export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<Map | null>(null);
@@ -39,6 +45,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const onPointSelectRef = useRef(onPointSelect);
   const db = useFirestore();
 
+  const [activeLayer, setActiveLayer] = useState<BaseLayerType>('osm');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -51,28 +58,28 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
   const { data: stations } = useCollection(stationsQuery);
 
+  // Inicialización del mapa
   useEffect(() => {
     if (!mapRef.current) return;
 
+    const baseLayer = new TileLayer({
+      source: new OSM(),
+      properties: { id: 'base-layer' }
+    });
+
     const stationsLayer = new VectorLayer({
       source: stationsSource.current,
-      zIndex: 1,
+      zIndex: 10,
     });
 
     const selectionLayer = new VectorLayer({
       source: selectionSource.current,
-      zIndex: 2,
+      zIndex: 20,
     });
 
     const map = new Map({
       target: mapRef.current,
-      layers: [
-        new TileLayer({
-          source: new OSM(),
-        }),
-        stationsLayer,
-        selectionLayer,
-      ],
+      layers: [baseLayer, stationsLayer, selectionLayer],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
         zoom: 5.5,
@@ -103,6 +110,40 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
   }, []);
 
+  // Manejo de cambio de capa base
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    const layers = mapInstance.current.getLayers();
+    const baseLayer = layers.getArray().find(l => l.get('id') === 'base-layer') as TileLayer<any>;
+    
+    if (!baseLayer) return;
+
+    if (activeLayer === 'satellite') {
+      baseLayer.setSource(new XYZ({
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        maxZoom: 19
+      }));
+    } else {
+      baseLayer.setSource(new OSM());
+    }
+
+    // Aplicar filtro gris si es necesario
+    baseLayer.on('prerender', (evt) => {
+      if (activeLayer === 'grayscale') {
+        const ctx = evt.context as CanvasRenderingContext2D;
+        ctx.filter = 'grayscale(100%) brightness(0.9) contrast(1.2)';
+      }
+    });
+
+    baseLayer.on('postrender', (evt) => {
+      const ctx = evt.context as CanvasRenderingContext2D;
+      ctx.filter = 'none';
+    });
+
+    mapInstance.current.render();
+  }, [activeLayer]);
+
+  // Sincronizar estaciones en el mapa
   useEffect(() => {
     if (!stationsSource.current) return;
     stationsSource.current.clear();
@@ -123,7 +164,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
         return new Style({
           image: new CircleStyle({
-            radius: 3.5, // Puntos más pequeños
+            radius: 3.5,
             fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
             stroke: new Stroke({ color: 'white', width: 1 }),
           }),
@@ -131,7 +172,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
             text: station.name,
             offsetY: -12,
             font: 'bold 10px "Encode Sans", sans-serif',
-            fill: new Fill({ color: isSelected ? '#ef4444' : '#1e3a8a' }),
+            fill: new Fill({ color: isSelected ? '#ef4444' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
+            stroke: activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : undefined,
             padding: [2, 4, 2, 4],
           }) : undefined
         });
@@ -139,8 +181,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       stationsSource.current.addFeature(feature);
     });
-  }, [stations, selectedPoint?.stationId]);
+  }, [stations, selectedPoint?.stationId, activeLayer]);
 
+  // Punto de selección temporal
   useEffect(() => {
     if (!selectionSource.current) return;
     selectionSource.current.clear();
@@ -153,7 +196,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       feature.setStyle(
         new Style({
           image: new CircleStyle({
-            radius: 4.5, // Punto de selección más pequeño
+            radius: 4.5,
             fill: new Fill({ color: '#ef4444' }),
             stroke: new Stroke({ color: 'white', width: 1.5 }),
           }),
@@ -164,6 +207,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     }
   }, [selectedPoint]);
 
+  // Búsqueda de ubicaciones
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (searchQuery.length < 3) {
@@ -180,7 +224,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         setSearchResults(data);
         setShowResults(true);
       } catch (error) {
-        // Silencio errores de búsqueda
+        // Fallback silencioso
       } finally {
         setIsSearching(false);
       }
@@ -208,9 +252,10 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-lg shadow-inner bg-muted/20 border-2 border-primary/10 flex flex-col">
-      <div className="absolute top-0 left-0 right-0 z-[30]">
-        <div className="relative group">
-          <div className="flex items-center bg-white/95 backdrop-blur shadow-sm border-b border-primary/20 transition-all focus-within:ring-2 focus-within:ring-primary/50">
+      {/* Buscador y Selector de Capas */}
+      <div className="absolute top-0 left-0 right-0 z-[30] p-2 flex gap-2">
+        <div className="relative flex-1 group">
+          <div className="flex items-center bg-white/95 backdrop-blur shadow-sm border border-primary/20 rounded-md transition-all focus-within:ring-2 focus-within:ring-primary/50 overflow-hidden">
             <div className="pl-3 text-primary">
               {isSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
             </div>
@@ -224,7 +269,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           </div>
 
           {showResults && searchResults.length > 0 && (
-            <Card className="absolute top-full left-0 right-0 rounded-t-none shadow-2xl border-x-0 border-t-0 border-b border-primary/10 overflow-hidden">
+            <Card className="absolute top-full left-0 right-0 mt-1 shadow-2xl border-primary/10 overflow-hidden">
               <ScrollArea className="max-h-[250px]">
                 <div className="p-1">
                   {searchResults.map((result, idx) => (
@@ -242,10 +287,51 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
             </Card>
           )}
         </div>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="icon" className="h-8 w-8 bg-white/95 border-primary/20 shadow-sm text-primary">
+              <Layers className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-2" align="end">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1">Capas Base</p>
+              <button 
+                onClick={() => setActiveLayer('osm')}
+                className={cn(
+                  "w-full flex items-center gap-2 p-2 rounded-md text-[11px] transition-colors",
+                  activeLayer === 'osm' ? "bg-primary text-white" : "hover:bg-muted"
+                )}
+              >
+                <MapIcon className="h-3.5 w-3.5" /> OSM Estándar
+              </button>
+              <button 
+                onClick={() => setActiveLayer('grayscale')}
+                className={cn(
+                  "w-full flex items-center gap-2 p-2 rounded-md text-[11px] transition-colors",
+                  activeLayer === 'grayscale' ? "bg-primary text-white" : "hover:bg-muted"
+                )}
+              >
+                <MapIcon className="h-3.5 w-3.5 opacity-50" /> OSM Gris
+              </button>
+              <button 
+                onClick={() => setActiveLayer('satellite')}
+                className={cn(
+                  "w-full flex items-center gap-2 p-2 rounded-md text-[11px] transition-colors",
+                  activeLayer === 'satellite' ? "bg-primary text-white" : "hover:bg-muted"
+                )}
+              >
+                <Satellite className="h-3.5 w-3.5" /> ESRI Satelital
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div ref={mapRef} className="absolute inset-0 z-10" />
       
+      {/* Leyenda */}
       <div className="absolute bottom-4 right-4 z-20 rounded-xl bg-white/95 p-3 shadow-xl backdrop-blur-md border border-primary/10">
         <div className="space-y-2">
           <div className="flex items-center justify-end gap-2">
