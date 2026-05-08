@@ -74,16 +74,17 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         const view = mapInstance.current?.getView();
         const zoom = view ? view.getZoomForResolution(resolution) : 0;
         
+        // Borde 1px para zoom < 8, 3px para zoom >= 8
         const strokeWidth = (zoom && zoom >= 8) ? 3 : 1;
-        const strokeColor = 'rgba(13, 145, 102, 0.7)'; // #0D9166 con transparencia
+        const strokeColor = 'rgba(13, 145, 102, 0.7)'; // #0D9166 con 30% transparencia (0.7 opacidad)
         
         let textStyle = undefined;
-        // Mostramos etiquetas a partir de zoom 7 como pediste
-        if (zoom && zoom > 7) {
-          // Buscamos campos tanto en minúsculas como en mayúsculas (común en archivos DPH)
-          const codigo = feature.get('codigo') || feature.get('CODIGO') || '';
-          const subcuenca = feature.get('subcuenca') || feature.get('SUBCUENCA') || feature.get('nombre') || '';
-          const label = `${codigo} ${subcuenca}`.trim();
+        // Etiquetas visibles a partir de zoom 7
+        if (zoom && zoom >= 7) {
+          // Usamos específicamente cod_letras y subregion concatenados
+          const codLetras = feature.get('cod_letras') || '';
+          const subregion = feature.get('subregion') || '';
+          const label = `${codLetras} ${subregion}`.trim();
           
           if (label) {
             textStyle = new Text({
@@ -143,7 +144,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       layers: [baseLayer, basinsLayer, stationsLayer, selectionLayer],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
-        zoom: 5.5, // Zoom inicial solicitado
+        zoom: 5.5,
       }),
     });
 
@@ -229,7 +230,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         const zoom = view ? view.getZoomForResolution(resolution) : 0;
         const isSelected = selectedPoint?.stationId === station.id;
 
-        // Etiquetas de estaciones visibles desde zoom 8
         return new Style({
           image: new CircleStyle({
             radius: 3.5,
