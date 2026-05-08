@@ -75,7 +75,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       ],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
-        zoom: 6,
+        zoom: 5.5,
       }),
     });
 
@@ -127,7 +127,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
             fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
             stroke: new Stroke({ color: 'white', width: 1.5 }),
           }),
-          text: zoom && zoom >= 10 ? new Text({
+          text: zoom && zoom >= 8 ? new Text({
             text: station.name,
             offsetY: -12,
             font: 'bold 10px "Encode Sans", sans-serif',
