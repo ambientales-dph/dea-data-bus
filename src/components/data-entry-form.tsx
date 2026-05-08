@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -76,7 +77,6 @@ const WATER_ANALYTES = [
 ];
 
 const MICROBIOLOGICAL_WATER_ANALYTES = [
-  // Fitoplancton
   { name: 'Anabaena sp', unit: 'indiv./litro' },
   { name: 'Aphanizomenon sp', unit: 'indiv./litro' },
   { name: 'aff Aphanocapsa', unit: 'indiv./litro' },
@@ -186,7 +186,6 @@ const MICROBIOLOGICAL_WATER_ANALYTES = [
   { name: 'Tetraedron aff minimum', unit: 'indiv./litro' },
   { name: 'Tetrastrum aff staurogeniaeforme', unit: 'indiv./litro' },
   { name: 'Tetrastrum sp. 2', unit: 'indiv./litro' },
-  // Zooplancton
   { name: 'Ciliophora indeterminado', unit: 'indiv./litro' },
   { name: 'Didinium aff. nasatum', unit: 'indiv./litro' },
   { name: 'Epistylis sp.', unit: 'indiv./litro' },
