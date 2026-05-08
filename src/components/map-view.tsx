@@ -72,17 +72,41 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       style: (feature, resolution) => {
         const view = mapInstance.current?.getView();
         const zoom = view ? view.getZoomForResolution(resolution) : 0;
-        // 1px para zoom < 7, 3px para zoom >= 8. Entre 7 y 8 mantenemos 1px o transición suave.
-        const strokeWidth = zoom >= 8 ? 3 : 1;
+        
+        // Grosor dinámico: 1px si zoom < 7, 3px si zoom >= 8
+        const strokeWidth = (zoom && zoom >= 8) ? 3 : 1;
+        
+        // Color #0D9166 con 30% de transparencia (70% opacidad -> 0.7 alpha)
+        const strokeColor = 'rgba(13, 145, 102, 0.7)';
+        
+        // Etiqueta dinámica: Código + Subcuenca si zoom > 7
+        let textStyle = undefined;
+        if (zoom && zoom > 7) {
+          const codigo = feature.get('codigo') || '';
+          const subcuenca = feature.get('subcuenca') || '';
+          const label = `${codigo} ${subcuenca}`.trim();
+          
+          if (label) {
+            textStyle = new Text({
+              text: label,
+              font: 'bold 10px "Encode Sans", sans-serif',
+              fill: new Fill({ color: activeLayer === 'satellite' ? 'white' : '#0D9166' }),
+              stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 3 }),
+              overflow: true,
+              placement: 'point',
+            });
+          }
+        }
         
         return new Style({
           stroke: new Stroke({
-            color: '#10b981', // Verde Esmeralda (Emerald-500)
+            color: strokeColor,
             width: strokeWidth,
           }),
           fill: new Fill({
-            color: 'rgba(0, 0, 0, 0)', // Relleno transparente
+            color: 'rgba(0, 0, 0, 0)',
           }),
+          text: textStyle
         });
       },
       zIndex: 5,
@@ -151,7 +175,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       map.setTarget(undefined);
       mapInstance.current = null;
     };
-  }, []);
+  }, [activeLayer]);
 
   // Manejo de cambio de capa base
   useEffect(() => {
@@ -215,7 +239,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
             offsetY: -12,
             font: 'bold 10px "Encode Sans", sans-serif',
             fill: new Fill({ color: isSelected ? '#ef4444' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
-            stroke: activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : undefined,
+            stroke: activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 }),
             padding: [2, 4, 2, 4],
           }) : undefined
         });
@@ -376,7 +400,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         <div className="space-y-1 md:space-y-2">
           <div className="flex items-center justify-end gap-2">
             <span className="text-[9px] md:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Cuencas DPH</span>
-            <div className="w-4 h-[1px] bg-[#10b981] shadow-sm"></div> 
+            <div className="w-4 h-[2px] bg-[#0D9166] opacity-70 shadow-sm"></div> 
           </div>
           <div className="flex items-center justify-end gap-2">
             <span className="text-[9px] md:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estaciones</span>
