@@ -35,7 +35,6 @@ const WATER_ANALYTES = [
   { name: 'H g (nivel del rio Salado)', unit: 'm' },
   { name: 'Transparencia', unit: 'cm' },
   { name: 'Velocidad de corriente', unit: 'm/s' },
-  { name: 'Turbidez/Turbiedad', unit: 'NTU' },
   { name: 'Sólidos sedimentables 10m', unit: 'mg/l' },
   { name: 'Sólidos sedimentables 1h', unit: 'mg/l' },
   { name: 'Solidos Suspendidos', unit: 'mg/l' },
@@ -108,7 +107,7 @@ const MICROBIOLOGICAL_WATER_ANALYTES = [
   { name: 'Dictyosphaerium spp.', unit: 'indiv./litro' },
   { name: 'Eudorina sp.', unit: 'indiv./litro' },
   { name: 'Monoraphidium aff arcuatum', unit: 'indiv./litro' },
-  { name: 'Monoraphidium aff griffithii', unit: 'indiv./litro' },
+  { name: 'Monoraphidium "aff griffithii"', unit: 'indiv./litro' },
   { name: 'Monoraphidium aff minutum', unit: 'indiv./litro' },
   { name: 'Oocystis spp', unit: 'indiv./litro' },
   { name: 'Pediastrum boryanum', unit: 'indiv./litro' },
@@ -181,7 +180,7 @@ const MICROBIOLOGICAL_WATER_ANALYTES = [
   { name: 'Planktothrix', unit: 'indiv./litro' },
   { name: 'Pleurocapsal aff raphidiopsis', unit: 'indiv./litro' },
   { name: 'Raphidiopsis aff curvata', unit: 'indiv./litro' },
-  { name: 'Scenedesmus quadricauda', unit: 'indiv./litro' },
+  { name: 'Scenedesmus "quadricauda"', unit: 'indiv./litro' },
   { name: 'Scenedesmus sp. 1', unit: 'indiv./litro' },
   { name: 'Scenedesmus sp. 2', unit: 'indiv./litro' },
   { name: 'Surirella aff striatula', unit: 'indiv./litro' },
@@ -288,7 +287,6 @@ export function DataEntryForm({
       return MICROBIOLOGICAL_WATER_ANALYTES;
     }
     
-    // Default o físico-químico/otros si no es microbiológico
     return WATER_ANALYTES;
   }, [selectedMedium, selectedParameterType]);
 
@@ -391,25 +389,35 @@ export function DataEntryForm({
 
   return (
     <div className="space-y-6">
-      <Card className="border-primary/20 bg-primary/5">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2 text-primary">
-            {selectedPoint.stationId ? <Database className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
-            {selectedPoint.stationId ? 'Estación Seleccionada' : 'Nuevo Punto de Muestreo'}
-          </CardTitle>
-          <CardDescription>
-            {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
-          </CardDescription>
-        </CardHeader>
-        {selectedPoint.stationId && (
-          <CardContent>
-            <div className="bg-white rounded-lg border p-3 shadow-sm">
-              <p className="text-xs text-muted-foreground uppercase font-bold tracking-tighter">Denominación</p>
-              <p className="text-xl font-bold text-primary">{selectedPoint.name}</p>
+      {selectedPoint.stationId ? (
+        <Card className="border-primary/20 bg-primary/5 shadow-sm overflow-hidden">
+          <CardHeader className="p-4 space-y-0">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-xl font-bold text-primary leading-tight">
+                  {selectedPoint.name}
+                </CardTitle>
+                <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
+                  {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
+                </CardDescription>
+              </div>
+              <Database className="h-5 w-5 text-primary/40 mt-1" />
             </div>
-          </CardContent>
-        )}
-      </Card>
+          </CardHeader>
+        </Card>
+      ) : (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2 text-primary">
+              <PlusCircle className="h-5 w-5" />
+              Nuevo Punto de Muestreo
+            </CardTitle>
+            <CardDescription className="text-xs font-code">
+              {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
 
       {!selectedPoint.stationId ? (
         <Card className="border-t-4 border-t-accent shadow-lg">
