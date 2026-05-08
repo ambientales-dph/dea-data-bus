@@ -39,30 +39,30 @@ export default function Home() {
     <AuthGuard>
       <div className="flex h-screen w-full flex-col bg-background overflow-hidden">
         {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b bg-white px-6 shadow-sm z-20">
+        <header className="flex h-16 items-center justify-between border-b bg-white px-4 md:px-6 shadow-sm z-20 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
-              <Leaf className="h-6 w-6" />
+            <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-lg bg-primary text-white">
+              <Leaf className="h-5 w-5 md:h-6 md:w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold font-headline text-primary tracking-tight">DEA Data Bus</h1>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Plataforma de Monitoreo</p>
+              <h1 className="text-lg md:text-xl font-bold font-headline text-primary tracking-tight leading-none">DEA Data Bus</h1>
+              <p className="text-[9px] md:text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Plataforma de Monitoreo</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 border-2 border-primary/10 shadow-sm">
+          <div className="flex items-center gap-2 md:gap-3">
+            <Avatar className="h-8 w-8 md:h-9 md:w-9 border-2 border-primary/10 shadow-sm">
               <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'Usuario'} />
               <AvatarFallback className="bg-primary/5 text-primary font-bold text-xs">
                 {user?.email?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <div className="h-6 w-[1px] bg-border"></div>
+            <div className="h-6 w-[1px] bg-border hidden md:block"></div>
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={handleLogout} 
-              className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              className="h-8 w-8 md:h-9 md:w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
               title="Cerrar sesión"
             >
               <LogOut className="h-4 w-4" />
@@ -71,27 +71,27 @@ export default function Home() {
         </header>
 
         {/* Main Content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left Panel: Map */}
-          <div className="relative flex-[7] p-4">
+        <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
+          {/* Panel del Mapa */}
+          <div className="relative flex-[6] h-[45vh] md:h-auto p-2 md:p-4">
             <MapView 
               onPointSelect={handlePointSelect} 
               selectedPoint={selectedPoint} 
             />
           </div>
 
-          {/* Right Panel: Form */}
-          <div className="flex-[3] border-l bg-white shadow-xl flex flex-col min-w-[420px]">
+          {/* Panel del Formulario */}
+          <div className="flex-[4] border-t md:border-t-0 md:border-l bg-white shadow-xl flex flex-col w-full md:min-w-[420px]">
             <ScrollArea className="flex-1">
-              <div className="p-6">
+              <div className="p-4 md:p-6">
                 <DataEntryForm 
                   selectedPoint={selectedPoint} 
                   onStationCreated={handleStationCreated}
                 />
               </div>
             </ScrollArea>
-            <footer className="p-4 border-t bg-muted/10 text-center">
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
+            <footer className="p-3 md:p-4 border-t bg-muted/10 text-center shrink-0">
+              <p className="text-[9px] md:text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
                 © {new Date().getFullYear()} DEA Data Bus - Sistema de Gestión de Datos
               </p>
             </footer>

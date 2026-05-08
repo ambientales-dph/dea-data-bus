@@ -60,7 +60,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
   // Inicialización del mapa
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || mapInstance.current) return;
 
     const baseLayer = new TileLayer({
       source: new OSM(),
@@ -107,6 +107,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     return () => {
       map.setTarget(undefined);
+      mapInstance.current = null;
     };
   }, []);
 
@@ -127,7 +128,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       baseLayer.setSource(new OSM());
     }
 
-    // Aplicar filtro gris si es necesario
     baseLayer.on('prerender', (evt) => {
       if (activeLayer === 'grayscale') {
         const ctx = evt.context as CanvasRenderingContext2D;
@@ -254,14 +254,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     <div className="relative h-full w-full overflow-hidden rounded-lg shadow-inner bg-muted/20 border-2 border-primary/10 flex flex-col">
       {/* Buscador y Selector de Capas */}
       <div className="absolute top-0 left-0 right-0 z-[30] p-2 flex gap-2">
-        <div className="relative flex-1 group">
-          <div className="flex items-center bg-white/95 backdrop-blur shadow-sm border border-primary/20 rounded-md transition-all focus-within:ring-2 focus-within:ring-primary/50 overflow-hidden">
-            <div className="pl-3 text-primary">
-              {isSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+        <div className="relative flex-1">
+          <div className="flex items-center bg-white/95 backdrop-blur shadow-sm border border-primary/20 rounded-md overflow-hidden transition-all focus-within:ring-2 focus-within:ring-primary/50">
+            <div className="pl-2 md:pl-3 text-primary">
+              {isSearching ? <Loader2 className="h-3 w-3 md:h-3.5 md:w-3.5 animate-spin" /> : <Search className="h-3 w-3 md:h-3.5 md:w-3.5" />}
             </div>
             <Input 
               placeholder="Buscá una ubicación..." 
-              className="border-0 focus-visible:ring-0 h-8 text-[11px] bg-transparent w-full"
+              className="border-0 focus-visible:ring-0 h-8 text-[10px] md:text-[11px] bg-transparent w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => searchQuery.length >= 3 && setShowResults(true)}
@@ -269,8 +269,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           </div>
 
           {showResults && searchResults.length > 0 && (
-            <Card className="absolute top-full left-0 right-0 mt-1 shadow-2xl border-primary/10 overflow-hidden">
-              <ScrollArea className="max-h-[250px]">
+            <Card className="absolute top-full left-0 right-0 mt-1 shadow-2xl border-primary/10 overflow-hidden z-[40]">
+              <ScrollArea className="max-h-[200px] md:max-h-[250px]">
                 <div className="p-1">
                   {searchResults.map((result, idx) => (
                     <button
@@ -278,7 +278,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
                       onClick={() => handleSelectResult(result)}
                       className="w-full text-left p-2 hover:bg-primary/5 rounded-lg transition-colors flex items-start gap-2 border-b last:border-0 border-muted"
                     >
-                      <MapPin className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                      <MapPin className="h-3 w-3 mt-0.5 text-primary shrink-0" />
                       <span className="text-[10px] font-medium leading-tight">{result.display_name}</span>
                     </button>
                   ))}
@@ -290,7 +290,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="h-8 w-8 bg-white/95 border-primary/20 shadow-sm text-primary">
+            <Button variant="outline" size="icon" className="h-8 w-8 bg-white/95 border-primary/20 shadow-sm text-primary shrink-0">
               <Layers className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -332,14 +332,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       <div ref={mapRef} className="absolute inset-0 z-10" />
       
       {/* Leyenda */}
-      <div className="absolute bottom-4 right-4 z-20 rounded-xl bg-white/95 p-3 shadow-xl backdrop-blur-md border border-primary/10">
-        <div className="space-y-2">
+      <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 z-20 rounded-xl bg-white/95 p-2 md:p-3 shadow-xl backdrop-blur-md border border-primary/10">
+        <div className="space-y-1 md:space-y-2">
           <div className="flex items-center justify-end gap-2">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estaciones</span>
+            <span className="text-[9px] md:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estaciones</span>
             <div className="w-2 h-2 rounded-full bg-[#4E97CA] border border-white shadow-sm"></div> 
           </div>
           <div className="flex items-center justify-end gap-2">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Selección</span>
+            <span className="text-[9px] md:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Selección</span>
             <div className="w-2 h-2 rounded-full bg-[#ef4444] border border-white shadow-sm"></div> 
           </div>
         </div>
