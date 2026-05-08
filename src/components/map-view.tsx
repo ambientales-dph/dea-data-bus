@@ -12,6 +12,7 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
+import GeoJSON from 'ol/format/GeoJSON';
 import { Style, Text, Fill, Circle as CircleStyle, Stroke } from 'ol/style';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -23,6 +24,8 @@ import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+// Importamos el GeoJSON de cuencas
+import basinsData from '@/lib/cuencas_dph.geojson';
 
 interface MapViewProps {
   onPointSelect: (point: SelectedPoint) => void;
@@ -42,6 +45,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const mapInstance = useRef<Map | null>(null);
   const stationsSource = useRef<VectorSource>(new VectorSource());
   const selectionSource = useRef<VectorSource>(new VectorSource());
+  const basinsSource = useRef<VectorSource>(new VectorSource());
   const onPointSelectRef = useRef(onPointSelect);
   const db = useFirestore();
 
@@ -62,6 +66,38 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
+    // Capa de Cuencas con estilo dinámico
+    const basinsLayer = new VectorLayer({
+      source: basinsSource.current,
+      style: (feature, resolution) => {
+        const view = mapInstance.current?.getView();
+        const zoom = view ? view.getZoomForResolution(resolution) : 0;
+        // 1px para zoom < 7, 3px para zoom >= 8. Entre 7 y 8 mantenemos 1px o transición suave.
+        const strokeWidth = zoom >= 8 ? 3 : 1;
+        
+        return new Style({
+          stroke: new Stroke({
+            color: '#10b981', // Verde Esmeralda (Emerald-500)
+            width: strokeWidth,
+          }),
+          fill: new Fill({
+            color: 'rgba(0, 0, 0, 0)', // Relleno transparente
+          }),
+        });
+      },
+      zIndex: 5,
+    });
+
+    // Cargar datos de cuencas
+    try {
+      const features = new GeoJSON().readFeatures(basinsData, {
+        featureProjection: 'EPSG:3857',
+      });
+      basinsSource.current.addFeatures(features);
+    } catch (e) {
+      console.error("Error al cargar cuencas GeoJSON:", e);
+    }
+
     const baseLayer = new TileLayer({
       source: new OSM(),
       properties: { id: 'base-layer' }
@@ -79,7 +115,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     const map = new Map({
       target: mapRef.current,
-      layers: [baseLayer, stationsLayer, selectionLayer],
+      layers: [baseLayer, basinsLayer, stationsLayer, selectionLayer],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
         zoom: 5.5,
@@ -105,7 +141,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     mapInstance.current = map;
 
-    // Manejar el cambio de tamaño del contenedor
     const resizeObserver = new ResizeObserver(() => {
       map.updateSize();
     });
@@ -259,7 +294,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-lg shadow-inner bg-muted/20 border-2 border-primary/10 flex flex-col">
-      {/* Buscador y Selector de Capas */}
       <div className="absolute top-0 left-0 right-0 z-[30] p-2 flex gap-2">
         <div className="relative flex-1">
           <div className="flex items-center bg-white/95 backdrop-blur shadow-sm border border-primary/20 rounded-md overflow-hidden transition-all focus-within:ring-2 focus-within:ring-primary/50">
@@ -338,9 +372,12 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       <div ref={mapRef} className="absolute inset-0 z-10" />
       
-      {/* Leyenda */}
       <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 z-20 rounded-xl bg-white/95 p-2 md:p-3 shadow-xl backdrop-blur-md border border-primary/10">
         <div className="space-y-1 md:space-y-2">
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-[9px] md:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Cuencas DPH</span>
+            <div className="w-4 h-[1px] bg-[#10b981] shadow-sm"></div> 
+          </div>
           <div className="flex items-center justify-end gap-2">
             <span className="text-[9px] md:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estaciones</span>
             <div className="w-2 h-2 rounded-full bg-[#4E97CA] border border-white shadow-sm"></div> 
