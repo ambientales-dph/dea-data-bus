@@ -69,22 +69,20 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     // Capa de Cuencas con estilo dinámico
     const basinsLayer = new VectorLayer({
       source: basinsSource.current,
-      declutter: true, // Ayuda a que las etiquetas no se solapen y sean más persistentes
+      declutter: true, 
       style: (feature, resolution) => {
         const view = mapInstance.current?.getView();
         const zoom = view ? view.getZoomForResolution(resolution) : 0;
         
-        // Grosor dinámico: 1px si zoom < 8, 3px si zoom >= 8
         const strokeWidth = (zoom && zoom >= 8) ? 3 : 1;
+        const strokeColor = 'rgba(13, 145, 102, 0.7)'; // #0D9166 con transparencia
         
-        // Color #0D9166 con 30% de transparencia (70% opacidad -> 0.7 alpha)
-        const strokeColor = 'rgba(13, 145, 102, 0.7)';
-        
-        // Etiqueta dinámica: Código + Subcuenca si zoom > 7
         let textStyle = undefined;
+        // Mostramos etiquetas a partir de zoom 7 como pediste
         if (zoom && zoom > 7) {
-          const codigo = feature.get('codigo') || '';
-          const subcuenca = feature.get('subcuenca') || '';
+          // Buscamos campos tanto en minúsculas como en mayúsculas (común en archivos DPH)
+          const codigo = feature.get('codigo') || feature.get('CODIGO') || '';
+          const subcuenca = feature.get('subcuenca') || feature.get('SUBCUENCA') || feature.get('nombre') || '';
           const label = `${codigo} ${subcuenca}`.trim();
           
           if (label) {
@@ -93,8 +91,10 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
               font: 'bold 10px "Encode Sans", sans-serif',
               fill: new Fill({ color: activeLayer === 'satellite' ? 'white' : '#0D9166' }),
               stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 3 }),
-              overflow: true, // Permite que el texto se muestre aunque el punto de anclaje esté al límite
+              overflow: true, 
               placement: 'point',
+              textAlign: 'center',
+              textBaseline: 'middle',
             });
           }
         }
@@ -143,7 +143,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       layers: [baseLayer, basinsLayer, stationsLayer, selectionLayer],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
-        zoom: 5.5,
+        zoom: 5.5, // Zoom inicial solicitado
       }),
     });
 
@@ -229,6 +229,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         const zoom = view ? view.getZoomForResolution(resolution) : 0;
         const isSelected = selectedPoint?.stationId === station.id;
 
+        // Etiquetas de estaciones visibles desde zoom 8
         return new Style({
           image: new CircleStyle({
             radius: 3.5,
