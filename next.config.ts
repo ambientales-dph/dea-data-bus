@@ -41,7 +41,8 @@ const nextConfig: NextConfig = {
     turbo: {
       rules: {
         '*.geojson': {
-          as: 'json',
+          loaders: [],
+          as: '*.json',
         },
       },
     },
