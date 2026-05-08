@@ -69,11 +69,12 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     // Capa de Cuencas con estilo dinámico
     const basinsLayer = new VectorLayer({
       source: basinsSource.current,
+      declutter: true, // Ayuda a que las etiquetas no se solapen y sean más persistentes
       style: (feature, resolution) => {
         const view = mapInstance.current?.getView();
         const zoom = view ? view.getZoomForResolution(resolution) : 0;
         
-        // Grosor dinámico: 1px si zoom < 7, 3px si zoom >= 8
+        // Grosor dinámico: 1px si zoom < 8, 3px si zoom >= 8
         const strokeWidth = (zoom && zoom >= 8) ? 3 : 1;
         
         // Color #0D9166 con 30% de transparencia (70% opacidad -> 0.7 alpha)
@@ -92,7 +93,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
               font: 'bold 10px "Encode Sans", sans-serif',
               fill: new Fill({ color: activeLayer === 'satellite' ? 'white' : '#0D9166' }),
               stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 3 }),
-              overflow: true,
+              overflow: true, // Permite que el texto se muestre aunque el punto de anclaje esté al límite
               placement: 'point',
             });
           }
