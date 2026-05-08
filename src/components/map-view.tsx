@@ -105,7 +105,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     mapInstance.current = map;
 
+    // Manejar el cambio de tamaño del contenedor
+    const resizeObserver = new ResizeObserver(() => {
+      map.updateSize();
+    });
+    if (mapRef.current) resizeObserver.observe(mapRef.current);
+
     return () => {
+      resizeObserver.disconnect();
       map.setTarget(undefined);
       mapInstance.current = null;
     };
@@ -131,13 +138,13 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     baseLayer.on('prerender', (evt) => {
       if (activeLayer === 'grayscale') {
         const ctx = evt.context as CanvasRenderingContext2D;
-        ctx.filter = 'grayscale(100%) brightness(0.9) contrast(1.2)';
+        if (ctx) ctx.filter = 'grayscale(100%) brightness(0.9) contrast(1.2)';
       }
     });
 
     baseLayer.on('postrender', (evt) => {
       const ctx = evt.context as CanvasRenderingContext2D;
-      ctx.filter = 'none';
+      if (ctx) ctx.filter = 'none';
     });
 
     mapInstance.current.render();
