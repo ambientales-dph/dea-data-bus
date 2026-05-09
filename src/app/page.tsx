@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -16,6 +17,7 @@ export interface SelectedPoint {
   lon: number;
   stationId?: string;
   name?: string;
+  basinCode?: string;
 }
 
 export default function Home() {
@@ -72,7 +74,7 @@ export default function Home() {
 
         {/* Main Content */}
         <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
-          {/* Panel del Mapa - Altura fija en móvil para evitar desaparición */}
+          {/* Panel del Mapa */}
           <div className="w-full h-[40vh] md:h-auto md:flex-[6] p-2 md:p-4 shrink-0 md:shrink">
             <MapView 
               onPointSelect={handlePointSelect} 
@@ -80,7 +82,7 @@ export default function Home() {
             />
           </div>
 
-          {/* Panel del Formulario - Toma el resto del espacio */}
+          {/* Panel del Formulario */}
           <div className="flex-1 md:flex-[4] border-t md:border-t-0 md:border-l bg-white shadow-xl flex flex-col w-full md:min-w-[420px] overflow-hidden">
             <ScrollArea className="flex-1">
               <div className="p-4 md:p-6 pb-12">

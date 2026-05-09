@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, doc, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, Beaker } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, Beaker, Loader2 } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 
@@ -137,8 +137,8 @@ const MICROBIOLOGICAL_WATER_ANALYTES = [
   { name: 'Nitzschia aff reversa', unit: 'indiv./litro' },
   { name: 'aff Nitzschia sigmoidea', unit: 'indiv./litro' },
   { name: 'aff Pleurosira laevis', unit: 'indiv./litro' },
-  { name: 'Pseudostaurosira brevistriata', unit: 'indiv./litro' },
-  { name: 'Pseudostaurosira subsalina', unit: 'indiv./litro' },
+  { name: 'Pseudastaurosira brevistriata', unit: 'indiv./litro' },
+  { name: 'Pseudastaurosira subsalina', unit: 'indiv./litro' },
   { name: 'Rhopalodia sp.', unit: 'indiv./litro' },
   { name: 'Surirella striatula', unit: 'indiv./litro' },
   { name: 'Synedra sp.', unit: 'indiv./litro' },
@@ -246,6 +246,7 @@ export function DataEntryForm({
   const { toast } = useToast();
   const db = useFirestore();
   const { user } = useUser();
+  const [isGeneratingName, setIsGeneratingName] = useState(false);
 
   const stationForm = useForm<StationValues>({
     resolver: zodResolver(stationSchema),
@@ -262,6 +263,54 @@ export function DataEntryForm({
       unit: '',
     },
   });
+
+  // Lógica de nomenclatura automática
+  useEffect(() => {
+    if (selectedPoint && !selectedPoint.stationId && selectedPoint.basinCode) {
+      const generateNextName = async () => {
+        setIsGeneratingName(true);
+        const prefix = `EM${selectedPoint.basinCode}`;
+        
+        try {
+          const stationsCol = collection(db, 'stations');
+          // Buscamos la estación con el nombre más alto que empiece con el prefijo
+          const q = query(
+            stationsCol,
+            where('name', '>=', prefix),
+            where('name', '<=', prefix + '\uf8ff'),
+            orderBy('name', 'desc'),
+            limit(1)
+          );
+          
+          const querySnapshot = await getDocs(q);
+          let nextNumber = 1;
+
+          if (!querySnapshot.empty) {
+            const lastStation = querySnapshot.docs[0].data();
+            const lastName = lastStation.name as string;
+            // Extraemos la parte numérica
+            const numberPart = lastName.replace(prefix, '');
+            const parsed = parseInt(numberPart, 10);
+            if (!isNaN(parsed)) {
+              nextNumber = parsed + 1;
+            }
+          }
+
+          const formattedName = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
+          stationForm.setValue('name', formattedName);
+        } catch (error) {
+          console.error("Error al generar nombre:", error);
+          stationForm.setValue('name', `${prefix}0001`);
+        } finally {
+          setIsGeneratingName(false);
+        }
+      };
+
+      generateNextName();
+    } else if (selectedPoint && !selectedPoint.stationId && !selectedPoint.basinCode) {
+      stationForm.setValue('name', '');
+    }
+  }, [selectedPoint, db, stationForm]);
 
   const selectedMedium = useWatch({
     control: sampleForm.control,
@@ -280,11 +329,7 @@ export function DataEntryForm({
 
   const availableAnalytes = useMemo(() => {
     if (selectedMedium !== 'water') return [];
-    
-    if (selectedParameterType === 'microbiological') {
-      return MICROBIOLOGICAL_WATER_ANALYTES;
-    }
-    
+    if (selectedParameterType === 'microbiological') return MICROBIOLOGICAL_WATER_ANALYTES;
     return WATER_ANALYTES;
   }, [selectedMedium, selectedParameterType]);
 
@@ -305,6 +350,7 @@ export function DataEntryForm({
       name: data.name,
       latitude: selectedPoint.lat,
       longitude: selectedPoint.lon,
+      basinCode: selectedPoint.basinCode || '',
       userId: user?.uid,
       userEmail: user?.email,
       createdAt: serverTimestamp(),
@@ -313,7 +359,7 @@ export function DataEntryForm({
     onStationCreated(stationRef.id, data.name);
     toast({
       title: "Estación registrada",
-      description: `Se inició el registro de: ${data.name}`,
+      description: `Se guardó el punto: ${data.name}`,
     });
     stationForm.reset();
 
@@ -344,7 +390,7 @@ export function DataEntryForm({
     
     toast({
       title: "Enviando medición",
-      description: "Los datos se están procesando...",
+      description: "Guardando datos...",
     });
 
     addDoc(samplesCol, sampleData)
@@ -378,7 +424,7 @@ export function DataEntryForm({
         <div>
           <h3 className="text-lg font-bold text-primary">Iniciá la recolección</h3>
           <p className="text-sm text-muted-foreground">
-            Hacé clic en un punto del mapa para crear una nueva estación o seleccioná una existente para cargar datos.
+            Hacé clic en un punto del mapa para crear una nueva estación o seleccioná una existente.
           </p>
         </div>
       </div>
@@ -389,7 +435,7 @@ export function DataEntryForm({
     <div className="space-y-6">
       {selectedPoint.stationId ? (
         <Card className="border-primary/20 bg-primary/5 shadow-sm overflow-hidden">
-          <CardHeader className="p-4 space-y-0">
+          <CardHeader className="p-4">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <CardTitle className="text-xl font-bold text-primary leading-tight">
@@ -412,6 +458,7 @@ export function DataEntryForm({
             </CardTitle>
             <CardDescription className="text-xs font-code">
               {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
+              {selectedPoint.basinCode && ` • Cuenca: ${selectedPoint.basinCode}`}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -421,24 +468,32 @@ export function DataEntryForm({
         <Card className="border-t-4 border-t-accent shadow-lg">
           <CardHeader>
             <CardTitle className="text-md">Definir Estación</CardTitle>
-            <CardDescription>Nombrá este punto para guardarlo permanentemente en la base de datos.</CardDescription>
+            <CardDescription>Verificá el nombre sugerido antes de guardar.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="station-name">Nombre de la Estación</Label>
-                <Input 
-                  id="station-name" 
-                  placeholder="Ej: Estación Río Luján 01"
-                  {...stationForm.register('name')} 
-                />
+                <div className="relative">
+                  <Input 
+                    id="station-name" 
+                    placeholder="Ej: EMA0001"
+                    className={cn(isGeneratingName && "pr-10")}
+                    {...stationForm.register('name')} 
+                  />
+                  {isGeneratingName && (
+                    <div className="absolute right-3 top-2.5">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
                 {stationForm.formState.errors.name && (
                   <p className="text-xs text-destructive">{stationForm.formState.errors.name.message}</p>
                 )}
               </div>
-              <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white">
+              <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isGeneratingName}>
                 <Send className="mr-2 h-4 w-4" />
-                Guardá el punto en el mapa
+                Guardar punto en el mapa
               </Button>
             </form>
           </CardContent>
@@ -463,9 +518,9 @@ export function DataEntryForm({
                     <SelectValue placeholder="Seleccioná el medio" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="water">Agua (Superficial/Subterránea)</SelectItem>
+                    <SelectItem value="water">Agua</SelectItem>
                     <SelectItem value="air">Aire</SelectItem>
-                    <SelectItem value="soil">Suelo / Sedimentos</SelectItem>
+                    <SelectItem value="soil">Suelo / Sedimento</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -477,14 +532,13 @@ export function DataEntryForm({
                   sampleForm.setValue('analyte', '');
                 }}>
                   <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Seleccioná una categoría" />
+                    <SelectValue placeholder="Seleccioná categoría" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="physicochemical">Fisicoquímico</SelectItem>
                     <SelectItem value="microbiological">Microbiológico</SelectItem>
                     <SelectItem value="metals">Metales Pesados</SelectItem>
-                    <SelectItem value="organic">Compuestos Orgánicos</SelectItem>
-                    <SelectItem value="flow">Aforo / Caudal</SelectItem>
+                    <SelectItem value="organic">Orgánicos</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -495,7 +549,7 @@ export function DataEntryForm({
                   {availableAnalytes.length > 0 ? (
                     <Select onValueChange={(v) => sampleForm.setValue('analyte', v)}>
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Seleccioná el analito" />
+                        <SelectValue placeholder="Seleccioná analito" />
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px]">
                         {availableAnalytes.map((a) => (
@@ -506,27 +560,15 @@ export function DataEntryForm({
                       </SelectContent>
                     </Select>
                   ) : (
-                    <Input 
-                      id="analyte" 
-                      className="bg-white"
-                      placeholder="Ej: pH, Turbiedad, Plomo"
-                      {...sampleForm.register('analyte')} 
-                    />
+                    <Input id="analyte" className="bg-white" placeholder="Ej: pH" {...sampleForm.register('analyte')} />
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="value">Valor Medido {currentUnit && `(${currentUnit})`}</Label>
                   <div className="flex gap-2">
-                    <Input 
-                      id="value" 
-                      className="bg-white flex-1"
-                      placeholder="Ej: 7.2"
-                      {...sampleForm.register('value')} 
-                    />
+                    <Input id="value" className="bg-white flex-1" placeholder="Ej: 7.2" {...sampleForm.register('value')} />
                     {currentUnit && (
-                      <div className="bg-muted px-3 flex items-center rounded-md border text-xs font-bold text-muted-foreground whitespace-nowrap">
-                        {currentUnit}
-                      </div>
+                      <div className="bg-muted px-3 flex items-center rounded-md border text-xs font-bold">{currentUnit}</div>
                     )}
                   </div>
                 </div>
