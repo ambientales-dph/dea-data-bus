@@ -25,7 +25,8 @@ import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-// Capas GeoJSON
+
+// Importación de capas GeoJSON
 import basinsData from '@/lib/cuencas_dph.geojson';
 import codesData from '@/lib/codigos_cuencas.geojson';
 
@@ -102,7 +103,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       zIndex: 5,
     });
 
-    // Capa de Códigos (Invisible para detección)
+    // Capa de Códigos (Invisible, para detección de CODIGO)
     const codesLayer = new VectorLayer({
       source: codesSource.current,
       style: new Style({
@@ -114,10 +115,16 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     // Cargar GeoJSONs
     try {
-      const basinFeatures = new GeoJSON().readFeatures(basinsData, { featureProjection: 'EPSG:3857' });
+      const geojsonFormat = new GeoJSON();
+      
+      const basinFeatures = geojsonFormat.readFeatures(basinsData, { 
+        featureProjection: 'EPSG:3857' 
+      });
       basinsSource.current.addFeatures(basinFeatures);
 
-      const codeFeatures = new GeoJSON().readFeatures(codesData, { featureProjection: 'EPSG:3857' });
+      const codeFeatures = geojsonFormat.readFeatures(codesData, { 
+        featureProjection: 'EPSG:3857' 
+      });
       codesSource.current.addFeatures(codeFeatures);
     } catch (e) {
       console.error("Error al cargar GeoJSON:", e);
@@ -151,7 +158,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       const coords = toLonLat(event.coordinate);
       const pixel = event.pixel;
       
-      // Primero intentamos detectar una estación existente
       const stationFeature = map.forEachFeatureAtPixel(pixel, (f) => {
         return f.get('stationId') ? f : null;
       });
@@ -164,7 +170,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           name: stationFeature.get('name'),
         });
       } else {
-        // Si no hay estación, detectamos el código de la cuenca
+        // Detectar código de cuenca en el punto del clic
         let basinCode = '';
         const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(event.coordinate);
         if (featuresAtPoint.length > 0) {
@@ -188,7 +194,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
   }, [activeLayer]);
 
-  // Manejo de cambio de capa base
+  // Manejo de capas base
   useEffect(() => {
     if (!mapInstance.current) return;
     const layers = mapInstance.current.getLayers();
@@ -220,7 +226,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     mapInstance.current.render();
   }, [activeLayer]);
 
-  // Sincronizar estaciones en el mapa
+  // Sincronizar estaciones
   useEffect(() => {
     if (!stationsSource.current) return;
     stationsSource.current.clear();
@@ -260,7 +266,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     });
   }, [stations, selectedPoint?.stationId, activeLayer]);
 
-  // Punto de selección temporal
+  // Marcador de selección temporal
   useEffect(() => {
     if (!selectionSource.current) return;
     selectionSource.current.clear();
@@ -301,7 +307,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     setShowResults(false);
   };
 
-  // Búsqueda Nominatim
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (searchQuery.length < 3) return;
