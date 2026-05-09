@@ -143,7 +143,8 @@ export function DataEntryForm({
           if (!querySnapshot.empty) {
             const lastStation = querySnapshot.docs[0].data();
             const lastName = lastStation.name as string;
-            const numberPart = lastName.replace(prefix, '');
+            // Extraer el número del final del nombre (ej: EMA0005 -> 5)
+            const numberPart = lastName.substring(prefix.length);
             const parsed = parseInt(numberPart, 10);
             if (!isNaN(parsed)) {
               nextNumber = parsed + 1;

@@ -41,12 +41,10 @@ const nextConfig: NextConfig = {
   experimental: {
     turbo: {
       rules: {
-        '*.geojson': {
-          as: 'json'
-        }
-      }
-    }
-  }
+        '*.geojson': ['json-loader'],
+      },
+    },
+  },
 };
 
 export default nextConfig;
