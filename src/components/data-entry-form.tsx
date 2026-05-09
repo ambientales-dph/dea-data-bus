@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, doc, setDoc, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
@@ -17,65 +17,6 @@ import { MapPin, Send, PlusCircle, Database, Beaker, Loader2 } from 'lucide-reac
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-
-const WATER_ANALYTES = [
-  { name: 'Temperatura', unit: '°C' },
-  { name: 'Ph', unit: 'upH' },
-  { name: 'Salinidad', unit: 'PSU' },
-  { name: 'Conductividad', unit: 'mS/cm' },
-  { name: 'Solidos Disueltos Totales', unit: 'g/l' },
-  { name: 'Oxigeno Disuelto', unit: 'mg/l' },
-  { name: 'Saturación de oxigeno in situ', unit: '%' },
-  { name: 'Profundidad disco Secchi', unit: 'cm' },
-  { name: 'Turbiedad', unit: 'NTU' },
-  { name: 'Caudal', unit: 'm3/s' },
-  { name: 'Precipitaciones', unit: 'mml' },
-  { name: 'Q estimado', unit: 'm3/s' },
-  { name: 'Q Instantaneo', unit: 'm3/s' },
-  { name: 'H (nivel hidrometrico rio Salado)', unit: 'm IGM' },
-  { name: 'H g (nivel del rio Salado)', unit: 'm' },
-  { name: 'Transparencia', unit: 'cm' },
-  { name: 'Velocidad de corriente', unit: 'm/s' },
-  { name: 'Sólidos sedimentables 10m', unit: 'mg/l' },
-  { name: 'Sólidos sedimentables 1h', unit: 'mg/l' },
-  { name: 'Solidos Suspendidos', unit: 'mg/l' },
-  { name: 'Sólidos totales secados a 105°C-180°C', unit: 'mg/l' },
-  { name: 'Cloruros', unit: 'mg/l' },
-  { name: 'Sulfatos', unit: 'mg/l' },
-  { name: 'Nitrogeno Amoniacal', unit: 'mg/l' },
-  { name: 'Amonio', unit: 'mg/l' },
-  { name: 'Nitrogeno total', unit: 'mg/l' },
-  { name: 'Fosforo total', unit: 'mg/l' },
-  { name: 'Fosforo reactivo soluble', unit: 'mg/l' },
-  { name: 'Clorofila a', unit: 'ug/l' },
-  { name: 'Materia organica', unit: 'mg/l' },
-  { name: 'DB05', unit: 'mg/l' },
-  { name: 'DQO', unit: 'mg/l' },
-  { name: 'Dureza Total', unit: 'mg/l' },
-  { name: 'Nitratos', unit: 'mg/l' },
-  { name: 'Arsenico', unit: 'mg/ml' },
-  { name: 'Cadmio', unit: 'ug/l' },
-  { name: 'Cobre', unit: 'mg/l' },
-  { name: 'Cromo', unit: 'mg/l' },
-  { name: 'Hierro', unit: 'mg/l' },
-  { name: 'Magnesio', unit: 'mg/l' },
-  { name: 'Mercurio', unit: 'mg/l' },
-  { name: 'Níquel', unit: 'mg/l' },
-  { name: 'Plomo', unit: 'mg/l' },
-  { name: 'Zinc', unit: 'mg/l' },
-  { name: 'Carbonatos', unit: 'mg/l' },
-  { name: 'Bicarbonatos', unit: 'mg/l' },
-  { name: 'Amoníaco', unit: 'mg/l' },
-  { name: 'Fluoruros', unit: 'mg/l' },
-  { name: 'Nitritos', unit: 'mg/l' },
-  { name: 'Sodio', unit: 'mg/l' },
-  { name: 'Potasio', unit: 'mg/l' },
-  { name: 'Glifosato', unit: 'mg/l' },
-  { name: 'Alcalinidad Tot', unit: 'mg/l' },
-  { name: '% Saturación de O2 a 20°', unit: '%' },
-  { name: 'PRS', unit: 'ug/L' },
-  { name: 'Solidos Sedimentados', unit: 'mg/l' },
-];
 
 const stationSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -120,7 +61,7 @@ export function DataEntryForm({
     },
   });
 
-  // Lógica de nomenclatura automática: EM + CODIGO + Correlativo
+  // Lógica de nomenclatura automática: EM + CODIGO + Correlativo (4 dígitos)
   useEffect(() => {
     if (selectedPoint && !selectedPoint.stationId && selectedPoint.basinCode) {
       const generateNextName = async () => {
@@ -129,6 +70,7 @@ export function DataEntryForm({
         
         try {
           const stationsCol = collection(db, 'stations');
+          // Buscamos el último punto con este mismo prefijo de cuenca
           const q = query(
             stationsCol,
             where('name', '>=', prefix),
@@ -154,7 +96,7 @@ export function DataEntryForm({
           const formattedName = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
           stationForm.setValue('name', formattedName);
         } catch (error) {
-          console.error("Error al generar nombre:", error);
+          console.error("Error al generar nombre correlativo:", error);
           stationForm.setValue('name', `${prefix}0001`);
         } finally {
           setIsGeneratingName(false);
