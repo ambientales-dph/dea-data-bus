@@ -38,15 +38,6 @@ const nextConfig: NextConfig = {
     });
     return config;
   },
-  experimental: {
-    turbo: {
-      rules: {
-        '*.geojson': {
-          as: 'json',
-        },
-      },
-    },
-  },
 };
 
 export default nextConfig;

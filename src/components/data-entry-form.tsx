@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MapPin, Send, PlusCircle, Database, Beaker, Loader2 } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 const WATER_ANALYTES = [
   { name: 'Temperatura', unit: '°C' },
@@ -264,7 +265,7 @@ export function DataEntryForm({
     },
   });
 
-  // Lógica de nomenclatura automática
+  // Lógica de nomenclatura automática: EM + CODIGO + Correlativo
   useEffect(() => {
     if (selectedPoint && !selectedPoint.stationId && selectedPoint.basinCode) {
       const generateNextName = async () => {
@@ -288,7 +289,7 @@ export function DataEntryForm({
           if (!querySnapshot.empty) {
             const lastStation = querySnapshot.docs[0].data();
             const lastName = lastStation.name as string;
-            // Extraemos la parte numérica
+            // Intentamos extraer la parte numérica (asumiendo que sigue al prefijo)
             const numberPart = lastName.replace(prefix, '');
             const parsed = parseInt(numberPart, 10);
             if (!isNaN(parsed)) {
