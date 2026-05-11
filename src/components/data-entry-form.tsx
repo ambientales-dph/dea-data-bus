@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -137,13 +136,8 @@ export function DataEntryForm({
 
     onStationCreated(newStationRef.id, data.name);
     
+    // No-bloqueante
     setDoc(newStationRef, stationData)
-      .then(() => {
-        toast({
-          title: "Estación registrada",
-          description: `Se guardó el punto: ${data.name}`,
-        });
-      })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
           path: newStationRef.path,
@@ -152,35 +146,44 @@ export function DataEntryForm({
         });
         errorEmitter.emit('permission-error', permissionError);
       });
+
+    toast({
+      title: "Estación registrada",
+      description: `Se guardó el punto: ${data.name}`,
+    });
   };
 
-  const handleStartReport = async () => {
+  const handleStartReport = () => {
     if (!selectedPoint?.stationId || !user) return;
 
-    try {
-      const reportData = {
-        stationId: selectedPoint.stationId,
-        createdAt: serverTimestamp(),
-        createdByEmail: user.email,
-        status: 'open',
-        editors: [user.email]
-      };
+    const reportData = {
+      stationId: selectedPoint.stationId,
+      createdAt: serverTimestamp(),
+      createdByEmail: user.email,
+      status: 'open',
+      editors: [user.email]
+    };
 
-      const docRef = await addDoc(collection(db, 'reports'), reportData);
-      setCurrentReportId(docRef.id);
-      setActiveView('report-entry');
-      
-      toast({
-        title: "Reporte iniciado",
-        description: "Podés comenzar a cargar los analitos.",
+    const reportsCol = collection(db, 'reports');
+    
+    // No-bloqueante
+    addDoc(reportsCol, reportData)
+      .then((docRef) => {
+        setCurrentReportId(docRef.id);
+        setActiveView('report-entry');
+        toast({
+          title: "Reporte iniciado",
+          description: "Podés comenzar a cargar los analitos.",
+        });
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: 'reports',
+          operation: 'create',
+          requestResourceData: reportData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-    } catch (e) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo iniciar el reporte."
-      });
-    }
   };
 
   const handleViewReportDetails = (reportId: string) => {

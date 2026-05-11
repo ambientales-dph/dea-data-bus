@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -6,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, query, where, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
-import { useFirestore, useUser, useCollection } from '@/firebase';
+import { useFirestore, useUser, useCollection, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,7 +47,7 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
     );
   }, [db, reportId]);
 
-  const { data: savedSamples, loading: samplesLoading } = useCollection(samplesQuery);
+  const { data: savedSamples } = useCollection(samplesQuery);
 
   const form = useForm<AnalyteValues>({
     resolver: zodResolver(analyteSchema),
@@ -60,42 +59,43 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
     },
   });
 
-  const handleAddAnalyte = async (data: AnalyteValues) => {
+  const handleAddAnalyte = (data: AnalyteValues) => {
     if (!user) return;
-    setIsSaving(true);
+    
+    const sampleData = {
+      ...data,
+      reportId,
+      stationId,
+      userId: user.uid,
+      userEmail: user.email,
+      timestamp: serverTimestamp(),
+    };
 
-    try {
-      const sampleData = {
-        ...data,
-        reportId,
-        stationId,
-        userId: user.uid,
-        userEmail: user.email,
-        timestamp: serverTimestamp(),
-      };
-
-      await addDoc(collection(db, 'samples'), sampleData);
-      
-      form.reset({
-        medium: data.medium,
-        parameterType: data.parameterType,
-        analyte: '',
-        value: '',
+    const samplesCol = collection(db, 'samples');
+    
+    // Operación no-bloqueante según las guías
+    addDoc(samplesCol, sampleData)
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: 'samples',
+          operation: 'create',
+          requestResourceData: sampleData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
 
-      toast({
-        title: "Analito agregado",
-        description: `${data.analyte} registrado correctamente.`,
-      });
-    } catch (e) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo guardar el analito."
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    // Limpiar formulario inmediatamente (optimismo)
+    form.reset({
+      medium: data.medium,
+      parameterType: data.parameterType,
+      analyte: '',
+      value: '',
+    });
+
+    toast({
+      title: "Analito agregado",
+      description: `${data.analyte} registrado correctamente.`,
+    });
   };
 
   const mediumLabel = (m: string) => {
@@ -165,7 +165,7 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
             </div>
 
             <div className="md:col-span-2 pt-2">
-              <Button type="submit" className="w-full" disabled={isSaving}>
+              <Button type="submit" className="w-full">
                 <Plus className="mr-2 h-4 w-4" />
                 Agregar Analito al Reporte
               </Button>
@@ -196,7 +196,7 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {savedSamples.length === 0 ? (
+                {!savedSamples || savedSamples.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-muted-foreground italic">
                       No hay analitos cargados aún.
@@ -223,7 +223,7 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
         </CardContent>
         <CardFooter className="pt-6 border-t bg-muted/5 flex justify-between items-center">
           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-            {savedSamples.length} Analitos en sesión
+            {savedSamples?.length || 0} Analitos en sesión
           </p>
           <Button onClick={onClose} variant="default" className="bg-green-600 hover:bg-green-700">
             <Save className="mr-2 h-4 w-4" />
