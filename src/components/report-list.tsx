@@ -1,13 +1,13 @@
 'use client';
 
 import { useMemo } from 'react';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useFirestore, useCollection } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Calendar, FileSearch, User2, Plus, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from 'lucide-react';
+import { Loader2, Calendar, FileSearch, User2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ReportListProps {
@@ -19,15 +19,24 @@ interface ReportListProps {
 export function ReportList({ stationId, onViewReport, onOpenReport }: ReportListProps) {
   const db = useFirestore();
 
+  // Consulta simple sin orderBy para evitar requerir índices compuestos manuales
   const reportsQuery = useMemo(() => {
     return query(
       collection(db, 'reports'),
-      where('stationId', '==', stationId),
-      orderBy('createdAt', 'desc')
+      where('stationId', '==', stationId)
     );
   }, [db, stationId]);
 
   const { data: reports, loading } = useCollection(reportsQuery);
+
+  // Ordenamiento en memoria
+  const sortedReports = useMemo(() => {
+    return [...reports].sort((a: any, b: any) => {
+      const timeA = a.createdAt?.toMillis?.() || (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
+      const timeB = b.createdAt?.toMillis?.() || (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
+      return timeB - timeA;
+    });
+  }, [reports]);
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '---';
@@ -70,14 +79,14 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
             </TableRow>
           </TableHeader>
           <TableBody>
-            {reports.length === 0 ? (
+            {sortedReports.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-12 text-muted-foreground italic">
                   No se han registrado reportes aún.
                 </TableCell>
               </TableRow>
             ) : (
-              reports.map((report: any) => (
+              sortedReports.map((report: any) => (
                 <TableRow key={report.id} className="hover:bg-primary/5 transition-colors group">
                   <TableCell className="px-4 py-3 font-code text-xs">
                     {formatDate(report.createdAt)}

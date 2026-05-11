@@ -1,14 +1,13 @@
-
 'use client';
 
 import { useMemo } from 'react';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, FlaskConical, CheckCircle2, User, Share2 } from 'lucide-react';
+import { Loader2, CheckCircle2, User, Share2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ReportDetailProps {
@@ -23,16 +22,24 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
   const reportRef = useMemo(() => doc(db, 'reports', reportId), [db, reportId]);
   const { data: reportData, loading: reportLoading } = useDoc(reportRef);
 
-  // Obtener analitos
+  // Consulta simple sin orderBy para evitar requerir índices compuestos manuales
   const samplesQuery = useMemo(() => {
     return query(
       collection(db, 'samples'),
-      where('reportId', '==', reportId),
-      orderBy('timestamp', 'asc')
+      where('reportId', '==', reportId)
     );
   }, [db, reportId]);
 
   const { data: samples, loading: samplesLoading } = useCollection(samplesQuery);
+
+  // Ordenamiento en memoria
+  const sortedSamples = useMemo(() => {
+    return [...samples].sort((a: any, b: any) => {
+      const timeA = a.timestamp?.toMillis?.() || 0;
+      const timeB = b.timestamp?.toMillis?.() || 0;
+      return timeA - timeB;
+    });
+  }, [samples]);
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '---';
@@ -100,14 +107,14 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {samples.length === 0 ? (
+                {sortedSamples.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-12 text-muted-foreground italic">
                       Este reporte no contiene analitos registrados.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  samples.map((sample: any) => (
+                  sortedSamples.map((sample: any) => (
                     <TableRow key={sample.id}>
                       <TableCell className="text-xs py-2">{mediumLabel(sample.medium)}</TableCell>
                       <TableCell className="text-xs py-2 font-medium">{sample.analyte}</TableCell>
@@ -127,7 +134,7 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
         </CardContent>
         <CardFooter className="pt-6 border-t bg-muted/5 flex justify-between items-center">
           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-            {samples.length} Analitos totales
+            {sortedSamples.length} Analitos totales
           </p>
           <Button onClick={onClose} variant="outline" className="text-xs">
             Cerrar detalle

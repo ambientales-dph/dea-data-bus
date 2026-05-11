@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, query, where, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Save, Thermometer, Droplets, FlaskConical, CheckCircle2, User } from 'lucide-react';
+import { Plus, Save, FlaskConical, CheckCircle2, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -36,18 +36,25 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
   const { toast } = useToast();
   const db = useFirestore();
   const { user } = useUser();
-  const [isSaving, setIsSaving] = useState(false);
 
-  // Obtener analitos ya guardados en este reporte
+  // Consulta simple sin orderBy para evitar requerir índices compuestos manuales
   const samplesQuery = useMemo(() => {
     return query(
       collection(db, 'samples'),
-      where('reportId', '==', reportId),
-      orderBy('timestamp', 'asc')
+      where('reportId', '==', reportId)
     );
   }, [db, reportId]);
 
-  const { data: savedSamples } = useCollection(samplesQuery);
+  const { data: samplesData } = useCollection(samplesQuery);
+
+  // Ordenamiento en memoria para asegurar consistencia
+  const savedSamples = useMemo(() => {
+    return [...samplesData].sort((a: any, b: any) => {
+      const timeA = a.timestamp?.toMillis?.() || 0;
+      const timeB = b.timestamp?.toMillis?.() || 0;
+      return timeA - timeB;
+    });
+  }, [samplesData]);
 
   const form = useForm<AnalyteValues>({
     resolver: zodResolver(analyteSchema),
@@ -73,7 +80,6 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
 
     const samplesCol = collection(db, 'samples');
     
-    // Operación no-bloqueante según las guías
     addDoc(samplesCol, sampleData)
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
@@ -84,7 +90,6 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
         errorEmitter.emit('permission-error', permissionError);
       });
 
-    // Limpiar formulario inmediatamente (optimismo)
     form.reset({
       medium: data.medium,
       parameterType: data.parameterType,
@@ -109,16 +114,16 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg">Nuevo Reporte de Muestreo</CardTitle>
-              <CardDescription>Carga de parámetros físico-químicos y biológicos.</CardDescription>
+              <CardTitle className="text-lg">Carga de Analitos</CardTitle>
+              <CardDescription>ID Reporte: {reportId.substring(0, 8)}</CardDescription>
             </div>
             <Badge variant="outline" className="text-primary border-primary">
-              ID: {reportId.substring(0, 8)}
+              Activo
             </Badge>
           </div>
           <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground bg-muted/30 p-2 rounded-md">
             <User className="h-3 w-3" />
-            <span>Técnico responsable: <strong>{user?.email}</strong></span>
+            <span>Técnico: <strong>{user?.email}</strong></span>
           </div>
         </CardHeader>
         <CardContent>
@@ -143,23 +148,23 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
             <div className="space-y-2">
               <Label>Categoría / Tipo</Label>
               <Input 
-                placeholder="Ej: Fisicoquímico, Metales" 
+                placeholder="Ej: Fisicoquímico" 
                 {...form.register('parameterType')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Analito (Parámetro)</Label>
+              <Label>Analito</Label>
               <Input 
-                placeholder="Ej: pH, Plomo, PM10" 
+                placeholder="Ej: pH" 
                 {...form.register('analyte')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Valor / Resultado</Label>
+              <Label>Valor / Unidad</Label>
               <Input 
-                placeholder="Ej: 7.2, 0.05 mg/L" 
+                placeholder="Ej: 7.2" 
                 {...form.register('value')}
               />
             </div>
@@ -167,7 +172,7 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
             <div className="md:col-span-2 pt-2">
               <Button type="submit" className="w-full">
                 <Plus className="mr-2 h-4 w-4" />
-                Agregar Analito al Reporte
+                Agregar Analito
               </Button>
             </div>
           </form>
@@ -178,11 +183,8 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
         <CardHeader className="pb-2">
           <CardTitle className="text-md flex items-center gap-2">
             <FlaskConical className="h-4 w-4 text-primary" />
-            Analitos Registrados
+            Analitos en este Reporte
           </CardTitle>
-          <CardDescription>
-            Mediciones guardadas en este reporte. No se pueden modificar una vez registradas.
-          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="h-[300px] rounded-md border-t">
@@ -196,10 +198,10 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {!savedSamples || savedSamples.length === 0 ? (
+                {savedSamples.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-muted-foreground italic">
-                      No hay analitos cargados aún.
+                      Cargá el primer analito para verlo aquí.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -211,7 +213,7 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
                       <TableCell className="text-right py-2">
                         <Badge variant="ghost" className="text-green-600 bg-green-50 gap-1 h-5 px-1.5">
                           <CheckCircle2 className="h-3 w-3" />
-                          Guardado
+                          Registrado
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -221,13 +223,10 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
             </Table>
           </ScrollArea>
         </CardContent>
-        <CardFooter className="pt-6 border-t bg-muted/5 flex justify-between items-center">
-          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-            {savedSamples?.length || 0} Analitos en sesión
-          </p>
+        <CardFooter className="pt-6 border-t bg-muted/5 flex justify-end">
           <Button onClick={onClose} variant="default" className="bg-green-600 hover:bg-green-700">
             <Save className="mr-2 h-4 w-4" />
-            Guardar y Cerrar Reporte
+            Finalizar Sesión de Carga
           </Button>
         </CardFooter>
       </Card>
