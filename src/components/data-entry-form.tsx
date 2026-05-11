@@ -5,15 +5,14 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, doc, setDoc, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, Beaker, Loader2 } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2 } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -22,16 +21,7 @@ const stationSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
 });
 
-const sampleSchema = z.object({
-  medium: z.enum(['water', 'air', 'soil']),
-  parameterType: z.string().min(1, 'Seleccioná un tipo de parámetro'),
-  analyte: z.string().min(1, 'Ingresá o seleccioná el analito'),
-  value: z.string().min(1, 'Ingresá un valor'),
-  unit: z.string().optional(),
-});
-
 type StationValues = z.infer<typeof stationSchema>;
-type SampleValues = z.infer<typeof sampleSchema>;
 
 export function DataEntryForm({ 
   selectedPoint,
@@ -48,17 +38,6 @@ export function DataEntryForm({
   const stationForm = useForm<StationValues>({
     resolver: zodResolver(stationSchema),
     defaultValues: { name: '' },
-  });
-
-  const sampleForm = useForm<SampleValues>({
-    resolver: zodResolver(sampleSchema),
-    defaultValues: {
-      medium: 'water',
-      parameterType: '',
-      analyte: '',
-      value: '',
-      unit: '',
-    },
   });
 
   // Lógica de nomenclatura automática: EM + CODIGO + Correlativo (4 dígitos)
@@ -136,41 +115,6 @@ export function DataEntryForm({
           path: stationRef.path,
           operation: 'create',
           requestResourceData: stationData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
-  };
-
-  const onSampleSubmit = (data: SampleValues) => {
-    if (!selectedPoint?.stationId) return;
-    
-    const sampleData = {
-      ...data,
-      stationId: selectedPoint.stationId,
-      timestamp: serverTimestamp(),
-      userId: user?.uid,
-      userEmail: user?.email,
-    };
-
-    const samplesCol = collection(db, 'samples');
-    
-    addDoc(samplesCol, sampleData)
-      .then(() => {
-        toast({
-          title: "Medición guardada",
-          description: "Los datos se vincularon correctamente.",
-        });
-        sampleForm.reset({
-          ...sampleForm.getValues(),
-          analyte: '',
-          value: '',
-        });
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: 'samples',
-          operation: 'create',
-          requestResourceData: sampleData,
         });
         errorEmitter.emit('permission-error', permissionError);
       });
@@ -260,67 +204,26 @@ export function DataEntryForm({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Separator />
-          <div className="flex items-center gap-2 mb-2">
-            <Beaker className="h-5 w-5 text-primary" />
-            <h3 className="font-bold text-primary">Registrar Medición</h3>
-          </div>
-
-          <form onSubmit={sampleForm.handleSubmit(onSampleSubmit)} className="space-y-4">
-            <div className="space-y-4 bg-muted/20 p-4 rounded-xl border border-muted-foreground/10">
-              <div className="space-y-2">
-                <Label htmlFor="medium">Medio Ambiental</Label>
-                <Select onValueChange={(v) => {
-                  sampleForm.setValue('medium', v as any);
-                  sampleForm.setValue('analyte', '');
-                }} defaultValue="water">
-                  <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Seleccioná el medio" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="water">Agua</SelectItem>
-                    <SelectItem value="air">Aire</SelectItem>
-                    <SelectItem value="soil">Suelo / Sedimento</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="parameterType">Tipo de Parámetro</Label>
-                <Select onValueChange={(v) => {
-                  sampleForm.setValue('parameterType', v);
-                  sampleForm.setValue('analyte', '');
-                }}>
-                  <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Seleccioná categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="physicochemical">Fisicoquímico</SelectItem>
-                    <SelectItem value="microbiological">Microbiológico</SelectItem>
-                    <SelectItem value="metals">Metales Pesados</SelectItem>
-                    <SelectItem value="organic">Orgánicos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="analyte">Analito / Parámetro</Label>
-                  <Input id="analyte" className="bg-white" placeholder="Ej: pH" {...sampleForm.register('analyte')} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="value">Valor Medido</Label>
-                  <Input id="value" className="bg-white" placeholder="Ej: 7.2" {...sampleForm.register('value')} />
-                </div>
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold shadow-md">
-              <Send className="mr-2 h-4 w-4" />
-              Guardar en la estación
+          <div className="grid grid-cols-1 gap-3 pt-2">
+            <Button 
+              className="w-full h-14 text-md font-bold flex items-center gap-3 bg-primary hover:bg-primary/90"
+              onClick={() => toast({ title: "Próximamente", description: "Módulo de reportes en desarrollo" })}
+            >
+              <FileText className="h-5 w-5" />
+              Crear reporte de muestreo
             </Button>
-          </form>
+            
+            <Button 
+              variant="outline" 
+              className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5"
+              onClick={() => toast({ title: "Próximamente", description: "Módulo de consulta en desarrollo" })}
+            >
+              <Search className="h-5 w-5" />
+              Consultar
+            </Button>
+          </div>
         </div>
       )}
     </div>
