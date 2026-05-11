@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, doc, setDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
-import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,10 +35,30 @@ export function DataEntryForm({
   const { user } = useUser();
   const [isGeneratingName, setIsGeneratingName] = useState(false);
 
+  // Obtener detalles de la estación si ya existe
+  const stationRef = useMemo(() => {
+    if (!selectedPoint?.stationId) return null;
+    return doc(db, 'stations', selectedPoint.stationId);
+  }, [db, selectedPoint?.stationId]);
+
+  const { data: stationDetails } = useDoc(stationRef);
+
   const stationForm = useForm<StationValues>({
     resolver: zodResolver(stationSchema),
     defaultValues: { name: '' },
   });
+
+  // Función para formatear la fecha de creación
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return '---';
+    // Manejar tanto Timestamp de Firebase como Date estándar
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
 
   // Lógica de nomenclatura automática: EM + CODIGO + Correlativo (4 dígitos)
   useEffect(() => {
@@ -49,7 +69,6 @@ export function DataEntryForm({
         
         try {
           const stationsCol = collection(db, 'stations');
-          // Buscamos el último punto con este mismo prefijo de cuenca
           const q = query(
             stationsCol,
             where('name', '>=', prefix),
@@ -64,7 +83,6 @@ export function DataEntryForm({
           if (!querySnapshot.empty) {
             const lastStation = querySnapshot.docs[0].data();
             const lastName = lastStation.name as string;
-            // Extraer el número del final del nombre (ej: EMA0005 -> 5)
             const numberPart = lastName.substring(prefix.length);
             const parsed = parseInt(numberPart, 10);
             if (!isNaN(parsed)) {
@@ -91,7 +109,7 @@ export function DataEntryForm({
   const handleCreateStation = (data: StationValues) => {
     if (!selectedPoint) return;
     
-    const stationRef = doc(collection(db, 'stations'));
+    const newStationRef = doc(collection(db, 'stations'));
     const stationData = {
       name: data.name,
       latitude: selectedPoint.lat,
@@ -102,17 +120,17 @@ export function DataEntryForm({
       createdAt: serverTimestamp(),
     };
 
-    onStationCreated(stationRef.id, data.name);
+    onStationCreated(newStationRef.id, data.name);
     toast({
       title: "Estación registrada",
       description: `Se guardó el punto: ${data.name}`,
     });
     stationForm.reset();
 
-    setDoc(stationRef, stationData)
+    setDoc(newStationRef, stationData)
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
-          path: stationRef.path,
+          path: newStationRef.path,
           operation: 'create',
           requestResourceData: stationData,
         });
@@ -146,9 +164,17 @@ export function DataEntryForm({
                 <CardTitle className="text-xl font-bold text-primary leading-tight">
                   {selectedPoint.name}
                 </CardTitle>
-                <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
-                  {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
-                </CardDescription>
+                <div className="space-y-0.5">
+                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
+                    {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
+                  </CardDescription>
+                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
+                    Creación: {formatDate(stationDetails?.createdAt)}
+                  </CardDescription>
+                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
+                    Por: {stationDetails?.userEmail || '---'}
+                  </CardDescription>
+                </div>
               </div>
               <Database className="h-5 w-5 text-primary/40 mt-1" />
             </div>
