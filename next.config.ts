@@ -15,6 +15,13 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'picsum.photos', port: '', pathname: '/**' },
     ],
   },
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.geojson$/,
+      use: ['json-loader'],
+    });
+    return config;
+  },
 };
 
 export default nextConfig;

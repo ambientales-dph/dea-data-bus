@@ -26,9 +26,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-// Importación de capas GeoJSON
-//import basinsData from '@/lib/cuencas_dph.json';
-//import codesData from '@/lib/codigos_cuencas.json';
+// Importación directa de capas GeoJSON desde src/lib
+import basinsData from '@/lib/cuencas_dph.geojson';
+import codesData from '@/lib/codigos_cuencas.geojson';
 
 interface MapViewProps {
   onPointSelect: (point: SelectedPoint) => void;
@@ -48,12 +48,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const mapInstance = useRef<Map | null>(null);
   const stationsSource = useRef<VectorSource>(new VectorSource());
   const selectionSource = useRef<VectorSource>(new VectorSource());
-  const basinsSource = useRef<VectorSource>(new VectorSource({
-    url: '/data/cuencas_dph.json',
-    format: new GeoJSON({ dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' })}));
-  const codesSource = useRef<VectorSource>(new VectorSource({
-    url: '/data/codigos_cuencas.json',
-    format: new GeoJSON({ dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' })}));
+  const basinsSource = useRef<VectorSource>(new VectorSource());
+  const codesSource = useRef<VectorSource>(new VectorSource());
   const onPointSelectRef = useRef(onPointSelect);
   const db = useFirestore();
 
@@ -117,22 +113,22 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       zIndex: 4,
     });
 
-    // Cargar GeoJSONs
-//    try {
-//      const geojsonFormat = new GeoJSON();
-//      
-//      const basinFeatures = geojsonFormat.readFeatures(basinsData, { 
-//        featureProjection: 'EPSG:3857' 
-//      });
-//      basinsSource.current.addFeatures(basinFeatures);
+    // Cargar datos GeoJSON
+    try {
+      const geojsonFormat = new GeoJSON();
+      
+      const basinFeatures = geojsonFormat.readFeatures(basinsData, { 
+        featureProjection: 'EPSG:3857' 
+      });
+      basinsSource.current.addFeatures(basinFeatures);
 
-//      const codeFeatures = geojsonFormat.readFeatures(codesData, { 
-//        featureProjection: 'EPSG:3857' 
-//      });
-//      codesSource.current.addFeatures(codeFeatures);
-//    } catch (e) {
-//      console.error("Error al cargar GeoJSON:", e);
-//    }
+      const codeFeatures = geojsonFormat.readFeatures(codesData, { 
+        featureProjection: 'EPSG:3857' 
+      });
+      codesSource.current.addFeatures(codeFeatures);
+    } catch (e) {
+      console.error("Error al cargar GeoJSON:", e);
+    }
 
     const baseLayer = new TileLayer({
       source: new OSM(),
