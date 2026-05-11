@@ -9,17 +9,32 @@
         "name": { "type": "string", "description": "Denominación de la estación." },
         "latitude": { "type": "number", "description": "Latitud geográfica." },
         "longitude": { "type": "number", "description": "Longitud geográfica." },
+        "basinCode": { "type": "string", "description": "Código de la cuenca detectado." },
         "userId": { "type": "string", "description": "ID del usuario que creó la estación." },
         "userEmail": { "type": "string", "description": "Email del usuario creador." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Fecha de creación." }
       },
       "required": ["name", "latitude", "longitude"]
     },
+    "Report": {
+      "title": "Report",
+      "description": "Un reporte de monitoreo que agrupa múltiples mediciones.",
+      "type": "object",
+      "properties": {
+        "stationId": { "type": "string", "description": "ID de la estación asociada." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdByEmail": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "closed"] },
+        "editors": { "type": "array", "items": { "type": "string" }, "description": "Emails de los técnicos que aportaron datos." }
+      },
+      "required": ["stationId", "createdAt", "createdByEmail"]
+    },
     "Sample": {
       "title": "Sample",
       "description": "Medición de un parámetro específico en una estación.",
       "type": "object",
       "properties": {
+        "reportId": { "type": "string", "description": "Referencia al reporte de origen." },
         "stationId": { "type": "string", "description": "Referencia a la estación de origen." },
         "medium": { "type": "string", "enum": ["water", "air", "soil"], "description": "Medio ambiental (Agua, Aire, Suelo)." },
         "parameterType": { "type": "string", "description": "Categoría del parámetro (Fisicoquímico, etc)." },
@@ -29,7 +44,7 @@
         "userId": { "type": "string" },
         "userEmail": { "type": "string" }
       },
-      "required": ["stationId", "medium", "parameterType", "analyte", "value"]
+      "required": ["reportId", "stationId", "medium", "parameterType", "analyte", "value"]
     }
   },
   "auth": {
@@ -39,6 +54,10 @@
     "/stations/{stationId}": {
       "schema": "#/backend/entities/Station",
       "description": "Colección de puntos de muestreo fijos."
+    },
+    "/reports/{reportId}": {
+      "schema": "#/backend/entities/Report",
+      "description": "Colección de reportes de monitoreo."
     },
     "/samples/{sampleId}": {
       "schema": "#/backend/entities/Sample",

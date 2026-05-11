@@ -5,23 +5,26 @@ import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, doc, setDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, where, orderBy, limit, getDocs, addDoc } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2 } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { SamplingReportForm } from './sampling-report-form';
 
 const stationSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
 });
 
 type StationValues = z.infer<typeof stationSchema>;
+
+type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult';
 
 export function DataEntryForm({ 
   selectedPoint,
@@ -34,6 +37,8 @@ export function DataEntryForm({
   const db = useFirestore();
   const { user } = useUser();
   const [isGeneratingName, setIsGeneratingName] = useState(false);
+  const [activeView, setActiveView] = useState<FormView>('summary');
+  const [currentReportId, setCurrentReportId] = useState<string | null>(null);
 
   // Obtener detalles de la estación si ya existe
   const stationRef = useMemo(() => {
@@ -48,10 +53,19 @@ export function DataEntryForm({
     defaultValues: { name: '' },
   });
 
-  // Función para formatear la fecha de creación
+  // Resetear vista cuando cambia el punto seleccionado
+  useEffect(() => {
+    if (selectedPoint?.stationId) {
+      setActiveView('summary');
+    } else if (selectedPoint) {
+      setActiveView('create-station');
+    } else {
+      setActiveView('summary');
+    }
+  }, [selectedPoint?.stationId, selectedPoint]);
+
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '---';
-    // Manejar tanto Timestamp de Firebase como Date estándar
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleDateString('es-AR', {
       day: '2-digit',
@@ -60,7 +74,6 @@ export function DataEntryForm({
     });
   };
 
-  // Lógica de nomenclatura automática: EM + CODIGO + Correlativo (4 dígitos)
   useEffect(() => {
     if (selectedPoint && !selectedPoint.stationId && selectedPoint.basinCode) {
       const generateNextName = async () => {
@@ -93,7 +106,6 @@ export function DataEntryForm({
           const formattedName = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
           stationForm.setValue('name', formattedName);
         } catch (error) {
-          console.error("Error al generar nombre correlativo:", error);
           stationForm.setValue('name', `${prefix}0001`);
         } finally {
           setIsGeneratingName(false);
@@ -101,8 +113,6 @@ export function DataEntryForm({
       };
 
       generateNextName();
-    } else if (selectedPoint && !selectedPoint.stationId && !selectedPoint.basinCode) {
-      stationForm.setValue('name', '');
     }
   }, [selectedPoint, db, stationForm]);
 
@@ -125,8 +135,7 @@ export function DataEntryForm({
       title: "Estación registrada",
       description: `Se guardó el punto: ${data.name}`,
     });
-    stationForm.reset();
-
+    
     setDoc(newStationRef, stationData)
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
@@ -136,6 +145,35 @@ export function DataEntryForm({
         });
         errorEmitter.emit('permission-error', permissionError);
       });
+  };
+
+  const handleStartReport = async () => {
+    if (!selectedPoint?.stationId || !user) return;
+
+    try {
+      const reportData = {
+        stationId: selectedPoint.stationId,
+        createdAt: serverTimestamp(),
+        createdByEmail: user.email,
+        status: 'open',
+        editors: [user.email]
+      };
+
+      const docRef = await addDoc(collection(db, 'reports'), reportData);
+      setCurrentReportId(docRef.id);
+      setActiveView('report-entry');
+      
+      toast({
+        title: "Reporte iniciado",
+        description: "Podés comenzar a cargar los analitos.",
+      });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo iniciar el reporte."
+      });
+    }
   };
 
   if (!selectedPoint) {
@@ -150,6 +188,27 @@ export function DataEntryForm({
             Hacé clic en un punto del mapa para crear una nueva estación o seleccioná una existente.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // Vista de carga de analitos
+  if (activeView === 'report-entry' && currentReportId) {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setActiveView('summary')}
+          className="mb-2"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
+        </Button>
+        <SamplingReportForm 
+          reportId={currentReportId} 
+          stationId={selectedPoint.stationId!}
+          onClose={() => setActiveView('summary')}
+        />
       </div>
     );
   }
@@ -195,7 +254,7 @@ export function DataEntryForm({
         </Card>
       )}
 
-      {!selectedPoint.stationId ? (
+      {activeView === 'create-station' && (
         <Card className="border-t-4 border-t-accent shadow-lg">
           <CardHeader>
             <CardTitle className="text-md">Definir Estación</CardTitle>
@@ -229,13 +288,15 @@ export function DataEntryForm({
             </form>
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {activeView === 'summary' && selectedPoint.stationId && (
         <div className="space-y-4">
           <Separator />
           <div className="grid grid-cols-1 gap-3 pt-2">
             <Button 
               className="w-full h-14 text-md font-bold flex items-center gap-3 bg-primary hover:bg-primary/90"
-              onClick={() => toast({ title: "Próximamente", description: "Módulo de reportes en desarrollo" })}
+              onClick={handleStartReport}
             >
               <FileText className="h-5 w-5" />
               Crear reporte de muestreo
