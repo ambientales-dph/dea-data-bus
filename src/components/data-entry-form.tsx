@@ -17,6 +17,8 @@ import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { SamplingReportForm } from './sampling-report-form';
+import { ReportList } from './report-list';
+import { ReportDetail } from './report-detail';
 
 const stationSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -24,7 +26,7 @@ const stationSchema = z.object({
 
 type StationValues = z.infer<typeof stationSchema>;
 
-type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult';
+type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'report-view';
 
 export function DataEntryForm({ 
   selectedPoint,
@@ -39,6 +41,7 @@ export function DataEntryForm({
   const [isGeneratingName, setIsGeneratingName] = useState(false);
   const [activeView, setActiveView] = useState<FormView>('summary');
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
+  const [viewingReportId, setViewingReportId] = useState<string | null>(null);
 
   // Obtener detalles de la estación si ya existe
   const stationRef = useMemo(() => {
@@ -62,6 +65,8 @@ export function DataEntryForm({
     } else {
       setActiveView('summary');
     }
+    setCurrentReportId(null);
+    setViewingReportId(null);
   }, [selectedPoint?.stationId, selectedPoint]);
 
   const formatDate = (timestamp: any) => {
@@ -131,12 +136,14 @@ export function DataEntryForm({
     };
 
     onStationCreated(newStationRef.id, data.name);
-    toast({
-      title: "Estación registrada",
-      description: `Se guardó el punto: ${data.name}`,
-    });
     
     setDoc(newStationRef, stationData)
+      .then(() => {
+        toast({
+          title: "Estación registrada",
+          description: `Se guardó el punto: ${data.name}`,
+        });
+      })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
           path: newStationRef.path,
@@ -176,6 +183,11 @@ export function DataEntryForm({
     }
   };
 
+  const handleViewReportDetails = (reportId: string) => {
+    setViewingReportId(reportId);
+    setActiveView('report-view');
+  };
+
   if (!selectedPoint) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4 px-4">
@@ -192,7 +204,7 @@ export function DataEntryForm({
     );
   }
 
-  // Vista de carga de analitos
+  // Vistas alternativas
   if (activeView === 'report-entry' && currentReportId) {
     return (
       <div className="space-y-4">
@@ -208,6 +220,44 @@ export function DataEntryForm({
           reportId={currentReportId} 
           stationId={selectedPoint.stationId!}
           onClose={() => setActiveView('summary')}
+        />
+      </div>
+    );
+  }
+
+  if (activeView === 'consult' && selectedPoint.stationId) {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setActiveView('summary')}
+          className="mb-2"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
+        </Button>
+        <ReportList 
+          stationId={selectedPoint.stationId} 
+          onViewReport={handleViewReportDetails}
+        />
+      </div>
+    );
+  }
+
+  if (activeView === 'report-view' && viewingReportId) {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setActiveView('consult')}
+          className="mb-2"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al listado
+        </Button>
+        <ReportDetail 
+          reportId={viewingReportId} 
+          onClose={() => setActiveView('consult')} 
         />
       </div>
     );
@@ -293,7 +343,7 @@ export function DataEntryForm({
       {activeView === 'summary' && selectedPoint.stationId && (
         <div className="space-y-4">
           <Separator />
-          <div className="grid grid-cols-1 gap-3 pt-2">
+          <div className="grid grid-cols-1 gap-4 pt-2">
             <Button 
               className="w-full h-14 text-md font-bold flex items-center gap-3 bg-primary hover:bg-primary/90"
               onClick={handleStartReport}
@@ -305,7 +355,7 @@ export function DataEntryForm({
             <Button 
               variant="outline" 
               className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5"
-              onClick={() => toast({ title: "Próximamente", description: "Módulo de consulta en desarrollo" })}
+              onClick={() => setActiveView('consult')}
             >
               <Search className="h-5 w-5" />
               Consultar
