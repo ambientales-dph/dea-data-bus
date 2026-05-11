@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -8,14 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Calendar, FileSearch, User2 } from 'lucide-react';
+import { Loader2, Calendar, FileSearch, User2, Plus, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ReportListProps {
   stationId: string;
   onViewReport: (reportId: string) => void;
+  onOpenReport: (reportId: string) => void;
 }
 
-export function ReportList({ stationId, onViewReport }: ReportListProps) {
+export function ReportList({ stationId, onViewReport, onOpenReport }: ReportListProps) {
   const db = useFirestore();
 
   const reportsQuery = useMemo(() => {
@@ -65,7 +66,7 @@ export function ReportList({ stationId, onViewReport }: ReportListProps) {
               <TableHead className="text-[10px] uppercase font-bold px-4">Fecha</TableHead>
               <TableHead className="text-[10px] uppercase font-bold px-4">Responsable</TableHead>
               <TableHead className="text-[10px] uppercase font-bold px-4 text-center">Estado</TableHead>
-              <TableHead className="w-10"></TableHead>
+              <TableHead className="w-24 px-4"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -84,7 +85,7 @@ export function ReportList({ stationId, onViewReport }: ReportListProps) {
                   <TableCell className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <User2 className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs truncate max-w-[120px]" title={report.createdByEmail}>
+                      <span className="text-xs truncate max-w-[80px]" title={report.createdByEmail}>
                         {report.createdByEmail?.split('@')[0]}
                       </span>
                     </div>
@@ -103,14 +104,26 @@ export function ReportList({ stationId, onViewReport }: ReportListProps) {
                     </Badge>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => onViewReport(report.id)}
-                    >
-                      <FileSearch className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-primary"
+                        onClick={() => onOpenReport(report.id)}
+                        title="Abrir para cargar datos"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-primary"
+                        onClick={() => onViewReport(report.id)}
+                        title="Ver detalles"
+                      >
+                        <FileSearch className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -120,8 +133,4 @@ export function ReportList({ stationId, onViewReport }: ReportListProps) {
       </CardContent>
     </Card>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }

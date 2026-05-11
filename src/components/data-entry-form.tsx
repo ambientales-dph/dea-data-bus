@@ -191,6 +191,15 @@ export function DataEntryForm({
     setActiveView('report-view');
   };
 
+  const handleOpenExistingReport = (reportId: string) => {
+    setCurrentReportId(reportId);
+    setActiveView('report-entry');
+    toast({
+      title: "Reporte abierto",
+      description: "Continuando con la carga de datos.",
+    });
+  };
+
   if (!selectedPoint) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4 px-4">
@@ -242,6 +251,7 @@ export function DataEntryForm({
         <ReportList 
           stationId={selectedPoint.stationId} 
           onViewReport={handleViewReportDetails}
+          onOpenReport={handleOpenExistingReport}
         />
       </div>
     );
