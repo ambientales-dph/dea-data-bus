@@ -48,8 +48,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const stationsLayerRef = useRef<VectorLayer<any> | null>(null);
   const baseLayerRef = useRef<TileLayer<any> | null>(null);
   const basinsLayerRef = useRef<VectorLayer<any> | null>(null);
+  const codesLayerRef = useRef<VectorLayer<any> | null>(null);
   
-  // Capas GeoJSON - Mantener a rajatabla
+  // Capas GeoJSON
   const basinsSource = useRef<VectorSource>(new VectorSource({
     url: '/data/cuencas_dph.json',
     format: new GeoJSON({ dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' })}));
@@ -80,17 +81,16 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     const basinsLayer = new VectorLayer({
       source: basinsSource.current,
       zIndex: 5,
+      minZoom: 8, // Aparece desde zoom 8
     });
     basinsLayerRef.current = basinsLayer;
 
     const codesLayer = new VectorLayer({
       source: codesSource.current,
-      style: new Style({
-        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }),
-        stroke: new Stroke({ color: 'rgba(0, 0, 0, 0)', width: 0 }),
-      }),
       zIndex: 4,
+      maxZoom: 8, // Desaparece en zoom 8
     });
+    codesLayerRef.current = codesLayer;
 
     const baseLayer = new TileLayer({
       source: new OSM(),
@@ -173,7 +173,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
   }, []);
 
-  // Sincronizar marcador de selección y detectar cambio de cuenca al reubicar
+  // Sincronizar marcador de selección
   useEffect(() => {
     if (!mapInstance.current || !selectedPoint) {
       selectionSource.current.clear();
@@ -186,20 +186,17 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     });
     selectionSource.current.addFeature(selectionFeature);
 
-    // Centrar suavemente
     mapInstance.current.getView().animate({
       center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
       duration: 500
     });
 
-    // Detectar nueva cuenca si es un punto no registrado (edición manual de coordenadas)
     if (!selectedPoint.stationId) {
       const coord = fromLonLat([selectedPoint.lon, selectedPoint.lat]);
       const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(coord);
       const newBasinCode = featuresAtPoint.length > 0 ? featuresAtPoint[0].get('CODIGO') || '' : '';
       
       if (newBasinCode !== selectedPoint.basinCode) {
-        // Notificar cambio de cuenca para regenerar el nombre propuesto
         onPointSelectRef.current?.({
           ...selectedPoint,
           basinCode: newBasinCode
@@ -208,14 +205,17 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     }
   }, [selectedPoint?.lat, selectedPoint?.lon]);
 
-  // Estilos de cuencas
+  // Estilos de cuencas (DPH y Códigos)
   useEffect(() => {
-    if (!basinsLayerRef.current) return;
+    if (!basinsLayerRef.current || !codesLayerRef.current) return;
+    
+    const strokeColor = 'rgba(13, 145, 102, 0.7)';
+
+    // Estilo para Cuencas DPH (Zoom >= 8)
     basinsLayerRef.current.setStyle((feature, resolution) => {
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
-      const strokeWidth = (zoom && zoom >= 8) ? 3 : 1;
-      const strokeColor = 'rgba(13, 145, 102, 0.7)';
+      const strokeWidth = (zoom && zoom >= 10) ? 3 : 1;
       
       let textStyle = undefined;
       if (zoom && zoom >= 7) {
@@ -239,6 +239,15 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         text: textStyle
       });
     });
+
+    // Estilo para Códigos Cuencas (Zoom <= 7)
+    codesLayerRef.current.setStyle(() => {
+      return new Style({
+        stroke: new Stroke({ color: strokeColor, width: 0.5 }), // Calibre 0.5 como se pidió
+        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }),
+      });
+    });
+
   }, [activeLayer]);
 
   // Estilos de estaciones y clústeres
@@ -252,8 +261,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         return new Style({
           image: new CircleStyle({
             radius: 12 + Math.min(size, 8),
-            fill: new Fill({ color: 'rgba(78, 151, 202, 0.7)' }),
-            stroke: undefined,
+            fill: new Fill({ color: 'rgba(78, 151, 202, 0.7)' }), // 30% transparencia (0.7 opacidad)
+            stroke: undefined, // Sin contorno blanco
           }),
           text: new Text({
             text: size.toString(),
@@ -321,7 +330,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
   }, [activeLayer]);
 
-  // Sincronizar datos de estaciones desde Firestore
+  // Sincronizar datos de estaciones
   useEffect(() => {
     if (!stationsSource.current) return;
     stationsSource.current.clear();
