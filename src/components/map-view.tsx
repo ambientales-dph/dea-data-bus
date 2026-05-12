@@ -81,14 +81,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     const basinsLayer = new VectorLayer({
       source: basinsSource.current,
       zIndex: 5,
-      minZoom: 6.5, // Aparece desde zoom 6.5
+      minZoom: 6.5,
     });
     basinsLayerRef.current = basinsLayer;
 
     const codesLayer = new VectorLayer({
       source: codesSource.current,
       zIndex: 4,
-      maxZoom: 6.5, // Desaparece en zoom 6.5
+      maxZoom: 6.5,
     });
     codesLayerRef.current = codesLayer;
 
@@ -262,8 +262,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         return new Style({
           image: new CircleStyle({
             radius: 12 + Math.min(size, 8),
-            fill: new Fill({ color: 'rgba(78, 151, 202, 0.7)' }), // 30% transparencia (0.7 opacidad)
-            stroke: undefined, // Sin contorno blanco
+            fill: new Fill({ color: 'rgba(78, 151, 202, 0.7)' }),
+            stroke: undefined,
           }),
           text: new Text({
             text: size.toString(),
@@ -324,22 +324,27 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       if (!ctx) return;
 
       if (activeLayer === 'satellite') {
-        // --- Procesamiento de Banda Roja en Escala de Grises ---
+        // --- Procesamiento de Banda Roja en Escala de Grises Técnica ---
         ctx.save();
         
-        // 1. Isolar Canal Rojo: Multiplicamos por rojo puro. G y B pasan a ser 0.
+        // 1. Isolar Canal Rojo
         ctx.globalCompositeOperation = 'multiply';
         ctx.fillStyle = '#FF0000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
-        // 2. Desaturar: Convertimos el canal rojo a luminancia gris.
+        // 2. Desaturar
         ctx.globalCompositeOperation = 'saturation';
-        ctx.fillStyle = '#000000'; // Saturación 0
+        ctx.fillStyle = '#000000'; 
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
-        // 3. Normalizar: Boost de luminosidad para compensar que el canal rojo por sí solo es oscuro.
+        // 3. Normalizar y potenciar iluminaciones (Color Dodge con valor más alto para desplazar a claros)
         ctx.globalCompositeOperation = 'color-dodge';
-        ctx.fillStyle = '#666666'; 
+        ctx.fillStyle = '#888888'; 
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        // 4. Aumentar contraste mediante superposición
+        ctx.globalCompositeOperation = 'overlay';
+        ctx.fillStyle = '#999999';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
         ctx.restore();
