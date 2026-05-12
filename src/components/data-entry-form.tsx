@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -11,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -29,10 +30,12 @@ type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'rep
 
 export function DataEntryForm({ 
   selectedPoint,
-  onStationCreated
+  onStationCreated,
+  onPointUpdate
 }: { 
   selectedPoint: SelectedPoint | null;
   onStationCreated: (id: string, name: string) => void;
+  onPointUpdate: (point: SelectedPoint) => void;
 }) {
   const { toast } = useToast();
   const db = useFirestore();
@@ -41,6 +44,11 @@ export function DataEntryForm({
   const [activeView, setActiveView] = useState<FormView>('summary');
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
+  
+  // Estados para edición de coordenadas
+  const [isEditingCoords, setIsEditingCoords] = useState(false);
+  const [editLat, setEditLat] = useState('');
+  const [editLon, setEditLon] = useState('');
 
   // Obtener detalles de la estación si ya existe
   const stationRef = useMemo(() => {
@@ -66,6 +74,7 @@ export function DataEntryForm({
     }
     setCurrentReportId(null);
     setViewingReportId(null);
+    setIsEditingCoords(false);
   }, [selectedPoint?.stationId, selectedPoint]);
 
   const formatDate = (timestamp: any) => {
@@ -136,7 +145,6 @@ export function DataEntryForm({
 
     onStationCreated(newStationRef.id, data.name);
     
-    // No-bloqueante
     setDoc(newStationRef, stationData)
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
@@ -166,7 +174,6 @@ export function DataEntryForm({
 
     const reportsCol = collection(db, 'reports');
     
-    // No-bloqueante
     addDoc(reportsCol, reportData)
       .then((docRef) => {
         setCurrentReportId(docRef.id);
@@ -198,6 +205,34 @@ export function DataEntryForm({
       title: "Reporte abierto",
       description: "Continuando con la carga de datos.",
     });
+  };
+
+  const handleStartEditCoords = () => {
+    if (!selectedPoint) return;
+    setEditLat(selectedPoint.lat.toString());
+    setEditLon(selectedPoint.lon.toString());
+    setIsEditingCoords(true);
+  };
+
+  const handleSaveEditedCoords = () => {
+    if (!selectedPoint) return;
+    const lat = parseFloat(editLat);
+    const lon = parseFloat(editLon);
+    
+    if (!isNaN(lat) && !isNaN(lon)) {
+      onPointUpdate({ ...selectedPoint, lat, lon });
+      setIsEditingCoords(false);
+      toast({
+        title: "Punto reubicado",
+        description: "Las coordenadas han sido actualizadas.",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Ingresá valores numéricos válidos.",
+      });
+    }
   };
 
   if (!selectedPoint) {
@@ -282,14 +317,46 @@ export function DataEntryForm({
         <Card className="border-primary/20 bg-primary/5 shadow-sm overflow-hidden">
           <CardHeader className="p-4">
             <div className="flex items-start justify-between">
-              <div className="space-y-1">
+              <div className="space-y-1 flex-1">
                 <CardTitle className="text-xl font-bold text-primary leading-tight">
                   {selectedPoint.name}
                 </CardTitle>
                 <div className="space-y-0.5">
-                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
-                    {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
-                  </CardDescription>
+                  <div className="flex items-center gap-2">
+                    {isEditingCoords ? (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Input 
+                          value={editLat} 
+                          onChange={(e) => setEditLat(e.target.value)}
+                          className="h-6 w-24 text-[11px] font-code py-0 px-1"
+                        />
+                        <Input 
+                          value={editLon} 
+                          onChange={(e) => setEditLon(e.target.value)}
+                          className="h-6 w-24 text-[11px] font-code py-0 px-1"
+                        />
+                        <button onClick={handleSaveEditedCoords} className="text-green-600 hover:text-green-700">
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => setIsEditingCoords(false)} className="text-destructive hover:text-destructive/80">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
+                          {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
+                        </CardDescription>
+                        <button 
+                          onClick={handleStartEditCoords}
+                          className="text-muted-foreground hover:text-primary transition-colors"
+                          title="Editar coordenadas"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                   <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
                     Creación: {formatDate(stationDetails?.createdAt)}
                   </CardDescription>
@@ -304,15 +371,51 @@ export function DataEntryForm({
         </Card>
       ) : (
         <Card className="border-primary/20 bg-primary/5">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2 text-primary">
-              <PlusCircle className="h-5 w-5" />
-              Nuevo Punto de Muestreo
-            </CardTitle>
-            <CardDescription className="text-xs font-code">
-              {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
-              {selectedPoint.basinCode && ` • Cuenca: ${selectedPoint.basinCode}`}
-            </CardDescription>
+          <CardHeader className="p-4 pb-3">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1 flex-1">
+                <CardTitle className="text-lg flex items-center gap-2 text-primary">
+                  <PlusCircle className="h-5 w-5" />
+                  Nuevo Punto de Muestreo
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {isEditingCoords ? (
+                    <div className="flex items-center gap-1 mt-1">
+                      <Input 
+                        value={editLat} 
+                        onChange={(e) => setEditLat(e.target.value)}
+                        className="h-6 w-24 text-[11px] font-code py-0 px-1"
+                      />
+                      <Input 
+                        value={editLon} 
+                        onChange={(e) => setEditLon(e.target.value)}
+                        className="h-6 w-24 text-[11px] font-code py-0 px-1"
+                      />
+                      <button onClick={handleSaveEditedCoords} className="text-green-600 hover:text-green-700">
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => setIsEditingCoords(false)} className="text-destructive hover:text-destructive/80">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
+                        {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
+                        {selectedPoint.basinCode && ` • Cuenca: ${selectedPoint.basinCode}`}
+                      </CardDescription>
+                      <button 
+                        onClick={handleStartEditCoords}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                        title="Editar coordenadas"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
           </CardHeader>
         </Card>
       )}

@@ -29,6 +29,10 @@ export default function Home() {
     setSelectedPoint(point);
   }, []);
 
+  const handlePointUpdate = useCallback((point: SelectedPoint) => {
+    setSelectedPoint(point);
+  }, []);
+
   const handleStationCreated = useCallback((id: string, name: string) => {
     setSelectedPoint(prev => prev ? { ...prev, stationId: id, name } : null);
   }, []);
@@ -89,6 +93,7 @@ export default function Home() {
                 <DataEntryForm 
                   selectedPoint={selectedPoint} 
                   onStationCreated={handleStationCreated}
+                  onPointUpdate={handlePointUpdate}
                 />
               </div>
             </ScrollArea>
