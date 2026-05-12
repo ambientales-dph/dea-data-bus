@@ -11,6 +11,7 @@ import XYZ from 'ol/source/XYZ';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
+import Cluster from 'ol/source/Cluster';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import GeoJSON from 'ol/format/GeoJSON';
@@ -25,10 +26,6 @@ import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-// Importación directa de capas GeoJSON desde src/lib
-//import basinsData from '@/lib/cuencas_dph.geojson';
-//import codesData from '@/lib/codigos_cuencas.geojson';
 
 interface MapViewProps {
   onPointSelect: (point: SelectedPoint) => void;
@@ -126,9 +123,56 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       properties: { id: 'base-layer' }
     });
 
-    const stationsLayer = new VectorLayer({
+    // Configuración del Cluster
+    const clusterSource = new Cluster({
+      distance: 40,
       source: stationsSource.current,
+    });
+
+    const stationsLayer = new VectorLayer({
+      source: clusterSource,
       zIndex: 10,
+      style: (feature, resolution) => {
+        const features = feature.get('features');
+        const size = features.length;
+
+        if (size > 1) {
+          return new Style({
+            image: new CircleStyle({
+              radius: 12 + Math.min(size, 8),
+              stroke: new Stroke({ color: 'white', width: 2 }),
+              fill: new Fill({ color: 'hsl(204, 56%, 55%)' }), // primary
+            }),
+            text: new Text({
+              text: size.toString(),
+              fill: new Fill({ color: 'white' }),
+              font: 'bold 12px "Encode Sans", sans-serif',
+            }),
+          });
+        }
+
+        // Estilo individual (size == 1)
+        const stationFeature = features[0];
+        const isSelected = selectedPoint?.stationId === stationFeature.get('stationId');
+        const view = mapInstance.current?.getView();
+        const zoom = view ? view.getZoomForResolution(resolution) : 0;
+
+        return new Style({
+          image: new CircleStyle({
+            radius: 5,
+            fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
+            stroke: new Stroke({ color: 'white', width: 1.5 }),
+          }),
+          text: zoom && zoom >= 8 ? new Text({
+            text: stationFeature.get('name'),
+            offsetY: -15,
+            font: 'bold 10px "Encode Sans", sans-serif',
+            fill: new Fill({ color: isSelected ? '#ef4444' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
+            stroke: activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 }),
+            padding: [2, 4, 2, 4],
+          }) : undefined
+        });
+      }
     });
 
     const selectionLayer = new VectorLayer({
@@ -150,7 +194,11 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       const pixel = event.pixel;
       
       const stationFeature = map.forEachFeatureAtPixel(pixel, (f) => {
-        return f.get('stationId') ? f : null;
+        const features = f.get('features');
+        if (features && features.length === 1) {
+          return features[0];
+        }
+        return null;
       });
 
       if (stationFeature) {
@@ -183,7 +231,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       map.setTarget(undefined);
       mapInstance.current = null;
     };
-  }, [activeLayer]);
+  }, [activeLayer, selectedPoint?.stationId]); // Añadido selectedPoint?.stationId para refrescar el estilo en clic
 
   // Manejo de capas base
   useEffect(() => {
@@ -231,55 +279,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         lon: station.longitude,
       });
 
-      feature.setStyle((feat, resolution) => {
-        const view = mapInstance.current?.getView();
-        const zoom = view ? view.getZoomForResolution(resolution) : 0;
-        const isSelected = selectedPoint?.stationId === station.id;
-
-        return new Style({
-          image: new CircleStyle({
-            radius: 3.5,
-            fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
-            stroke: new Stroke({ color: 'white', width: 1 }),
-          }),
-          text: zoom && zoom >= 8 ? new Text({
-            text: station.name,
-            offsetY: -12,
-            font: 'bold 10px "Encode Sans", sans-serif',
-            fill: new Fill({ color: isSelected ? '#ef4444' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
-            stroke: activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 }),
-            padding: [2, 4, 2, 4],
-          }) : undefined
-        });
-      });
-
       stationsSource.current.addFeature(feature);
     });
-  }, [stations, selectedPoint?.stationId, activeLayer]);
-
-  // Marcador de selección temporal
-  useEffect(() => {
-    if (!selectionSource.current) return;
-    selectionSource.current.clear();
-    
-    if (selectedPoint && !selectedPoint.stationId) {
-      const feature = new Feature({
-        geometry: new Point(fromLonLat([selectedPoint.lon, selectedPoint.lat])),
-      });
-
-      feature.setStyle(
-        new Style({
-          image: new CircleStyle({
-            radius: 4.5,
-            fill: new Fill({ color: '#ef4444' }),
-            stroke: new Stroke({ color: 'white', width: 1.5 }),
-          }),
-        })
-      );
-
-      selectionSource.current.addFeature(feature);
-    }
-  }, [selectedPoint]);
+  }, [stations]);
 
   const handleSelectResult = (result: SearchResult) => {
     const lat = parseFloat(result.lat);
