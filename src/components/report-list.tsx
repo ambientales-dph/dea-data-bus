@@ -79,23 +79,23 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
 
   return (
     <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
-      <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-primary" />
+      <CardHeader className="pb-1 pt-3 px-4">
+        <CardTitle className="text-md flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-primary" />
           Historial de Reportes
         </CardTitle>
-        <CardDescription className="text-[11px]">
+        <CardDescription className="text-[10px]">
           Todos los muestreos registrados en esta estación.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
         <Table>
           <TableHeader className="bg-muted/50">
-            <TableRow className="h-10">
-              <TableHead className="text-[10px] uppercase font-bold px-3">Fecha</TableHead>
-              <TableHead className="text-[10px] uppercase font-bold px-3">Responsable</TableHead>
-              <TableHead className="text-[10px] uppercase font-bold px-3">ID</TableHead>
-              <TableHead className="w-32 px-3 text-right"></TableHead>
+            <TableRow className="h-8">
+              <TableHead className="text-[9px] uppercase font-bold px-3">Fecha</TableHead>
+              <TableHead className="text-[9px] uppercase font-bold px-3">Responsable</TableHead>
+              <TableHead className="text-[9px] uppercase font-bold px-3">ID</TableHead>
+              <TableHead className="w-28 px-3 text-right"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -107,43 +107,43 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
               </TableRow>
             ) : (
               sortedReports.map((report: any) => (
-                <TableRow key={report.id} className="hover:bg-primary/5 transition-colors group h-12">
-                  <TableCell className="px-3 py-1 font-code text-[11px]">
+                <TableRow key={report.id} className="hover:bg-primary/5 transition-colors group h-9">
+                  <TableCell className="px-3 py-0 font-code text-[10px]">
                     {formatDate(report.createdAt)}
                   </TableCell>
-                  <TableCell className="px-3 py-1">
-                    <span className="text-[11px] font-medium truncate block max-w-[100px]" title={report.createdByEmail}>
+                  <TableCell className="px-3 py-0">
+                    <span className="text-[10px] font-medium truncate block max-w-[90px]" title={report.createdByEmail}>
                       {report.createdByEmail?.split('@')[0]}
                     </span>
                   </TableCell>
-                  <TableCell className="px-3 py-1">
-                    <span className="text-[10px] font-code text-muted-foreground uppercase">
+                  <TableCell className="px-3 py-0">
+                    <span className="text-[9px] font-code text-muted-foreground uppercase">
                       {report.id.substring(0, 8)}
                     </span>
                   </TableCell>
-                  <TableCell className="px-3 py-1 text-right">
+                  <TableCell className="px-3 py-0 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-7 w-7 text-primary hover:bg-primary/10"
+                        className="h-6 w-6 text-primary hover:bg-primary/10"
                         onClick={() => onOpenReport(report.id)}
                         title="Abrir para cargar datos"
                       >
-                        <Plus className="h-3.5 w-3.5" />
+                        <Plus className="h-3 w-3" />
                       </Button>
                       <div className="flex items-center gap-0.5">
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-7 w-7 text-primary hover:bg-primary/10"
+                          className="h-6 w-6 text-primary hover:bg-primary/10"
                           onClick={() => onViewReport(report.id)}
                           title="Ver detalles"
                         >
-                          <FileSearch className="h-3.5 w-3.5" />
+                          <FileSearch className="h-3 w-3" />
                         </Button>
                         <div 
-                          className="flex items-center px-1 text-[10px] font-bold text-primary min-w-[18px] justify-center" 
+                          className="flex items-center px-0.5 text-[9px] font-bold text-primary min-w-[14px] justify-center" 
                           title="Muestreos"
                         >
                           {analyteCounts[report.id] || 0}
