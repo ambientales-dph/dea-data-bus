@@ -81,14 +81,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     const basinsLayer = new VectorLayer({
       source: basinsSource.current,
       zIndex: 5,
-      minZoom: 8, // Aparece desde zoom 8
+      minZoom: 6.5, // Aparece desde zoom 6.5
     });
     basinsLayerRef.current = basinsLayer;
 
     const codesLayer = new VectorLayer({
       source: codesSource.current,
       zIndex: 4,
-      maxZoom: 8, // Desaparece en zoom 8
+      maxZoom: 6.5, // Desaparece en zoom 6.5
     });
     codesLayerRef.current = codesLayer;
 
@@ -211,7 +211,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     
     const strokeColor = 'rgba(13, 145, 102, 0.7)';
 
-    // Estilo para Cuencas DPH (Zoom >= 8)
+    // Estilo para Cuencas DPH (Zoom >= 6.5)
     basinsLayerRef.current.setStyle((feature, resolution) => {
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
@@ -240,7 +240,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       });
     });
 
-    // Estilo para Códigos Cuencas (Zoom <= 7)
+    // Estilo para Códigos Cuencas (Zoom < 6.5)
     codesLayerRef.current.setStyle(() => {
       return new Style({
         stroke: new Stroke({ color: strokeColor, width: 0.5 }), // Calibre 0.5 como se pidió
@@ -310,15 +310,29 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     }
 
     const listener = (evt: any) => {
+      const ctx = evt.context as CanvasRenderingContext2D;
+      if (!ctx) return;
+      
       if (activeLayer === 'grayscale') {
-        const ctx = evt.context as CanvasRenderingContext2D;
-        if (ctx) ctx.filter = 'grayscale(100%) brightness(0.9) contrast(1.2)';
+        ctx.filter = 'grayscale(100%) brightness(0.9) contrast(1.2)';
       }
     };
     
     const postListener = (evt: any) => {
       const ctx = evt.context as CanvasRenderingContext2D;
-      if (ctx) ctx.filter = 'none';
+      if (!ctx) return;
+
+      if (activeLayer === 'satellite') {
+        // Isolar Banda Roja: Multiplicamos el resultado de renderizado por rojo puro.
+        // Esto mantiene los valores de R y pone G y B en 0.
+        ctx.save();
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = '#FF0000';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.restore();
+      }
+      
+      ctx.filter = 'none';
     };
 
     baseLayer.on('prerender', listener);
