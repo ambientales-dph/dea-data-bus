@@ -45,15 +45,17 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const mapInstance = useRef<Map | null>(null);
   const stationsSource = useRef<VectorSource>(new VectorSource());
   const selectionSource = useRef<VectorSource>(new VectorSource());
+  const stationsLayerRef = useRef<VectorLayer<any> | null>(null);
+  const baseLayerRef = useRef<TileLayer<any> | null>(null);
+  const basinsLayerRef = useRef<VectorLayer<any> | null>(null);
   
-  // No tocas las siguientes líneas de carga dinámica de capas
+  // Capas GeoJSON
   const basinsSource = useRef<VectorSource>(new VectorSource({
     url: '/data/cuencas_dph.json',
     format: new GeoJSON({ dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' })}));
   const codesSource = useRef<VectorSource>(new VectorSource({
     url: '/data/codigos_cuencas.json',
     format: new GeoJSON({ dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' })}));
-  //No modificar hasta la línea de arriba
 
   const onPointSelectRef = useRef(onPointSelect);
   const db = useFirestore();
@@ -71,42 +73,16 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
   const { data: stations } = useCollection(stationsQuery);
 
+  // Inicialización única del Mapa
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
     // Capa de Cuencas (Visual)
     const basinsLayer = new VectorLayer({
       source: basinsSource.current,
-      style: (feature, resolution) => {
-        const view = mapInstance.current?.getView();
-        const zoom = view ? view.getZoomForResolution(resolution) : 0;
-        const strokeWidth = (zoom && zoom >= 8) ? 3 : 1;
-        const strokeColor = 'rgba(13, 145, 102, 0.7)';
-        
-        let textStyle = undefined;
-        if (zoom && zoom >= 7) {
-          const codLetras = feature.get('cod_letras') || '';
-          const subregion = feature.get('subregion') || '';
-          const label = `${codLetras} ${subregion}`.trim();
-          
-          if (label) {
-            textStyle = new Text({
-              text: label,
-              font: '10px "Encode Sans", sans-serif',
-              fill: new Fill({ color: activeLayer === 'satellite' ? 'white' : '#0D9166' }),
-              stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 3 }),
-            });
-          }
-        }
-        
-        return new Style({
-          stroke: new Stroke({ color: strokeColor, width: strokeWidth }),
-          fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }),
-          text: textStyle
-        });
-      },
       zIndex: 5,
     });
+    basinsLayerRef.current = basinsLayer;
 
     // Capa de Códigos (Invisible, para detección de CODIGO)
     const codesLayer = new VectorLayer({
@@ -122,6 +98,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       source: new OSM(),
       properties: { id: 'base-layer' }
     });
+    baseLayerRef.current = baseLayer;
 
     // Configuración del Cluster
     const clusterSource = new Cluster({
@@ -132,48 +109,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     const stationsLayer = new VectorLayer({
       source: clusterSource,
       zIndex: 10,
-      style: (feature, resolution) => {
-        const features = feature.get('features');
-        const size = features.length;
-
-        if (size > 1) {
-          return new Style({
-            image: new CircleStyle({
-              radius: 12 + Math.min(size, 8),
-              stroke: new Stroke({ color: 'white', width: 2 }),
-              fill: new Fill({ color: 'hsl(204, 56%, 55%)' }), // primary
-            }),
-            text: new Text({
-              text: size.toString(),
-              fill: new Fill({ color: 'white' }),
-              font: 'bold 12px "Encode Sans", sans-serif',
-            }),
-          });
-        }
-
-        // Estilo individual (size == 1)
-        const stationFeature = features[0];
-        const isSelected = selectedPoint?.stationId === stationFeature.get('stationId');
-        const view = mapInstance.current?.getView();
-        const zoom = view ? view.getZoomForResolution(resolution) : 0;
-
-        return new Style({
-          image: new CircleStyle({
-            radius: 5,
-            fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
-            stroke: new Stroke({ color: 'white', width: 1.5 }),
-          }),
-          text: zoom && zoom >= 8 ? new Text({
-            text: stationFeature.get('name'),
-            offsetY: -15,
-            font: 'bold 10px "Encode Sans", sans-serif',
-            fill: new Fill({ color: isSelected ? '#ef4444' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
-            stroke: activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 }),
-            padding: [2, 4, 2, 4],
-          }) : undefined
-        });
-      }
     });
+    stationsLayerRef.current = stationsLayer;
 
     const selectionLayer = new VectorLayer({
       source: selectionSource.current,
@@ -209,7 +146,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           name: stationFeature.get('name'),
         });
       } else {
-        // Detectar código de cuenca en el punto del clic
         let basinCode = '';
         const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(event.coordinate);
         if (featuresAtPoint.length > 0) {
@@ -231,16 +167,91 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       map.setTarget(undefined);
       mapInstance.current = null;
     };
-  }, [activeLayer, selectedPoint?.stationId]); // Añadido selectedPoint?.stationId para refrescar el estilo en clic
+  }, []);
 
-  // Manejo de capas base
+  // Actualizar estilos de cuencas dinámicamente
   useEffect(() => {
-    if (!mapInstance.current) return;
-    const layers = mapInstance.current.getLayers();
-    const baseLayer = layers.getArray().find(l => l.get('id') === 'base-layer') as TileLayer<any>;
-    
-    if (!baseLayer) return;
+    if (!basinsLayerRef.current) return;
+    basinsLayerRef.current.setStyle((feature, resolution) => {
+      const view = mapInstance.current?.getView();
+      const zoom = view ? view.getZoomForResolution(resolution) : 0;
+      const strokeWidth = (zoom && zoom >= 8) ? 3 : 1;
+      const strokeColor = 'rgba(13, 145, 102, 0.7)';
+      
+      let textStyle = undefined;
+      if (zoom && zoom >= 7) {
+        const codLetras = feature.get('cod_letras') || '';
+        const subregion = feature.get('subregion') || '';
+        const label = `${codLetras} ${subregion}`.trim();
+        
+        if (label) {
+          textStyle = new Text({
+            text: label,
+            font: '10px "Encode Sans", sans-serif',
+            fill: new Fill({ color: activeLayer === 'satellite' ? 'white' : '#0D9166' }),
+            stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 3 }),
+          });
+        }
+      }
+      
+      return new Style({
+        stroke: new Stroke({ color: strokeColor, width: strokeWidth }),
+        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }),
+        text: textStyle
+      });
+    });
+  }, [activeLayer]);
 
+  // Actualizar estilos de estaciones y clústeres dinámicamente
+  useEffect(() => {
+    if (!stationsLayerRef.current) return;
+    stationsLayerRef.current.setStyle((feature, resolution) => {
+      const features = feature.get('features');
+      const size = features.length;
+
+      if (size > 1) {
+        return new Style({
+          image: new CircleStyle({
+            radius: 12 + Math.min(size, 8),
+            // Se eliminó el stroke blanco aquí
+            fill: new Fill({ color: 'hsl(204, 56%, 55%)' }),
+          }),
+          text: new Text({
+            text: size.toString(),
+            fill: new Fill({ color: 'white' }),
+            font: 'bold 12px "Encode Sans", sans-serif',
+          }),
+        });
+      }
+
+      const stationFeature = features[0];
+      const isSelected = selectedPoint?.stationId === stationFeature.get('stationId');
+      const view = mapInstance.current?.getView();
+      const zoom = view ? view.getZoomForResolution(resolution) : 0;
+
+      return new Style({
+        image: new CircleStyle({
+          radius: 5,
+          fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
+          stroke: new Stroke({ color: 'white', width: 1.5 }),
+        }),
+        text: zoom && zoom >= 8 ? new Text({
+          text: stationFeature.get('name'),
+          offsetY: -15,
+          font: 'bold 10px "Encode Sans", sans-serif',
+          fill: new Fill({ color: isSelected ? '#ef4444' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
+          stroke: activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 }),
+          padding: [2, 4, 2, 4],
+        }) : undefined
+      });
+    });
+  }, [activeLayer, selectedPoint?.stationId]);
+
+  // Manejo de capas base sin reiniciar el mapa
+  useEffect(() => {
+    if (!baseLayerRef.current) return;
+    const baseLayer = baseLayerRef.current;
+    
     if (activeLayer === 'satellite') {
       baseLayer.setSource(new XYZ({
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -250,22 +261,29 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       baseLayer.setSource(new OSM());
     }
 
-    baseLayer.on('prerender', (evt) => {
+    // Filtros de grises para OSM/Grayscale
+    const listener = (evt: any) => {
       if (activeLayer === 'grayscale') {
         const ctx = evt.context as CanvasRenderingContext2D;
         if (ctx) ctx.filter = 'grayscale(100%) brightness(0.9) contrast(1.2)';
       }
-    });
-
-    baseLayer.on('postrender', (evt) => {
+    };
+    
+    const postListener = (evt: any) => {
       const ctx = evt.context as CanvasRenderingContext2D;
       if (ctx) ctx.filter = 'none';
-    });
+    };
 
-    mapInstance.current.render();
+    baseLayer.on('prerender', listener);
+    baseLayer.on('postrender', postListener);
+
+    return () => {
+      baseLayer.un('prerender', listener);
+      baseLayer.un('postrender', postListener);
+    };
   }, [activeLayer]);
 
-  // Sincronizar estaciones
+  // Sincronizar datos de estaciones
   useEffect(() => {
     if (!stationsSource.current) return;
     stationsSource.current.clear();
@@ -341,7 +359,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
                     <button
                       key={idx}
                       onClick={() => handleSelectResult(result)}
-                      className="w-full text-left p-2 hover:bg-primary/5 rounded-lg transition-colors flex items-start gap-2 border-b last:border-0"
+                      className="w-full text-left p-2 hover:bg-primary/5 rounded-md transition-colors flex items-start gap-2 border-b last:border-0"
                     >
                       <MapPin className="h-3 w-3 mt-0.5 text-primary shrink-0" />
                       <span className="text-[10px] font-medium leading-tight">{result.display_name}</span>
