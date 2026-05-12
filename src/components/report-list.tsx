@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Calendar, FileSearch, User2, Plus } from 'lucide-react';
+import { Loader2, Calendar, FileSearch, Plus, FlaskConical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ReportListProps {
@@ -19,7 +19,7 @@ interface ReportListProps {
 export function ReportList({ stationId, onViewReport, onOpenReport }: ReportListProps) {
   const db = useFirestore();
 
-  // Consulta simple sin orderBy para evitar requerir índices compuestos manuales
+  // Consulta de reportes de la estación
   const reportsQuery = useMemo(() => {
     return query(
       collection(db, 'reports'),
@@ -27,7 +27,29 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
     );
   }, [db, stationId]);
 
-  const { data: reports, loading } = useCollection(reportsQuery);
+  const { data: reports, loading: reportsLoading } = useCollection(reportsQuery);
+
+  // Consulta de todos los analitos de la estación para contar por reporte
+  const samplesQuery = useMemo(() => {
+    return query(
+      collection(db, 'samples'),
+      where('stationId', '==', stationId)
+    );
+  }, [db, stationId]);
+
+  const { data: allSamples } = useCollection(samplesQuery);
+
+  // Mapear cantidad de analitos por reporte
+  const analyteCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allSamples.forEach((sample: any) => {
+      const rid = sample.reportId;
+      if (rid) {
+        counts[rid] = (counts[rid] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allSamples]);
 
   // Ordenamiento en memoria
   const sortedReports = useMemo(() => {
@@ -48,7 +70,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
     });
   };
 
-  if (loading) {
+  if (reportsLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin mb-2" />
@@ -59,51 +81,48 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
 
   return (
     <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 pt-4 px-4">
         <CardTitle className="text-lg flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
           Historial de Reportes
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-[11px]">
           Todos los muestreos registrados en esta estación.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
         <Table>
           <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead className="text-[10px] uppercase font-bold px-4">Fecha</TableHead>
-              <TableHead className="text-[10px] uppercase font-bold px-4">Responsable</TableHead>
-              <TableHead className="text-[10px] uppercase font-bold px-4 text-center">Estado</TableHead>
-              <TableHead className="w-24 px-4"></TableHead>
+            <TableRow className="h-10">
+              <TableHead className="text-[10px] uppercase font-bold px-3">Fecha</TableHead>
+              <TableHead className="text-[10px] uppercase font-bold px-3">Responsable</TableHead>
+              <TableHead className="text-[10px] uppercase font-bold px-3 text-center">Estado</TableHead>
+              <TableHead className="w-32 px-3 text-right"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedReports.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-12 text-muted-foreground italic">
+                <TableCell colSpan={4} className="text-center py-10 text-muted-foreground italic text-xs">
                   No se han registrado reportes aún.
                 </TableCell>
               </TableRow>
             ) : (
               sortedReports.map((report: any) => (
-                <TableRow key={report.id} className="hover:bg-primary/5 transition-colors group">
-                  <TableCell className="px-4 py-3 font-code text-xs">
+                <TableRow key={report.id} className="hover:bg-primary/5 transition-colors group h-12">
+                  <TableCell className="px-3 py-1 font-code text-[11px]">
                     {formatDate(report.createdAt)}
                   </TableCell>
-                  <TableCell className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <User2 className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs truncate max-w-[80px]" title={report.createdByEmail}>
-                        {report.createdByEmail?.split('@')[0]}
-                      </span>
-                    </div>
+                  <TableCell className="px-3 py-1">
+                    <span className="text-[11px] font-medium truncate block max-w-[100px]" title={report.createdByEmail}>
+                      {report.createdByEmail?.split('@')[0]}
+                    </span>
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-center">
+                  <TableCell className="px-3 py-1 text-center">
                     <Badge 
                       variant="outline" 
                       className={cn(
-                        "h-5 text-[9px] uppercase font-bold",
+                        "h-4 text-[8px] uppercase font-bold px-1.5",
                         report.status === 'open' 
                           ? "border-green-200 text-green-700 bg-green-50" 
                           : "border-gray-200 text-gray-500 bg-gray-50"
@@ -112,26 +131,31 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                       {report.status === 'open' ? 'Abierto' : 'Cerrado'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <TableCell className="px-3 py-1 text-right">
+                    <div className="flex items-center justify-end gap-1">
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8 text-primary"
+                        className="h-7 w-7 text-primary hover:bg-primary/10"
                         onClick={() => onOpenReport(report.id)}
                         title="Abrir para cargar datos"
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-3.5 w-3.5" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-primary"
-                        onClick={() => onViewReport(report.id)}
-                        title="Ver detalles"
-                      >
-                        <FileSearch className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1 group/btn">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 text-primary hover:bg-primary/10"
+                          onClick={() => onViewReport(report.id)}
+                          title="Ver detalles"
+                        >
+                          <FileSearch className="h-3.5 w-3.5" />
+                        </Button>
+                        <div className="flex items-center bg-primary/5 px-1.5 py-0.5 rounded text-[10px] font-bold text-primary border border-primary/10 min-w-[22px] justify-center" title="Cantidad de analitos">
+                          {analyteCounts[report.id] || 0}
+                        </div>
+                      </div>
                     </div>
                   </TableCell>
                 </TableRow>
