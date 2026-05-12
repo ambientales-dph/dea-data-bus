@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -474,7 +473,7 @@ export function DataEntryForm({
               onClick={() => setActiveView('consult')}
             >
               <Search className="h-5 w-5" />
-              Consultar
+              Ver
             </Button>
           </div>
         </div>
