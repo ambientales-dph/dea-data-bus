@@ -267,7 +267,7 @@ export function DataEntryForm({
 
   if (!selectedPoint) {
     return (
-      <div className="flex flex-col items-center pt-24 min-h-[60vh] text-center space-y-6 px-4">
+      <div className="flex flex-col items-center pt-8 md:pt-16 min-h-[60vh] text-center space-y-6 px-4">
         <div className="p-8 bg-primary/5 rounded-full shadow-inner border border-primary/5">
           <MapPin className="h-16 w-16 text-primary/30 animate-pulse" />
         </div>
