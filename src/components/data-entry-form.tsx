@@ -27,7 +27,7 @@ const stationSchema = z.object({
 
 type StationValues = z.infer<typeof stationSchema>;
 
-type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'report-view';
+type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'report-view' | 'select-project';
 
 export function DataEntryForm({ 
   selectedPoint,
@@ -341,6 +341,66 @@ export function DataEntryForm({
     );
   }
 
+  if (activeView === 'select-project' && selectedPoint.stationId) {
+    return (
+      <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setActiveView('summary')}
+          className="mb-2"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" /> Cancelar
+        </Button>
+        
+        <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-md flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-primary" />
+              Seleccionar Proyecto
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Asociá este nuevo reporte a un proyecto activo de Trello.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">
+                Proyecto de Trello
+              </Label>
+              <Select value={selectedProject} onValueChange={setSelectedProject}>
+                <SelectTrigger className="w-full h-11 text-xs font-medium border-primary/20 bg-primary/5">
+                  <SelectValue placeholder="Buscá el proyecto..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {trelloProjects.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-muted-foreground italic">
+                      No se encontraron proyectos sincronizados.
+                    </div>
+                  ) : (
+                    trelloProjects.map((projectName) => (
+                      <SelectItem key={projectName} value={projectName} className="text-xs">
+                        {projectName}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button 
+              className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md"
+              disabled={!selectedProject}
+              onClick={handleStartReport}
+            >
+              Confirmar e Iniciar Reporte
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {selectedPoint.stationId ? (
@@ -510,53 +570,23 @@ export function DataEntryForm({
         <div className="space-y-4">
           <Separator />
           
-          <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5">
-                <Briefcase className="h-3 w-3" /> Proyecto Asociado (Trello)
-              </Label>
-              <Select value={selectedProject} onValueChange={setSelectedProject}>
-                <SelectTrigger className="w-full h-10 text-xs font-medium border-primary/20 bg-primary/5">
-                  <SelectValue placeholder="Seleccioná un proyecto para reportar" />
-                </SelectTrigger>
-                <SelectContent>
-                  {trelloProjects.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-muted-foreground italic">
-                      No se encontraron proyectos sincronizados.
-                    </div>
-                  ) : (
-                    trelloProjects.map((projectName) => (
-                      <SelectItem key={projectName} value={projectName} className="text-xs">
-                        {projectName}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 pt-2">
-              <Button 
-                className={cn(
-                  "w-full h-14 text-md font-bold flex items-center gap-3 transition-all",
-                  selectedProject ? "bg-primary hover:bg-primary/90" : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
-                )}
-                onClick={handleStartReport}
-                disabled={!selectedProject}
-              >
-                <FileText className="h-5 w-5" />
-                Crear reporte de muestreo
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5"
-                onClick={() => setActiveView('consult')}
-              >
-                <Search className="h-5 w-5" />
-                Ver
-              </Button>
-            </div>
+          <div className="grid grid-cols-1 gap-3 pt-2">
+            <Button 
+              className="w-full h-14 text-md font-bold flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md transition-all hover:scale-[1.01]"
+              onClick={() => setActiveView('select-project')}
+            >
+              <FileText className="h-6 w-6" />
+              Crear reporte de muestreo
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5 shadow-sm"
+              onClick={() => setActiveView('consult')}
+            >
+              <Search className="h-6 w-6" />
+              Ver
+            </Button>
           </div>
         </div>
       )}
