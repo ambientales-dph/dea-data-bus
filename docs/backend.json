@@ -22,6 +22,7 @@
       "type": "object",
       "properties": {
         "stationId": { "type": "string", "description": "ID de la estación asociada." },
+        "trelloCardName": { "type": "string", "description": "Nombre de la tarjeta de Trello (Proyecto) asociada." },
         "createdAt": { "type": "string", "format": "date-time" },
         "createdByEmail": { "type": "string" },
         "status": { "type": "string", "enum": ["open", "closed"] },

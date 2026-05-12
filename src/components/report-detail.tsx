@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle2, User, Share2 } from 'lucide-react';
+import { Loader2, CheckCircle2, User, Share2, Briefcase } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ReportDetailProps {
@@ -83,16 +84,14 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
             </Badge>
           </div>
           <div className="mt-3 space-y-2">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 p-2 rounded-md">
+            <div className="flex items-center gap-2 text-xs text-primary bg-primary/5 p-2 rounded-md border border-primary/10">
+              <Briefcase className="h-3 w-3" />
+              <span>Proyecto: <strong className="font-bold">{reportData?.trelloCardName || 'No asociado'}</strong></span>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground px-2">
               <User className="h-3 w-3" />
               <span>Iniciado por: <strong>{reportData?.createdByEmail}</strong></span>
             </div>
-            {reportData?.editors?.length > 1 && (
-              <div className="flex items-start gap-2 text-[10px] text-muted-foreground px-2">
-                <Share2 className="h-3 w-3 mt-0.5" />
-                <span>Colaboradores: {reportData.editors.join(', ')}</span>
-              </div>
-            )}
           </div>
         </CardHeader>
         <CardContent className="p-0 border-t">

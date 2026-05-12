@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -6,7 +7,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Calendar, FileSearch, Plus } from 'lucide-react';
+import { Loader2, Calendar, FileSearch, Plus, Briefcase } from 'lucide-react';
 
 interface ReportListProps {
   stationId: string;
@@ -68,6 +69,12 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
     });
   };
 
+  const getProjectCode = (fullName: string) => {
+    if (!fullName) return 'S/P';
+    const match = fullName.match(/\((.*?)\)/);
+    return match ? match[1] : fullName.substring(0, 8);
+  };
+
   if (reportsLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
@@ -93,7 +100,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
           <TableHeader className="bg-muted/50">
             <TableRow className="h-8">
               <TableHead className="text-[9px] uppercase font-bold px-3">Fecha</TableHead>
-              <TableHead className="text-[9px] uppercase font-bold px-3">Responsable</TableHead>
+              <TableHead className="text-[9px] uppercase font-bold px-3">Proyecto</TableHead>
               <TableHead className="text-[9px] uppercase font-bold px-3">ID</TableHead>
               <TableHead className="w-28 px-3 text-right"></TableHead>
             </TableRow>
@@ -112,9 +119,12 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                     {formatDate(report.createdAt)}
                   </TableCell>
                   <TableCell className="px-3 py-0">
-                    <span className="text-[10px] font-medium truncate block max-w-[90px]" title={report.createdByEmail}>
-                      {report.createdByEmail?.split('@')[0]}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <Briefcase className="h-2.5 w-2.5 text-muted-foreground" />
+                      <span className="text-[10px] font-bold text-primary" title={report.trelloCardName || 'Sin proyecto'}>
+                        {getProjectCode(report.trelloCardName || '')}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell className="px-3 py-0">
                     <span className="text-[9px] font-code text-muted-foreground uppercase">

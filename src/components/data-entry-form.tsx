@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -11,13 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { SamplingReportForm } from './sampling-report-form';
 import { ReportList } from './report-list';
 import { ReportDetail } from './report-detail';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const stationSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -46,10 +48,27 @@ export function DataEntryForm({
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
   
+  // Trello Projects
+  const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>('');
+
   // Estados para edición de coordenadas
   const [isEditingCoords, setIsEditingCoords] = useState(false);
   const [editLat, setEditLat] = useState('');
   const [editLon, setEditLon] = useState('');
+
+  // Cargar proyectos de Trello desde localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('trello_cards_sync');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setTrelloProjects(parsed.cards || []);
+      } catch (e) {
+        console.error('Error parsing Trello data from localStorage', e);
+      }
+    }
+  }, []);
 
   // Obtener detalles de la estación si ya existe
   const stationRef = useMemo(() => {
@@ -76,6 +95,7 @@ export function DataEntryForm({
     setCurrentReportId(null);
     setViewingReportId(null);
     setIsEditingCoords(false);
+    setSelectedProject('');
   }, [selectedPoint?.stationId, selectedPoint]);
 
   const formatDate = (timestamp: any) => {
@@ -164,9 +184,18 @@ export function DataEntryForm({
 
   const handleStartReport = () => {
     if (!selectedPoint?.stationId || !user) return;
+    if (!selectedProject) {
+      toast({
+        variant: "destructive",
+        title: "Atención",
+        description: "Por favor, seleccioná un proyecto antes de iniciar el reporte.",
+      });
+      return;
+    }
 
     const reportData = {
       stationId: selectedPoint.stationId,
+      trelloCardName: selectedProject,
       createdAt: serverTimestamp(),
       createdByEmail: user.email,
       status: 'open',
@@ -480,23 +509,54 @@ export function DataEntryForm({
       {activeView === 'summary' && selectedPoint.stationId && (
         <div className="space-y-4">
           <Separator />
-          <div className="grid grid-cols-1 gap-4 pt-2">
-            <Button 
-              className="w-full h-14 text-md font-bold flex items-center gap-3 bg-primary hover:bg-primary/90"
-              onClick={handleStartReport}
-            >
-              <FileText className="h-5 w-5" />
-              Crear reporte de muestreo
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5"
-              onClick={() => setActiveView('consult')}
-            >
-              <Search className="h-5 w-5" />
-              Ver
-            </Button>
+          
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5">
+                <Briefcase className="h-3 w-3" /> Proyecto Asociado (Trello)
+              </Label>
+              <Select value={selectedProject} onValueChange={setSelectedProject}>
+                <SelectTrigger className="w-full h-10 text-xs font-medium border-primary/20 bg-primary/5">
+                  <SelectValue placeholder="Seleccioná un proyecto para reportar" />
+                </SelectTrigger>
+                <SelectContent>
+                  {trelloProjects.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-muted-foreground italic">
+                      No se encontraron proyectos sincronizados.
+                    </div>
+                  ) : (
+                    trelloProjects.map((projectName) => (
+                      <SelectItem key={projectName} value={projectName} className="text-xs">
+                        {projectName}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 pt-2">
+              <Button 
+                className={cn(
+                  "w-full h-14 text-md font-bold flex items-center gap-3 transition-all",
+                  selectedProject ? "bg-primary hover:bg-primary/90" : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+                )}
+                onClick={handleStartReport}
+                disabled={!selectedProject}
+              >
+                <FileText className="h-5 w-5" />
+                Crear reporte de muestreo
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5"
+                onClick={() => setActiveView('consult')}
+              >
+                <Search className="h-5 w-5" />
+                Ver
+              </Button>
+            </div>
           </div>
         </div>
       )}
