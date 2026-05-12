@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -31,6 +30,10 @@ export default function Home() {
 
   const handlePointUpdate = useCallback((point: SelectedPoint) => {
     setSelectedPoint(point);
+  }, []);
+
+  const handleDeselect = useCallback(() => {
+    setSelectedPoint(null);
   }, []);
 
   const handleStationCreated = useCallback((id: string, name: string) => {
@@ -94,6 +97,7 @@ export default function Home() {
                   selectedPoint={selectedPoint} 
                   onStationCreated={handleStationCreated}
                   onPointUpdate={handlePointUpdate}
+                  onDeselect={handleDeselect}
                 />
               </div>
             </ScrollArea>

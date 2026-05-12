@@ -30,11 +30,13 @@ type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'rep
 export function DataEntryForm({ 
   selectedPoint,
   onStationCreated,
-  onPointUpdate
+  onPointUpdate,
+  onDeselect
 }: { 
   selectedPoint: SelectedPoint | null;
   onStationCreated: (id: string, name: string) => void;
   onPointUpdate: (point: SelectedPoint) => void;
+  onDeselect: () => void;
 }) {
   const { toast } = useToast();
   const db = useFirestore();
@@ -315,12 +317,15 @@ export function DataEntryForm({
       {selectedPoint.stationId ? (
         <Card className="border-primary/20 bg-primary/5 shadow-sm overflow-hidden">
           <CardHeader className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 flex-1">
-                <CardTitle className="text-xl font-bold text-primary leading-tight">
-                  {selectedPoint.name}
-                </CardTitle>
-                <div className="space-y-0.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Database className="h-5 w-5 text-primary/60 shrink-0" />
+                  <CardTitle className="text-xl font-bold text-primary leading-none">
+                    {selectedPoint.name}
+                  </CardTitle>
+                </div>
+                <div className="space-y-0.5 ml-7">
                   <div className="flex items-center gap-2">
                     {isEditingCoords ? (
                       <div className="flex items-center gap-1 mt-1">
@@ -364,20 +369,28 @@ export function DataEntryForm({
                   </CardDescription>
                 </div>
               </div>
-              <Database className="h-5 w-5 text-primary/40 mt-1" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onDeselect}
+                className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                title="Deseleccionar"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </CardHeader>
         </Card>
       ) : (
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="p-4 pb-3">
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-2">
               <div className="space-y-1 flex-1">
                 <CardTitle className="text-lg flex items-center gap-2 text-primary">
                   <PlusCircle className="h-5 w-5" />
                   Nuevo Punto de Muestreo
                 </CardTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 ml-7">
                   {isEditingCoords ? (
                     <div className="flex items-center gap-1 mt-1">
                       <Input 
@@ -414,6 +427,15 @@ export function DataEntryForm({
                   )}
                 </div>
               </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onDeselect}
+                className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                title="Cancelar"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </CardHeader>
         </Card>
