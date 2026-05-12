@@ -49,7 +49,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const baseLayerRef = useRef<TileLayer<any> | null>(null);
   const basinsLayerRef = useRef<VectorLayer<any> | null>(null);
   
-  // Capas GeoJSON
+  // Capas GeoJSON - Mantener a rajatabla
   const basinsSource = useRef<VectorSource>(new VectorSource({
     url: '/data/cuencas_dph.json',
     format: new GeoJSON({ dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' })}));
@@ -77,14 +77,12 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
-    // Capa de Cuencas (Visual)
     const basinsLayer = new VectorLayer({
       source: basinsSource.current,
       zIndex: 5,
     });
     basinsLayerRef.current = basinsLayer;
 
-    // Capa de Códigos (Invisible, para detección de CODIGO)
     const codesLayer = new VectorLayer({
       source: codesSource.current,
       style: new Style({
@@ -100,7 +98,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     });
     baseLayerRef.current = baseLayer;
 
-    // Configuración del Cluster
     const clusterSource = new Cluster({
       distance: 40,
       source: stationsSource.current,
@@ -114,6 +111,13 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     const selectionLayer = new VectorLayer({
       source: selectionSource.current,
+      style: new Style({
+        image: new CircleStyle({
+          radius: 8,
+          stroke: new Stroke({ color: '#ef4444', width: 3 }),
+          fill: new Fill({ color: 'rgba(239, 68, 68, 0.3)' }),
+        }),
+      }),
       zIndex: 20,
     });
 
@@ -169,7 +173,27 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
   }, []);
 
-  // Actualizar estilos de cuencas dinámicamente
+  // Sincronizar marcador de selección cuando cambian las coordenadas (manual o clic)
+  useEffect(() => {
+    if (!mapInstance.current || !selectedPoint) {
+      selectionSource.current.clear();
+      return;
+    }
+
+    selectionSource.current.clear();
+    const selectionFeature = new Feature({
+      geometry: new Point(fromLonLat([selectedPoint.lon, selectedPoint.lat])),
+    });
+    selectionSource.current.addFeature(selectionFeature);
+
+    // Centrar suavemente si la selección cambió
+    mapInstance.current.getView().animate({
+      center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
+      duration: 500
+    });
+  }, [selectedPoint?.lat, selectedPoint?.lon]);
+
+  // Estilos de cuencas
   useEffect(() => {
     if (!basinsLayerRef.current) return;
     basinsLayerRef.current.setStyle((feature, resolution) => {
@@ -202,7 +226,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     });
   }, [activeLayer]);
 
-  // Actualizar estilos de estaciones y clústeres dinámicamente
+  // Estilos de estaciones y clústeres
   useEffect(() => {
     if (!stationsLayerRef.current) return;
     stationsLayerRef.current.setStyle((feature, resolution) => {
@@ -213,8 +237,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         return new Style({
           image: new CircleStyle({
             radius: 12 + Math.min(size, 8),
-            // Se aplicó transparencia del 30% (alpha 0.7) al color primario
             fill: new Fill({ color: 'rgba(78, 151, 202, 0.7)' }),
+            stroke: undefined, // Sin contorno blanco
           }),
           text: new Text({
             text: size.toString(),
@@ -247,7 +271,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     });
   }, [activeLayer, selectedPoint?.stationId]);
 
-  // Manejo de capas base sin reiniciar el mapa
+  // Capas Base
   useEffect(() => {
     if (!baseLayerRef.current) return;
     const baseLayer = baseLayerRef.current;
@@ -261,7 +285,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       baseLayer.setSource(new OSM());
     }
 
-    // Filtros de grises para OSM/Grayscale
     const listener = (evt: any) => {
       if (activeLayer === 'grayscale') {
         const ctx = evt.context as CanvasRenderingContext2D;
@@ -283,7 +306,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
   }, [activeLayer]);
 
-  // Sincronizar datos de estaciones
+  // Sincronizar datos de estaciones desde Firestore
   useEffect(() => {
     if (!stationsSource.current) return;
     stationsSource.current.clear();
