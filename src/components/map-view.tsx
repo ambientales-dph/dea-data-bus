@@ -213,8 +213,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         return new Style({
           image: new CircleStyle({
             radius: 12 + Math.min(size, 8),
-            // Se eliminó el stroke blanco aquí
-            fill: new Fill({ color: 'hsl(204, 56%, 55%)' }),
+            // Se aplicó transparencia del 30% (alpha 0.7) al color primario
+            fill: new Fill({ color: 'rgba(78, 151, 202, 0.7)' }),
           }),
           text: new Text({
             text: size.toString(),
