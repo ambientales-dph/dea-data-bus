@@ -173,7 +173,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
   }, []);
 
-  // Sincronizar marcador de selección cuando cambian las coordenadas (manual o clic)
+  // Sincronizar marcador de selección y detectar cambio de cuenca al reubicar
   useEffect(() => {
     if (!mapInstance.current || !selectedPoint) {
       selectionSource.current.clear();
@@ -186,11 +186,26 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     });
     selectionSource.current.addFeature(selectionFeature);
 
-    // Centrar suavemente si la selección cambió
+    // Centrar suavemente
     mapInstance.current.getView().animate({
       center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
       duration: 500
     });
+
+    // Detectar nueva cuenca si es un punto no registrado (edición manual de coordenadas)
+    if (!selectedPoint.stationId) {
+      const coord = fromLonLat([selectedPoint.lon, selectedPoint.lat]);
+      const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(coord);
+      const newBasinCode = featuresAtPoint.length > 0 ? featuresAtPoint[0].get('CODIGO') || '' : '';
+      
+      if (newBasinCode !== selectedPoint.basinCode) {
+        // Notificar cambio de cuenca para regenerar el nombre propuesto
+        onPointSelectRef.current?.({
+          ...selectedPoint,
+          basinCode: newBasinCode
+        });
+      }
+    }
   }, [selectedPoint?.lat, selectedPoint?.lon]);
 
   // Estilos de cuencas
@@ -238,7 +253,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           image: new CircleStyle({
             radius: 12 + Math.min(size, 8),
             fill: new Fill({ color: 'rgba(78, 151, 202, 0.7)' }),
-            stroke: undefined, // Sin contorno blanco
+            stroke: undefined,
           }),
           text: new Text({
             text: size.toString(),
