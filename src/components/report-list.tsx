@@ -5,10 +5,8 @@ import { collection, query, where } from 'firebase/firestore';
 import { useFirestore, useCollection } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Calendar, FileSearch, Plus, FlaskConical } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Loader2, Calendar, FileSearch, Plus } from 'lucide-react';
 
 interface ReportListProps {
   stationId: string;
@@ -96,7 +94,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
             <TableRow className="h-10">
               <TableHead className="text-[10px] uppercase font-bold px-3">Fecha</TableHead>
               <TableHead className="text-[10px] uppercase font-bold px-3">Responsable</TableHead>
-              <TableHead className="text-[10px] uppercase font-bold px-3 text-center">Estado</TableHead>
+              <TableHead className="text-[10px] uppercase font-bold px-3">ID</TableHead>
               <TableHead className="w-32 px-3 text-right"></TableHead>
             </TableRow>
           </TableHeader>
@@ -118,18 +116,10 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                       {report.createdByEmail?.split('@')[0]}
                     </span>
                   </TableCell>
-                  <TableCell className="px-3 py-1 text-center">
-                    <Badge 
-                      variant="outline" 
-                      className={cn(
-                        "h-4 text-[8px] uppercase font-bold px-1.5",
-                        report.status === 'open' 
-                          ? "border-green-200 text-green-700 bg-green-50" 
-                          : "border-gray-200 text-gray-500 bg-gray-50"
-                      )}
-                    >
-                      {report.status === 'open' ? 'Abierto' : 'Cerrado'}
-                    </Badge>
+                  <TableCell className="px-3 py-1">
+                    <span className="text-[10px] font-code text-muted-foreground uppercase">
+                      {report.id.substring(0, 8)}
+                    </span>
                   </TableCell>
                   <TableCell className="px-3 py-1 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -142,7 +132,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </Button>
-                      <div className="flex items-center gap-1 group/btn">
+                      <div className="flex items-center gap-0.5">
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -152,7 +142,10 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                         >
                           <FileSearch className="h-3.5 w-3.5" />
                         </Button>
-                        <div className="flex items-center bg-primary/5 px-1.5 py-0.5 rounded text-[10px] font-bold text-primary border border-primary/10 min-w-[22px] justify-center" title="Cantidad de analitos">
+                        <div 
+                          className="flex items-center px-1 text-[10px] font-bold text-primary min-w-[18px] justify-center" 
+                          title="Muestreos"
+                        >
                           {analyteCounts[report.id] || 0}
                         </div>
                       </div>
