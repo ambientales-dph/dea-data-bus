@@ -267,14 +267,14 @@ export function DataEntryForm({
 
   if (!selectedPoint) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4 px-4">
-        <div className="p-6 bg-primary/5 rounded-full">
-          <MapPin className="h-12 w-12 text-primary/40 animate-pulse" />
+      <div className="flex flex-col items-center pt-24 min-h-[60vh] text-center space-y-6 px-4">
+        <div className="p-8 bg-primary/5 rounded-full shadow-inner border border-primary/5">
+          <MapPin className="h-16 w-16 text-primary/30 animate-pulse" />
         </div>
-        <div>
-          <h3 className="text-lg font-bold text-primary">Iniciá la recolección</h3>
-          <p className="text-sm text-muted-foreground">
-            Hacé clic en un punto del mapa para crear una nueva estación o seleccioná una existente.
+        <div className="max-w-xs space-y-2">
+          <h3 className="text-xl font-bold text-primary tracking-tight">Iniciá la recolección</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Hacé clic en un punto del mapa para crear una nueva estación o seleccioná una existente para gestionar sus datos.
           </p>
         </div>
       </div>
