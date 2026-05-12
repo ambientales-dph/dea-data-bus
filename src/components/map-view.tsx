@@ -173,7 +173,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
   }, []);
 
-  // Sincronizar marcador de selección
+  // Sincronizar marcador de selección y detección de cuenca
   useEffect(() => {
     if (!mapInstance.current || !selectedPoint) {
       selectionSource.current.clear();
@@ -191,6 +191,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       duration: 500
     });
 
+    // Si es un punto nuevo o editado, detectar cuenca automáticamente
     if (!selectedPoint.stationId) {
       const coord = fromLonLat([selectedPoint.lon, selectedPoint.lat]);
       const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(coord);
@@ -243,7 +244,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     // Estilo para Códigos Cuencas (Zoom < 6.5)
     codesLayerRef.current.setStyle(() => {
       return new Style({
-        stroke: new Stroke({ color: strokeColor, width: 0.5 }), // Calibre 0.5 como se pidió
+        stroke: new Stroke({ color: strokeColor, width: 0.5 }),
         fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }),
       });
     });
@@ -295,7 +296,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     });
   }, [activeLayer, selectedPoint?.stationId]);
 
-  // Capas Base
+  // Capas Base y Filtros Espectrales
   useEffect(() => {
     if (!baseLayerRef.current) return;
     const baseLayer = baseLayerRef.current;
@@ -323,12 +324,24 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       if (!ctx) return;
 
       if (activeLayer === 'satellite') {
-        // Isolar Banda Roja: Multiplicamos el resultado de renderizado por rojo puro.
-        // Esto mantiene los valores de R y pone G y B en 0.
+        // --- Procesamiento de Banda Roja en Escala de Grises ---
         ctx.save();
+        
+        // 1. Isolar Canal Rojo: Multiplicamos por rojo puro. G y B pasan a ser 0.
         ctx.globalCompositeOperation = 'multiply';
         ctx.fillStyle = '#FF0000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        // 2. Desaturar: Convertimos el canal rojo a luminancia gris.
+        ctx.globalCompositeOperation = 'saturation';
+        ctx.fillStyle = '#000000'; // Saturación 0
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        // 3. Normalizar: Boost de luminosidad para compensar que el canal rojo por sí solo es oscuro.
+        ctx.globalCompositeOperation = 'color-dodge';
+        ctx.fillStyle = '#666666'; 
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
         ctx.restore();
       }
       
