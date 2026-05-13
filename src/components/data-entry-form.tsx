@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -56,22 +56,68 @@ export function DataEntryForm({
   const [editLat, setEditLat] = useState('');
   const [editLon, setEditLon] = useState('');
 
-  // Persistir estado del formulario en localStorage
+  // Referencias para gestionar transiciones de vista de forma precisa
+  const lastPointKeyRef = useRef<string | null>(null);
+  const isInitialLoadRef = useRef(true);
+
+  // 1. Restaurar estado desde localStorage solo en la carga inicial o cuando se selecciona un punto por primera vez
   useEffect(() => {
-    const saved = localStorage.getItem('dea_form_state');
-    if (saved && selectedPoint) {
-      try {
-        const parsed = JSON.parse(saved);
-        setActiveView(parsed.activeView || 'summary');
-        setCurrentReportId(parsed.currentReportId || null);
-        setViewingReportId(parsed.viewingReportId || null);
-        setSelectedProject(parsed.selectedProject || '');
-      } catch (e) {
-        console.error('Error al restaurar estado del formulario', e);
+    if (selectedPoint && isInitialLoadRef.current) {
+      const savedState = localStorage.getItem('dea_form_state');
+      const savedPointStr = localStorage.getItem('dea_selected_point');
+      
+      if (savedState && savedPointStr) {
+        try {
+          const savedPoint = JSON.parse(savedPointStr);
+          // Solo restauramos si el punto actual coincide con el guardado (restauración de sesión)
+          if (savedPoint.lat === selectedPoint.lat && savedPoint.lon === selectedPoint.lon) {
+            const parsed = JSON.parse(savedState);
+            setActiveView(parsed.activeView || 'summary');
+            setCurrentReportId(parsed.currentReportId || null);
+            setViewingReportId(parsed.viewingReportId || null);
+            setSelectedProject(parsed.selectedProject || '');
+          } else {
+            // Si el punto es diferente, forzamos la vista correcta
+            setActiveView(selectedPoint.stationId ? 'summary' : 'create-station');
+          }
+        } catch (e) {
+          setActiveView(selectedPoint.stationId ? 'summary' : 'create-station');
+        }
+      } else {
+        setActiveView(selectedPoint.stationId ? 'summary' : 'create-station');
       }
+      
+      lastPointKeyRef.current = `${selectedPoint.lat}-${selectedPoint.lon}-${selectedPoint.stationId}`;
+      isInitialLoadRef.current = false;
     }
   }, [selectedPoint]);
 
+  // 2. Detectar cambios de punto (clics nuevos en el mapa) y resetear vista
+  useEffect(() => {
+    if (!selectedPoint) {
+      lastPointKeyRef.current = null;
+      return;
+    }
+
+    const currentKey = `${selectedPoint.lat}-${selectedPoint.lon}-${selectedPoint.stationId}`;
+
+    // Si el punto cambió REALMENTE (no es la restauración inicial)
+    if (!isInitialLoadRef.current && lastPointKeyRef.current !== currentKey) {
+      if (selectedPoint.stationId) {
+        setActiveView('summary');
+      } else {
+        setActiveView('create-station');
+      }
+      setCurrentReportId(null);
+      setViewingReportId(null);
+      setIsEditingCoords(false);
+      setSelectedProject('');
+      
+      lastPointKeyRef.current = currentKey;
+    }
+  }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.stationId]);
+
+  // Persistir estado actual del formulario
   useEffect(() => {
     if (selectedPoint) {
       const state = { activeView, currentReportId, viewingReportId, selectedProject };
@@ -79,20 +125,17 @@ export function DataEntryForm({
     }
   }, [activeView, currentReportId, viewingReportId, selectedProject, selectedPoint]);
 
-  // Cargar proyectos de Trello desde localStorage
+  // Cargar proyectos de Trello
   useEffect(() => {
     const stored = localStorage.getItem('trello_cards_sync');
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         setTrelloProjects(parsed.cards || []);
-      } catch (e) {
-        console.error('Error parsing Trello data from localStorage', e);
-      }
+      } catch (e) {}
     }
   }, []);
 
-  // Obtener detalles de la estación si ya existe
   const stationRef = useMemo(() => {
     if (!selectedPoint?.stationId) return null;
     return doc(db, 'stations', selectedPoint.stationId);
@@ -104,26 +147,6 @@ export function DataEntryForm({
     resolver: zodResolver(stationSchema),
     defaultValues: { name: '' },
   });
-
-  // Resetear vista cuando cambia el punto seleccionado (si es un cambio real de punto)
-  useEffect(() => {
-    const savedPoint = localStorage.getItem('dea_selected_point');
-    const isRestoring = savedPoint && selectedPoint && JSON.parse(savedPoint).stationId === selectedPoint.stationId;
-
-    if (!isRestoring) {
-      if (selectedPoint?.stationId) {
-        setActiveView('summary');
-      } else if (selectedPoint) {
-        setActiveView('create-station');
-      } else {
-        setActiveView('summary');
-      }
-      setCurrentReportId(null);
-      setViewingReportId(null);
-      setIsEditingCoords(false);
-      setSelectedProject('');
-    }
-  }, [selectedPoint?.stationId]);
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '---';
@@ -312,19 +335,10 @@ export function DataEntryForm({
   if (activeView === 'report-entry' && currentReportId) {
     return (
       <div className="space-y-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => setActiveView('summary')}
-          className="mb-2"
-        >
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
         </Button>
-        <SamplingReportForm 
-          reportId={currentReportId} 
-          stationId={selectedPoint.stationId!}
-          onClose={() => setActiveView('summary')}
-        />
+        <SamplingReportForm reportId={currentReportId} stationId={selectedPoint.stationId!} onClose={() => setActiveView('summary')} />
       </div>
     );
   }
@@ -332,19 +346,10 @@ export function DataEntryForm({
   if (activeView === 'consult' && selectedPoint.stationId) {
     return (
       <div className="space-y-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => setActiveView('summary')}
-          className="mb-2"
-        >
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
         </Button>
-        <ReportList 
-          stationId={selectedPoint.stationId} 
-          onViewReport={handleViewReportDetails}
-          onOpenReport={handleOpenExistingReport}
-        />
+        <ReportList stationId={selectedPoint.stationId} onViewReport={handleViewReportDetails} onOpenReport={handleOpenExistingReport} />
       </div>
     );
   }
@@ -352,18 +357,10 @@ export function DataEntryForm({
   if (activeView === 'report-view' && viewingReportId) {
     return (
       <div className="space-y-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => setActiveView('consult')}
-          className="mb-2"
-        >
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('consult')} className="mb-2">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al listado
         </Button>
-        <ReportDetail 
-          reportId={viewingReportId} 
-          onClose={() => setActiveView('consult')} 
-        />
+        <ReportDetail reportId={viewingReportId} onClose={() => setActiveView('consult')} />
       </div>
     );
   }
@@ -371,55 +368,36 @@ export function DataEntryForm({
   if (activeView === 'select-project' && selectedPoint.stationId) {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => setActiveView('summary')}
-          className="mb-2"
-        >
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2">
           <ArrowLeft className="mr-2 h-4 w-4" /> Cancelar
         </Button>
-        
         <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
           <CardHeader className="pb-4">
             <CardTitle className="text-md flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-primary" />
               Seleccionar Proyecto
             </CardTitle>
-            <CardDescription className="text-xs">
-              Asociá este nuevo reporte a un proyecto activo de Trello.
-            </CardDescription>
+            <CardDescription className="text-xs">Asociá este nuevo reporte a un proyecto activo de Trello.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">
-                Proyecto de Trello
-              </Label>
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Proyecto de Trello</Label>
               <Select value={selectedProject} onValueChange={setSelectedProject}>
                 <SelectTrigger className="w-full h-11 text-xs font-medium border-primary/20 bg-primary/5">
                   <SelectValue placeholder="Buscá el proyecto..." />
                 </SelectTrigger>
                 <SelectContent>
                   {trelloProjects.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-muted-foreground italic">
-                      No se encontraron proyectos sincronizados.
-                    </div>
+                    <div className="p-4 text-center text-xs text-muted-foreground italic">No se encontraron proyectos sincronizados.</div>
                   ) : (
                     trelloProjects.map((projectName) => (
-                      <SelectItem key={projectName} value={projectName} className="text-xs">
-                        {projectName}
-                      </SelectItem>
+                      <SelectItem key={projectName} value={projectName} className="text-xs">{projectName}</SelectItem>
                     ))
                   )}
                 </SelectContent>
               </Select>
             </div>
-
-            <Button 
-              className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md"
-              disabled={!selectedProject}
-              onClick={handleStartReport}
-            >
+            <Button className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md" disabled={!selectedProject} onClick={handleStartReport}>
               Confirmar e Iniciar Reporte
             </Button>
           </CardContent>
@@ -437,63 +415,33 @@ export function DataEntryForm({
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2">
                   <Database className="h-5 w-5 text-primary/60 shrink-0" />
-                  <CardTitle className="text-xl font-bold text-primary leading-none">
-                    {selectedPoint.name}
-                  </CardTitle>
+                  <CardTitle className="text-xl font-bold text-primary leading-none">{selectedPoint.name}</CardTitle>
                 </div>
                 <div className="space-y-0.5 ml-7">
                   <div className="flex items-center gap-2">
                     {isEditingCoords ? (
                       <div className="flex items-center gap-1 mt-1">
-                        <Input 
-                          value={editLat} 
-                          onChange={(e) => setEditLat(e.target.value)}
-                          className="h-6 w-24 text-[11px] font-code py-0 px-1"
-                        />
-                        <Input 
-                          value={editLon} 
-                          onChange={(e) => setEditLon(e.target.value)}
-                          className="h-6 w-24 text-[11px] font-code py-0 px-1"
-                        />
-                        <button onClick={handleSaveEditedCoords} className="text-green-600 hover:text-green-700">
-                          <Check className="h-3.5 w-3.5" />
-                        </button>
-                        <button onClick={() => setIsEditingCoords(false)} className="text-destructive hover:text-destructive/80">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+                        <Input value={editLat} onChange={(e) => setEditLat(e.target.value)} className="h-6 w-24 text-[11px] font-code py-0 px-1" />
+                        <Input value={editLon} onChange={(e) => setEditLon(e.target.value)} className="h-6 w-24 text-[11px] font-code py-0 px-1" />
+                        <button onClick={handleSaveEditedCoords} className="text-green-600 hover:text-green-700"><Check className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => setIsEditingCoords(false)} className="text-destructive hover:text-destructive/80"><X className="h-3.5 w-3.5" /></button>
                       </div>
                     ) : (
                       <>
                         <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
                           {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
                         </CardDescription>
-                        <button 
-                          onClick={handleStartEditCoords}
-                          className="text-muted-foreground hover:text-primary transition-colors"
-                          title="Editar coordenadas"
-                        >
+                        <button onClick={handleStartEditCoords} className="text-muted-foreground hover:text-primary transition-colors" title="Editar coordenadas">
                           <Pencil className="h-3 w-3" />
                         </button>
                       </>
                     )}
                   </div>
-                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
-                    Creación: {formatDate(stationDetails?.createdAt)}
-                  </CardDescription>
-                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
-                    Por: {stationDetails?.userEmail || '---'}
-                  </CardDescription>
+                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>
+                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">Por: {stationDetails?.userEmail || '---'}</CardDescription>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={onDeselect}
-                className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                title="Deseleccionar"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Deseleccionar"><X className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
         </Card>
@@ -502,29 +450,14 @@ export function DataEntryForm({
           <CardHeader className="p-4 pb-3">
             <div className="flex items-start justify-between gap-2">
               <div className="space-y-1 flex-1">
-                <CardTitle className="text-lg flex items-center gap-2 text-primary">
-                  <PlusCircle className="h-5 w-5" />
-                  Nuevo Punto de Muestreo
-                </CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2 text-primary"><PlusCircle className="h-5 w-5" />Nuevo Punto de Muestreo</CardTitle>
                 <div className="flex items-center gap-2 ml-7">
                   {isEditingCoords ? (
                     <div className="flex items-center gap-1 mt-1">
-                      <Input 
-                        value={editLat} 
-                        onChange={(e) => setEditLat(e.target.value)}
-                        className="h-6 w-24 text-[11px] font-code py-0 px-1"
-                      />
-                      <Input 
-                        value={editLon} 
-                        onChange={(e) => setEditLon(e.target.value)}
-                        className="h-6 w-24 text-[11px] font-code py-0 px-1"
-                      />
-                      <button onClick={handleSaveEditedCoords} className="text-green-600 hover:text-green-700">
-                        <Check className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => setIsEditingCoords(false)} className="text-destructive hover:text-destructive/80">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                      <Input value={editLat} onChange={(e) => setEditLat(e.target.value)} className="h-6 w-24 text-[11px] font-code py-0 px-1" />
+                      <Input value={editLon} onChange={(e) => setEditLon(e.target.value)} className="h-6 w-24 text-[11px] font-code py-0 px-1" />
+                      <button onClick={handleSaveEditedCoords} className="text-green-600 hover:text-green-700"><Check className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setIsEditingCoords(false)} className="text-destructive hover:text-destructive/80"><X className="h-3.5 w-3.5" /></button>
                     </div>
                   ) : (
                     <>
@@ -532,33 +465,21 @@ export function DataEntryForm({
                         {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
                         {selectedPoint.basinCode && ` • Cuenca: ${selectedPoint.basinCode}`}
                       </CardDescription>
-                      <button 
-                        onClick={handleStartEditCoords}
-                        className="text-muted-foreground hover:text-primary transition-colors"
-                        title="Editar coordenadas"
-                      >
+                      <button onClick={handleStartEditCoords} className="text-muted-foreground hover:text-primary transition-colors" title="Editar coordenadas">
                         <Pencil className="h-3 w-3" />
                       </button>
                     </>
                   )}
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={onDeselect}
-                className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                title="Cancelar"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Cancelar"><X className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
         </Card>
       )}
 
       {activeView === 'create-station' && (
-        <Card className="border-t-4 border-t-accent shadow-lg">
+        <Card className="border-t-4 border-t-accent shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
           <CardHeader>
             <CardTitle className="text-md">Definir Estación</CardTitle>
             <CardDescription>Verificá el nombre sugerido antes de guardar.</CardDescription>
@@ -568,25 +489,17 @@ export function DataEntryForm({
               <div className="space-y-2">
                 <Label htmlFor="station-name">Nombre de la Estación</Label>
                 <div className="relative">
-                  <Input 
-                    id="station-name" 
-                    placeholder="Ej: EMA0001"
-                    className={cn(isGeneratingName && "pr-10")}
-                    {...stationForm.register('name')} 
-                  />
+                  <Input id="station-name" placeholder="Ej: EMA0001" className={cn(isGeneratingName && "pr-10")} {...stationForm.register('name')} />
                   {isGeneratingName && (
                     <div className="absolute right-3 top-2.5">
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
                   )}
                 </div>
-                {stationForm.formState.errors.name && (
-                  <p className="text-xs text-destructive">{stationForm.formState.errors.name.message}</p>
-                )}
+                {stationForm.formState.errors.name && <p className="text-xs text-destructive">{stationForm.formState.errors.name.message}</p>}
               </div>
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isGeneratingName}>
-                <Send className="mr-2 h-4 w-4" />
-                Guardar punto en el mapa
+                <Send className="mr-2 h-4 w-4" /> Guardar punto en el mapa
               </Button>
             </form>
           </CardContent>
@@ -596,23 +509,12 @@ export function DataEntryForm({
       {activeView === 'summary' && selectedPoint.stationId && (
         <div className="space-y-4">
           <Separator />
-          
           <div className="grid grid-cols-1 gap-3 pt-2">
-            <Button 
-              className="w-full h-14 text-md font-bold flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md transition-all hover:scale-[1.01]"
-              onClick={() => setActiveView('select-project')}
-            >
-              <FileText className="h-6 w-6" />
-              Crear reporte de muestreo
+            <Button className="w-full h-14 text-md font-bold flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md transition-all hover:scale-[1.01]" onClick={() => setActiveView('select-project')}>
+              <FileText className="h-6 w-6" /> Crear reporte de muestreo
             </Button>
-            
-            <Button 
-              variant="outline" 
-              className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5 shadow-sm"
-              onClick={() => setActiveView('consult')}
-            >
-              <Search className="h-6 w-6" />
-              Ver
+            <Button variant="outline" className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5 shadow-sm" onClick={() => setActiveView('consult')}>
+              <Search className="h-6 w-6" /> Ver
             </Button>
           </div>
         </div>
