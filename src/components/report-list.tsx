@@ -65,7 +65,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
     return date.toLocaleDateString('es-AR', {
       day: '2-digit',
       month: '2-digit',
-      year: '2-digit' // Formato de fecha corta
+      year: '2-digit'
     });
   };
 
@@ -122,23 +122,26 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                     <TableCell className="px-3 py-0">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="text-[9px] font-code text-muted-foreground uppercase cursor-help hover:text-primary transition-colors">
+                          <span className="text-[10px] font-code text-primary font-bold uppercase cursor-help hover:underline decoration-primary/30 transition-all">
                             {report.oid || report.id.substring(0, 8)}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent className="p-2 w-auto min-w-[150px]">
+                        <TooltipContent className="p-2 w-auto min-w-[180px] shadow-2xl border-primary/20">
                           <div className="space-y-1.5">
-                            <div className="flex items-center gap-1.5 border-b pb-1">
-                              <Users className="h-3 w-3 text-primary" />
-                              <span className="text-[10px] font-bold uppercase tracking-wider">Colaboradores</span>
+                            <div className="flex items-center gap-1.5 border-b pb-1.5 mb-1">
+                              <Users className="h-3.5 w-3.5 text-primary" />
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Técnicos Colaboradores</span>
                             </div>
-                            <div className="flex flex-col gap-0.5">
+                            <div className="flex flex-col gap-1">
                               {report.editors && report.editors.length > 0 ? (
                                 report.editors.map((email: string) => (
-                                  <span key={email} className="text-[9px] font-medium">{email}</span>
+                                  <div key={email} className="flex items-center gap-2 text-[10px] font-medium bg-muted/30 px-2 py-1 rounded">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                    {email}
+                                  </div>
                                 ))
                               ) : (
-                                <span className="text-[9px] italic text-muted-foreground">Sin editores registrados</span>
+                                <span className="text-[9px] italic text-muted-foreground px-1">Sin técnicos registrados</span>
                               )}
                             </div>
                           </div>
@@ -148,7 +151,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                     <TableCell className="px-3 py-0">
                       <div className="flex items-center gap-1">
                         <Briefcase className="h-2.5 w-2.5 text-muted-foreground" />
-                        <span className="text-[10px] font-bold text-primary truncate max-w-[80px]" title={report.trelloCardName || 'Sin proyecto'}>
+                        <span className="text-[10px] font-bold text-muted-foreground truncate max-w-[80px]" title={report.trelloCardName || 'Sin proyecto'}>
                           {getProjectCode(report.trelloCardName || '')}
                         </span>
                       </div>

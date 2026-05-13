@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, query, where, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -108,6 +107,13 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
     
     addDoc(samplesCol, sampleData)
       .then(() => {
+        // Actualizar lista de editores en el reporte de forma atómica
+        if (user.email) {
+          updateDoc(reportRef, {
+            editors: arrayUnion(user.email)
+          }).catch(console.error);
+        }
+
         // Al guardar exitosamente, limpiamos el borrador del analito actual
         localStorage.removeItem(`dea_draft_${reportId}`);
         form.reset({
