@@ -21,6 +21,7 @@
       "description": "Un reporte de monitoreo que agrupa múltiples mediciones.",
       "type": "object",
       "properties": {
+        "oid": { "type": "string", "description": "Identificador único técnico del reporte (RM + Cuenca + Secuencial)." },
         "stationId": { "type": "string", "description": "ID de la estación asociada." },
         "trelloCardName": { "type": "string", "description": "Nombre de la tarjeta de Trello (Proyecto) asociada." },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -28,7 +29,7 @@
         "status": { "type": "string", "enum": ["open", "closed"] },
         "editors": { "type": "array", "items": { "type": "string" }, "description": "Emails de los técnicos que aportaron datos." }
       },
-      "required": ["stationId", "createdAt", "createdByEmail"]
+      "required": ["stationId", "createdAt", "createdByEmail", "oid"]
     },
     "Sample": {
       "title": "Sample",

@@ -121,7 +121,7 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg">Detalle del Reporte</CardTitle>
+              <CardTitle className="text-lg">{reportData?.oid || 'Detalle del Reporte'}</CardTitle>
               <CardDescription>
                 Creado el {formatDate(reportData?.createdAt)}
               </CardDescription>

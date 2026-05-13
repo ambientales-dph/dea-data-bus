@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -232,7 +233,7 @@ export function DataEntryForm({
     });
   };
 
-  const handleStartReport = () => {
+  const handleStartReport = async () => {
     if (!selectedPoint?.stationId || !user) return;
     if (!selectedProject) {
       toast({
@@ -243,7 +244,38 @@ export function DataEntryForm({
       return;
     }
 
+    // Generar OID dinámico
+    const basinCode = selectedPoint.basinCode || 'XXX';
+    const prefix = `RM${basinCode}`;
+    let nextNumber = 1;
+
+    try {
+      const reportsCol = collection(db, 'reports');
+      const q = query(
+        reportsCol,
+        where('oid', '>=', prefix),
+        where('oid', '<=', prefix + '\uf8ff'),
+        orderBy('oid', 'desc'),
+        limit(1)
+      );
+      
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const lastOid = snapshot.docs[0].data().oid as string;
+        const numPart = lastOid.substring(prefix.length);
+        const lastNum = parseInt(numPart, 10);
+        if (!isNaN(lastNum)) {
+          nextNumber = lastNum + 1;
+        }
+      }
+    } catch (e) {
+      console.error("Error generating report OID", e);
+    }
+
+    const oid = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
+
     const reportData = {
+      oid,
       stationId: selectedPoint.stationId,
       trelloCardName: selectedProject,
       createdAt: serverTimestamp(),
@@ -260,7 +292,7 @@ export function DataEntryForm({
         setActiveView('report-entry');
         toast({
           title: "Reporte iniciado",
-          description: "Podés comenzar a cargar los analitos.",
+          description: `Se generó el OID: ${oid}`,
         });
       })
       .catch(async (error) => {

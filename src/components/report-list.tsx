@@ -101,7 +101,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
             <TableRow className="h-8">
               <TableHead className="text-[9px] uppercase font-bold px-3">Fecha</TableHead>
               <TableHead className="text-[9px] uppercase font-bold px-3">Proyecto</TableHead>
-              <TableHead className="text-[9px] uppercase font-bold px-3">ID</TableHead>
+              <TableHead className="text-[9px] uppercase font-bold px-3">OID</TableHead>
               <TableHead className="w-28 px-3 text-right"></TableHead>
             </TableRow>
           </TableHeader>
@@ -128,7 +128,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                   </TableCell>
                   <TableCell className="px-3 py-0">
                     <span className="text-[9px] font-code text-muted-foreground uppercase">
-                      {report.id.substring(0, 8)}
+                      {report.oid || report.id.substring(0, 8)}
                     </span>
                   </TableCell>
                   <TableCell className="px-3 py-0 text-right">

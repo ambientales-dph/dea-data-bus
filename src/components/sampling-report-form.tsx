@@ -1,11 +1,12 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore, useUser, useCollection, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { collection, query, where, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { useFirestore, useUser, useCollection, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,7 +38,11 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
   const db = useFirestore();
   const { user } = useUser();
 
-  // Consulta simple sin orderBy para evitar requerir índices compuestos manuales
+  // Obtener datos del reporte para mostrar el OID
+  const reportRef = useMemo(() => doc(db, 'reports', reportId), [db, reportId]);
+  const { data: reportData } = useDoc(reportRef);
+
+  // Consulta simple para analitos
   const samplesQuery = useMemo(() => {
     return query(
       collection(db, 'samples'),
@@ -145,7 +150,7 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg">Carga de Analitos</CardTitle>
-              <CardDescription>ID Reporte: {reportId.substring(0, 8)}</CardDescription>
+              <CardDescription>Reporte: <span className="font-bold text-primary">{reportData?.oid || 'Cargando...'}</span></CardDescription>
             </div>
             <Badge variant="outline" className="text-primary border-primary">
               Activo
