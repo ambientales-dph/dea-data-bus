@@ -1,15 +1,17 @@
 
 'use client';
 
-import { useMemo } from 'react';
-import { collection, query, where, doc } from 'firebase/firestore';
-import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { useMemo, useState, useEffect } from 'react';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle2, User, Share2, Briefcase } from 'lucide-react';
+import { Loader2, CheckCircle2, User, Briefcase, Pencil, Check, X } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 interface ReportDetailProps {
   reportId: string;
@@ -18,12 +20,30 @@ interface ReportDetailProps {
 
 export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
   const db = useFirestore();
+  const { toast } = useToast();
+  
+  const [isEditingProject, setIsEditingProject] = useState(false);
+  const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>('');
+
+  // Cargar proyectos de Trello desde localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('trello_cards_sync');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setTrelloProjects(parsed.cards || []);
+      } catch (e) {
+        console.error('Error parsing Trello data', e);
+      }
+    }
+  }, []);
 
   // Obtener datos del reporte
   const reportRef = useMemo(() => doc(db, 'reports', reportId), [db, reportId]);
   const { data: reportData, loading: reportLoading } = useDoc(reportRef);
 
-  // Consulta simple sin orderBy para evitar requerir índices compuestos manuales
+  // Consulta de analitos
   const samplesQuery = useMemo(() => {
     return query(
       collection(db, 'samples'),
@@ -33,7 +53,34 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
 
   const { data: samples, loading: samplesLoading } = useCollection(samplesQuery);
 
-  // Ordenamiento en memoria
+  // Sincronizar proyecto seleccionado cuando se carga el reporte
+  useEffect(() => {
+    if (reportData?.trelloCardName) {
+      setSelectedProject(reportData.trelloCardName);
+    }
+  }, [reportData]);
+
+  const handleSaveProject = () => {
+    if (!selectedProject) return;
+
+    updateDoc(reportRef, { trelloCardName: selectedProject })
+      .then(() => {
+        setIsEditingProject(false);
+        toast({
+          title: "Proyecto actualizado",
+          description: "La asociación con Trello se guardó correctamente.",
+        });
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: reportRef.path,
+          operation: 'update',
+          requestResourceData: { trelloCardName: selectedProject },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+  };
+
   const sortedSamples = useMemo(() => {
     return [...samples].sort((a: any, b: any) => {
       const timeA = a.timestamp?.toMillis?.() || 0;
@@ -63,7 +110,7 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin mb-2" />
-        <p className="text-sm">Cargando analitos...</p>
+        <p className="text-sm">Cargando datos...</p>
       </div>
     );
   }
@@ -83,11 +130,49 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
               {reportData?.status === 'open' ? 'Activo' : 'Cerrado'}
             </Badge>
           </div>
+          
           <div className="mt-3 space-y-2">
-            <div className="flex items-center gap-2 text-xs text-primary bg-primary/5 p-2 rounded-md border border-primary/10">
-              <Briefcase className="h-3 w-3" />
-              <span>Proyecto: <strong className="font-bold">{reportData?.trelloCardName || 'No asociado'}</strong></span>
+            {/* Sección de Proyecto con edición */}
+            <div className="flex flex-col gap-2">
+              {isEditingProject ? (
+                <div className="flex items-center gap-2 bg-primary/5 p-2 rounded-md border border-primary/20 animate-in fade-in duration-200">
+                  <Briefcase className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <Select value={selectedProject} onValueChange={setSelectedProject}>
+                    <SelectTrigger className="h-7 text-[11px] py-0 border-primary/30 bg-white">
+                      <SelectValue placeholder="Seleccionar proyecto..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {trelloProjects.map((p) => (
+                        <SelectItem key={p} value={p} className="text-[11px]">{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <button onClick={handleSaveProject} className="text-green-600 hover:text-green-700 p-1">
+                    <Check className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => setIsEditingProject(false)} className="text-destructive hover:text-destructive/80 p-1">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between group bg-primary/5 p-2 rounded-md border border-primary/10">
+                  <div className="flex items-center gap-2 text-xs text-primary overflow-hidden">
+                    <Briefcase className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">
+                      Proyecto: <strong className="font-bold">{reportData?.trelloCardName || 'No asociado'}</strong>
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => setIsEditingProject(true)}
+                    className="ml-2 text-primary/40 hover:text-primary transition-colors p-1"
+                    title="Editar asociación"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
             </div>
+
             <div className="flex items-center gap-2 text-[10px] text-muted-foreground px-2">
               <User className="h-3 w-3" />
               <span>Iniciado por: <strong>{reportData?.createdByEmail}</strong></span>
