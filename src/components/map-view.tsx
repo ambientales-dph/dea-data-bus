@@ -337,14 +337,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         ctx.fillStyle = '#000000'; 
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
-        // 3. Normalizar y potenciar iluminaciones (Color Dodge con valor más alto para desplazar a claros)
+        // 3. Normalizar y potenciar iluminaciones (Aclarar más para desplazar a blancos)
         ctx.globalCompositeOperation = 'color-dodge';
-        ctx.fillStyle = '#888888'; 
+        ctx.fillStyle = '#B0B0B0'; 
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // 4. Aumentar contraste mediante superposición
+        // 4. Aumentar contraste mediante superposición técnica
         ctx.globalCompositeOperation = 'overlay';
-        ctx.fillStyle = '#999999';
+        ctx.fillStyle = '#A0A0A0';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
         ctx.restore();
