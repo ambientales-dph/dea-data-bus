@@ -43,6 +43,7 @@ export function DataEntryForm({
   const db = useFirestore();
   const { user } = useUser();
   const [isGeneratingName, setIsGeneratingName] = useState(false);
+  const [isStartingReport, setIsStartingReport] = useState(false);
   const [activeView, setActiveView] = useState<FormView>('summary');
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
@@ -233,6 +234,8 @@ export function DataEntryForm({
       return;
     }
 
+    setIsStartingReport(true);
+
     const basinCode = (stationDetails as any)?.basinCode || selectedPoint.basinCode || 'XXX';
     const prefix = `RM${basinCode}`;
     let nextNumber = 1;
@@ -256,41 +259,41 @@ export function DataEntryForm({
           nextNumber = lastNum + 1;
         }
       }
+
+      const oid = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
+
+      const reportData = {
+        oid,
+        stationId: selectedPoint.stationId,
+        trelloCardName: selectedProject,
+        createdAt: serverTimestamp(),
+        createdByEmail: user.email,
+        status: 'open',
+        editors: [user.email]
+      };
+
+      await addDoc(reportsCol, reportData)
+        .then((docRef) => {
+          setCurrentReportId(docRef.id);
+          setActiveView('report-entry');
+          toast({
+            title: "Reporte iniciado",
+            description: `Se generó el OID: ${oid}`,
+          });
+        })
+        .catch(async (error) => {
+          const permissionError = new FirestorePermissionError({
+            path: 'reports',
+            operation: 'create',
+            requestResourceData: reportData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        });
     } catch (e) {
-      console.error("Error generating report OID", e);
+      console.error("Error creating report OID", e);
+    } finally {
+      setIsStartingReport(false);
     }
-
-    const oid = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
-
-    const reportData = {
-      oid,
-      stationId: selectedPoint.stationId,
-      trelloCardName: selectedProject,
-      createdAt: serverTimestamp(),
-      createdByEmail: user.email,
-      status: 'open',
-      editors: [user.email]
-    };
-
-    const reportsCol = collection(db, 'reports');
-    
-    addDoc(reportsCol, reportData)
-      .then((docRef) => {
-        setCurrentReportId(docRef.id);
-        setActiveView('report-entry');
-        toast({
-          title: "Reporte iniciado",
-          description: `Se generó el OID: ${oid}`,
-        });
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: 'reports',
-          operation: 'create',
-          requestResourceData: reportData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
   };
 
   const handleViewReportDetails = (reportId: string) => {
@@ -416,8 +419,19 @@ export function DataEntryForm({
                 </SelectContent>
               </Select>
             </div>
-            <Button className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md" disabled={!selectedProject} onClick={handleStartReport}>
-              Confirmar e Iniciar Reporte
+            <Button 
+              className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md" 
+              disabled={!selectedProject || isStartingReport} 
+              onClick={handleStartReport}
+            >
+              {isStartingReport ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Iniciando...
+                </>
+              ) : (
+                "Confirmar e Iniciar Reporte"
+              )}
             </Button>
           </CardContent>
         </Card>
