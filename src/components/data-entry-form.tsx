@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -57,6 +56,29 @@ export function DataEntryForm({
   const [editLat, setEditLat] = useState('');
   const [editLon, setEditLon] = useState('');
 
+  // Persistir estado del formulario en localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('dea_form_state');
+    if (saved && selectedPoint) {
+      try {
+        const parsed = JSON.parse(saved);
+        setActiveView(parsed.activeView || 'summary');
+        setCurrentReportId(parsed.currentReportId || null);
+        setViewingReportId(parsed.viewingReportId || null);
+        setSelectedProject(parsed.selectedProject || '');
+      } catch (e) {
+        console.error('Error al restaurar estado del formulario', e);
+      }
+    }
+  }, [selectedPoint]);
+
+  useEffect(() => {
+    if (selectedPoint) {
+      const state = { activeView, currentReportId, viewingReportId, selectedProject };
+      localStorage.setItem('dea_form_state', JSON.stringify(state));
+    }
+  }, [activeView, currentReportId, viewingReportId, selectedProject, selectedPoint]);
+
   // Cargar proyectos de Trello desde localStorage
   useEffect(() => {
     const stored = localStorage.getItem('trello_cards_sync');
@@ -83,20 +105,25 @@ export function DataEntryForm({
     defaultValues: { name: '' },
   });
 
-  // Resetear vista cuando cambia el punto seleccionado
+  // Resetear vista cuando cambia el punto seleccionado (si es un cambio real de punto)
   useEffect(() => {
-    if (selectedPoint?.stationId) {
-      setActiveView('summary');
-    } else if (selectedPoint) {
-      setActiveView('create-station');
-    } else {
-      setActiveView('summary');
+    const savedPoint = localStorage.getItem('dea_selected_point');
+    const isRestoring = savedPoint && selectedPoint && JSON.parse(savedPoint).stationId === selectedPoint.stationId;
+
+    if (!isRestoring) {
+      if (selectedPoint?.stationId) {
+        setActiveView('summary');
+      } else if (selectedPoint) {
+        setActiveView('create-station');
+      } else {
+        setActiveView('summary');
+      }
+      setCurrentReportId(null);
+      setViewingReportId(null);
+      setIsEditingCoords(false);
+      setSelectedProject('');
     }
-    setCurrentReportId(null);
-    setViewingReportId(null);
-    setIsEditingCoords(false);
-    setSelectedProject('');
-  }, [selectedPoint?.stationId, selectedPoint]);
+  }, [selectedPoint?.stationId]);
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '---';

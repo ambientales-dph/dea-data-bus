@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AuthGuard } from '@/components/auth-guard';
 import { MapView } from '@/components/map-view';
 import { DataEntryForm } from '@/components/data-entry-form';
@@ -24,23 +24,46 @@ export default function Home() {
   const auth = useAuth();
   const { user } = useUser();
 
+  // Restaurar punto seleccionado tras reinicio de sesión
+  useEffect(() => {
+    const saved = localStorage.getItem('dea_selected_point');
+    if (saved) {
+      try {
+        setSelectedPoint(JSON.parse(saved));
+      } catch (e) {
+        console.error('Error al restaurar punto seleccionado', e);
+      }
+    }
+  }, []);
+
   const handlePointSelect = useCallback((point: SelectedPoint) => {
     setSelectedPoint(point);
+    localStorage.setItem('dea_selected_point', JSON.stringify(point));
   }, []);
 
   const handlePointUpdate = useCallback((point: SelectedPoint) => {
     setSelectedPoint(point);
+    localStorage.setItem('dea_selected_point', JSON.stringify(point));
   }, []);
 
   const handleDeselect = useCallback(() => {
     setSelectedPoint(null);
+    localStorage.removeItem('dea_selected_point');
+    // También limpiamos el estado del formulario cuando se deselecciona manualmente
+    localStorage.removeItem('dea_form_state');
   }, []);
 
   const handleStationCreated = useCallback((id: string, name: string) => {
-    setSelectedPoint(prev => prev ? { ...prev, stationId: id, name } : null);
+    setSelectedPoint(prev => {
+      const updated = prev ? { ...prev, stationId: id, name } : null;
+      if (updated) localStorage.setItem('dea_selected_point', JSON.stringify(updated));
+      return updated;
+    });
   }, []);
 
   const handleLogout = () => {
+    // Al cerrar sesión manualmente, decidimos si queremos borrar o mantener el estado.
+    // Según requerimiento, queremos que los datos sigan ahí al reiniciar, así que no limpiamos localStorage aquí.
     signOut(auth);
   };
 
@@ -51,7 +74,7 @@ export default function Home() {
         <header className="flex h-16 items-center justify-between border-b bg-white px-4 md:px-6 shadow-sm z-20 shrink-0">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-lg bg-primary text-white">
-              <Leaf className="h-5 w-5 md:h-6 md:w-6" />
+              <leaf className="h-5 w-5 md:h-6 md:w-6" />
             </div>
             <div>
               <h1 className="text-lg md:text-xl font-bold font-headline text-primary tracking-tight leading-none">DEA Data Bus</h1>

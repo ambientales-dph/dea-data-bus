@@ -1,9 +1,9 @@
-
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 import { TrelloSyncManager } from '@/components/trello-sync-manager';
+import { SessionTimeoutManager } from '@/components/session-timeout-manager';
 
 export const metadata: Metadata = {
   title: 'DEA Data Bus',
@@ -25,6 +25,7 @@ export default function RootLayout({
       <body className="font-body antialiased selection:bg-accent/30">
         <FirebaseClientProvider>
           <TrelloSyncManager />
+          <SessionTimeoutManager />
           {children}
           <Toaster />
         </FirebaseClientProvider>

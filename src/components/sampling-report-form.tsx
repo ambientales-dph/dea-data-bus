@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -66,6 +66,27 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
     },
   });
 
+  // Restaurar borrador de analito tras reinicio de sesión
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(`dea_draft_${reportId}`);
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        form.reset(parsed);
+      } catch (e) {
+        console.error('Error al restaurar borrador', e);
+      }
+    }
+  }, [reportId, form]);
+
+  // Guardar borrador en tiempo real
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      localStorage.setItem(`dea_draft_${reportId}`, JSON.stringify(value));
+    });
+    return () => subscription.unsubscribe();
+  }, [form, reportId]);
+
   const handleAddAnalyte = (data: AnalyteValues) => {
     if (!user) return;
     
@@ -81,6 +102,16 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
     const samplesCol = collection(db, 'samples');
     
     addDoc(samplesCol, sampleData)
+      .then(() => {
+        // Al guardar exitosamente, limpiamos el borrador del analito actual
+        localStorage.removeItem(`dea_draft_${reportId}`);
+        form.reset({
+          medium: data.medium,
+          parameterType: data.parameterType,
+          analyte: '',
+          value: '',
+        });
+      })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
           path: 'samples',
@@ -90,17 +121,16 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
         errorEmitter.emit('permission-error', permissionError);
       });
 
-    form.reset({
-      medium: data.medium,
-      parameterType: data.parameterType,
-      analyte: '',
-      value: '',
-    });
-
     toast({
       title: "Analito agregado",
       description: `${data.analyte} registrado correctamente.`,
     });
+  };
+
+  const handleFinishSession = () => {
+    // Al finalizar sesión de carga, limpiamos los metadatos de borrador
+    localStorage.removeItem(`dea_draft_${reportId}`);
+    onClose();
   };
 
   const mediumLabel = (m: string) => {
@@ -132,7 +162,7 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
               <Label>Medio</Label>
               <Select 
                 onValueChange={(v) => form.setValue('medium', v as any)} 
-                defaultValue={form.getValues('medium')}
+                value={form.watch('medium')}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar medio" />
@@ -224,7 +254,7 @@ export function SamplingReportForm({ reportId, stationId, onClose }: SamplingRep
           </ScrollArea>
         </CardContent>
         <CardFooter className="pt-6 border-t bg-muted/5 flex justify-end">
-          <Button onClick={onClose} variant="default" className="bg-green-600 hover:bg-green-700">
+          <Button onClick={handleFinishSession} variant="default" className="bg-green-600 hover:bg-green-700">
             <Save className="mr-2 h-4 w-4" />
             Finalizar Sesión de Carga
           </Button>
