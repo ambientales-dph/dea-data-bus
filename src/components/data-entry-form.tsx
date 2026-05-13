@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -48,20 +47,16 @@ export function DataEntryForm({
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
   
-  // Trello Projects
   const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
 
-  // Estados para edición de coordenadas
   const [isEditingCoords, setIsEditingCoords] = useState(false);
   const [editLat, setEditLat] = useState('');
   const [editLon, setEditLon] = useState('');
 
-  // Referencias para gestionar transiciones de vista de forma precisa
   const lastPointKeyRef = useRef<string | null>(null);
   const isInitialLoadRef = useRef(true);
 
-  // 1. Restaurar estado desde localStorage solo en la carga inicial o cuando se selecciona un punto por primera vez
   useEffect(() => {
     if (selectedPoint && isInitialLoadRef.current) {
       const savedState = localStorage.getItem('dea_form_state');
@@ -70,7 +65,6 @@ export function DataEntryForm({
       if (savedState && savedPointStr) {
         try {
           const savedPoint = JSON.parse(savedPointStr);
-          // Solo restauramos si el punto actual coincide con el guardado (restauración de sesión)
           if (savedPoint.lat === selectedPoint.lat && savedPoint.lon === selectedPoint.lon) {
             const parsed = JSON.parse(savedState);
             setActiveView(parsed.activeView || 'summary');
@@ -78,7 +72,6 @@ export function DataEntryForm({
             setViewingReportId(parsed.viewingReportId || null);
             setSelectedProject(parsed.selectedProject || '');
           } else {
-            // Si el punto es diferente, forzamos la vista correcta
             setActiveView(selectedPoint.stationId ? 'summary' : 'create-station');
           }
         } catch (e) {
@@ -93,7 +86,6 @@ export function DataEntryForm({
     }
   }, [selectedPoint]);
 
-  // 2. Detectar cambios de punto (clics nuevos en el mapa) y resetear vista
   useEffect(() => {
     if (!selectedPoint) {
       lastPointKeyRef.current = null;
@@ -102,7 +94,6 @@ export function DataEntryForm({
 
     const currentKey = `${selectedPoint.lat}-${selectedPoint.lon}-${selectedPoint.stationId}`;
 
-    // Si el punto cambió REALMENTE (no es la restauración inicial)
     if (!isInitialLoadRef.current && lastPointKeyRef.current !== currentKey) {
       if (selectedPoint.stationId) {
         setActiveView('summary');
@@ -118,7 +109,6 @@ export function DataEntryForm({
     }
   }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.stationId]);
 
-  // Persistir estado actual del formulario
   useEffect(() => {
     if (selectedPoint) {
       const state = { activeView, currentReportId, viewingReportId, selectedProject };
@@ -126,7 +116,6 @@ export function DataEntryForm({
     }
   }, [activeView, currentReportId, viewingReportId, selectedProject, selectedPoint]);
 
-  // Cargar proyectos de Trello
   useEffect(() => {
     const stored = localStorage.getItem('trello_cards_sync');
     if (stored) {
@@ -244,8 +233,7 @@ export function DataEntryForm({
       return;
     }
 
-    // Generar OID dinámico
-    const basinCode = selectedPoint.basinCode || 'XXX';
+    const basinCode = (stationDetails as any)?.basinCode || selectedPoint.basinCode || 'XXX';
     const prefix = `RM${basinCode}`;
     let nextNumber = 1;
 
@@ -363,7 +351,6 @@ export function DataEntryForm({
     );
   }
 
-  // Vistas alternativas
   if (activeView === 'report-entry' && currentReportId) {
     return (
       <div className="space-y-4">

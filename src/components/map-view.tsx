@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
@@ -50,7 +49,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const basinsLayerRef = useRef<VectorLayer<any> | null>(null);
   const codesLayerRef = useRef<VectorLayer<any> | null>(null);
   
-  // Capas GeoJSON
   const basinsSource = useRef<VectorSource>(new VectorSource({
     url: '/data/cuencas_dph.json',
     format: new GeoJSON({ dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' })}));
@@ -74,7 +72,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
   const { data: stations } = useCollection(stationsQuery);
 
-  // Inicialización única del Mapa
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
@@ -134,6 +131,12 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       const coords = toLonLat(event.coordinate);
       const pixel = event.pixel;
       
+      let basinCode = '';
+      const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(event.coordinate);
+      if (featuresAtPoint.length > 0) {
+        basinCode = featuresAtPoint[0].get('CODIGO') || '';
+      }
+
       const stationFeature = map.forEachFeatureAtPixel(pixel, (f) => {
         const features = f.get('features');
         if (features && features.length === 1) {
@@ -148,14 +151,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           lon: stationFeature.get('lon'),
           stationId: stationFeature.get('stationId'),
           name: stationFeature.get('name'),
+          basinCode: basinCode,
         });
       } else {
-        let basinCode = '';
-        const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(event.coordinate);
-        if (featuresAtPoint.length > 0) {
-          basinCode = featuresAtPoint[0].get('CODIGO') || '';
-        }
-
         onPointSelectRef.current?.({ 
           lat: coords[1], 
           lon: coords[0],
@@ -173,7 +171,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
   }, []);
 
-  // Sincronizar marcador de selección y detección de cuenca
   useEffect(() => {
     if (!mapInstance.current || !selectedPoint) {
       selectionSource.current.clear();
@@ -191,13 +188,12 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       duration: 500
     });
 
-    // Si es un punto nuevo o editado, detectar cuenca automáticamente
     if (!selectedPoint.stationId) {
       const coord = fromLonLat([selectedPoint.lon, selectedPoint.lat]);
       const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(coord);
       const newBasinCode = featuresAtPoint.length > 0 ? featuresAtPoint[0].get('CODIGO') || '' : '';
       
-      if (newBasinCode !== selectedPoint.basinCode) {
+      if (newBasinCode && newBasinCode !== selectedPoint.basinCode) {
         onPointSelectRef.current?.({
           ...selectedPoint,
           basinCode: newBasinCode
@@ -206,13 +202,11 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     }
   }, [selectedPoint?.lat, selectedPoint?.lon]);
 
-  // Estilos de cuencas (DPH y Códigos)
   useEffect(() => {
     if (!basinsLayerRef.current || !codesLayerRef.current) return;
     
     const strokeColor = 'rgba(13, 145, 102, 0.7)';
 
-    // Estilo para Cuencas DPH (Zoom >= 6.5)
     basinsLayerRef.current.setStyle((feature, resolution) => {
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
@@ -241,7 +235,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       });
     });
 
-    // Estilo para Códigos Cuencas (Zoom < 6.5)
     codesLayerRef.current.setStyle(() => {
       return new Style({
         stroke: new Stroke({ color: strokeColor, width: 0.5 }),
@@ -251,7 +244,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
   }, [activeLayer]);
 
-  // Estilos de estaciones y clústeres
   useEffect(() => {
     if (!stationsLayerRef.current) return;
     stationsLayerRef.current.setStyle((feature, resolution) => {
@@ -296,7 +288,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     });
   }, [activeLayer, selectedPoint?.stationId]);
 
-  // Capas Base y Filtros Espectrales
   useEffect(() => {
     if (!baseLayerRef.current) return;
     const baseLayer = baseLayerRef.current;
@@ -324,32 +315,21 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       if (!ctx) return;
 
       if (activeLayer === 'satellite') {
-        // --- Procesamiento de Banda Roja en Escala de Grises Técnica ---
         ctx.save();
-        
-        // 1. Isolar Canal Rojo
         ctx.globalCompositeOperation = 'multiply';
         ctx.fillStyle = '#FF0000';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        
-        // 2. Desaturar
         ctx.globalCompositeOperation = 'saturation';
         ctx.fillStyle = '#000000'; 
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        
-        // 3. Normalizar y potenciar iluminaciones (Aclarar más para desplazar a blancos)
         ctx.globalCompositeOperation = 'color-dodge';
         ctx.fillStyle = '#B0B0B0'; 
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-        // 4. Aumentar contraste mediante superposición técnica
         ctx.globalCompositeOperation = 'overlay';
         ctx.fillStyle = '#A0A0A0';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        
         ctx.restore();
       }
-      
       ctx.filter = 'none';
     };
 
@@ -362,7 +342,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
   }, [activeLayer]);
 
-  // Sincronizar datos de estaciones
   useEffect(() => {
     if (!stationsSource.current) return;
     stationsSource.current.clear();
