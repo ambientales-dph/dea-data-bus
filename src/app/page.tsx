@@ -74,7 +74,7 @@ export default function Home() {
         <header className="flex h-16 items-center justify-between border-b bg-white px-4 md:px-6 shadow-sm z-20 shrink-0">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-lg bg-primary text-white">
-              <leaf className="h-5 w-5 md:h-6 md:w-6" />
+              <Leaf className="h-5 w-5 md:h-6 md:w-6" />
             </div>
             <div>
               <h1 className="text-lg md:text-xl font-bold font-headline text-primary tracking-tight leading-none">DEA Data Bus</h1>
