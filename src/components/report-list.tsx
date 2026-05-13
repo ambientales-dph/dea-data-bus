@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -7,7 +6,8 @@ import { useFirestore, useCollection } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Calendar, FileSearch, Plus, Briefcase } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Loader2, Calendar, FileSearch, Plus, Briefcase, Users } from 'lucide-react';
 
 interface ReportListProps {
   stationId: string;
@@ -65,7 +65,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
     return date.toLocaleDateString('es-AR', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: '2-digit' // Formato de fecha corta
     });
   };
 
@@ -85,88 +85,111 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
   }
 
   return (
-    <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
-      <CardHeader className="pb-1 pt-3 px-4">
-        <CardTitle className="text-md flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-primary" />
-          Historial de Reportes
-        </CardTitle>
-        <CardDescription className="text-[10px]">
-          Todos los muestreos registrados en esta estación.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow className="h-8">
-              <TableHead className="text-[9px] uppercase font-bold px-3">Fecha</TableHead>
-              <TableHead className="text-[9px] uppercase font-bold px-3">Proyecto</TableHead>
-              <TableHead className="text-[9px] uppercase font-bold px-3">OID</TableHead>
-              <TableHead className="w-28 px-3 text-right"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedReports.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-10 text-muted-foreground italic text-xs">
-                  No se han registrado reportes aún.
-                </TableCell>
+    <TooltipProvider>
+      <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-md flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            Historial de Reportes
+          </CardTitle>
+          <CardDescription className="text-[10px]">
+            Todos los muestreos registrados en esta estación.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow className="h-8">
+                <TableHead className="text-[9px] uppercase font-bold px-3">Fecha</TableHead>
+                <TableHead className="text-[9px] uppercase font-bold px-3">OID</TableHead>
+                <TableHead className="text-[9px] uppercase font-bold px-3">Proyecto</TableHead>
+                <TableHead className="w-28 px-3 text-right"></TableHead>
               </TableRow>
-            ) : (
-              sortedReports.map((report: any) => (
-                <TableRow key={report.id} className="hover:bg-primary/5 transition-colors group h-9">
-                  <TableCell className="px-3 py-0 font-code text-[10px]">
-                    {formatDate(report.createdAt)}
+            </TableHeader>
+            <TableBody>
+              {sortedReports.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground italic text-xs">
+                    No se han registrado reportes aún.
                   </TableCell>
-                  <TableCell className="px-3 py-0">
-                    <div className="flex items-center gap-1">
-                      <Briefcase className="h-2.5 w-2.5 text-muted-foreground" />
-                      <span className="text-[10px] font-bold text-primary" title={report.trelloCardName || 'Sin proyecto'}>
-                        {getProjectCode(report.trelloCardName || '')}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-3 py-0">
-                    <span className="text-[9px] font-code text-muted-foreground uppercase">
-                      {report.oid || report.id.substring(0, 8)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="px-3 py-0 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6 text-primary hover:bg-primary/10"
-                        onClick={() => onOpenReport(report.id)}
-                        title="Abrir para cargar datos"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                      <div className="flex items-center gap-0.5">
+                </TableRow>
+              ) : (
+                sortedReports.map((report: any) => (
+                  <TableRow key={report.id} className="hover:bg-primary/5 transition-colors group h-9">
+                    <TableCell className="px-3 py-0 font-code text-[10px]">
+                      {formatDate(report.createdAt)}
+                    </TableCell>
+                    <TableCell className="px-3 py-0">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-[9px] font-code text-muted-foreground uppercase cursor-help hover:text-primary transition-colors">
+                            {report.oid || report.id.substring(0, 8)}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="p-2 w-auto min-w-[150px]">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-1.5 border-b pb-1">
+                              <Users className="h-3 w-3 text-primary" />
+                              <span className="text-[10px] font-bold uppercase tracking-wider">Colaboradores</span>
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              {report.editors && report.editors.length > 0 ? (
+                                report.editors.map((email: string) => (
+                                  <span key={email} className="text-[9px] font-medium">{email}</span>
+                                ))
+                              ) : (
+                                <span className="text-[9px] italic text-muted-foreground">Sin editores registrados</span>
+                              )}
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell className="px-3 py-0">
+                      <div className="flex items-center gap-1">
+                        <Briefcase className="h-2.5 w-2.5 text-muted-foreground" />
+                        <span className="text-[10px] font-bold text-primary truncate max-w-[80px]" title={report.trelloCardName || 'Sin proyecto'}>
+                          {getProjectCode(report.trelloCardName || '')}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-3 py-0 text-right">
+                      <div className="flex items-center justify-end gap-1">
                         <Button 
                           variant="ghost" 
                           size="icon" 
                           className="h-6 w-6 text-primary hover:bg-primary/10"
-                          onClick={() => onViewReport(report.id)}
-                          title="Ver detalles"
+                          onClick={() => onOpenReport(report.id)}
+                          title="Abrir para cargar datos"
                         >
-                          <FileSearch className="h-3 w-3" />
+                          <Plus className="h-3 w-3" />
                         </Button>
-                        <div 
-                          className="flex items-center px-0.5 text-[9px] font-bold text-primary min-w-[14px] justify-center" 
-                          title="Muestreos"
-                        >
-                          {analyteCounts[report.id] || 0}
+                        <div className="flex items-center gap-0.5">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-primary hover:bg-primary/10"
+                            onClick={() => onViewReport(report.id)}
+                            title="Ver detalles"
+                          >
+                            <FileSearch className="h-3 w-3" />
+                          </Button>
+                          <div 
+                            className="flex items-center px-0.5 text-[9px] font-bold text-primary min-w-[14px] justify-center" 
+                            title="Muestreos"
+                          >
+                            {analyteCounts[report.id] || 0}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 }
