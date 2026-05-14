@@ -14,14 +14,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Timer } from 'lucide-react';
 
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutos
-const WARNING_TIMEOUT = 9 * 60 * 1000; // 9 minutos (aparece 1 minuto antes)
+// Valores temporales para pruebas: 1 minuto total, advertencia a los 30 segundos
+const INACTIVITY_TIMEOUT = 60 * 1000; 
+const WARNING_TIMEOUT = 30 * 1000; 
 
 export function SessionTimeoutManager() {
   const auth = useAuth();
   const { user } = useUser();
   const [showWarning, setShowWarning] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(60);
+  const [remainingTime, setRemainingTime] = useState(30);
   const lastActivityRef = useRef<number>(Date.now());
   const wakeLockRef = useRef<any>(null);
 
@@ -55,14 +56,14 @@ export function SessionTimeoutManager() {
     if (showWarning) {
       releaseWakeLock();
       setShowWarning(false);
-      setRemainingTime(60);
+      setRemainingTime(30);
     }
   }, [showWarning]);
 
   useEffect(() => {
     if (!user) return;
 
-    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
     
     const handleActivity = () => resetTimer();
 
