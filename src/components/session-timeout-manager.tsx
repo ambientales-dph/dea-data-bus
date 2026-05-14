@@ -153,16 +153,15 @@ export function SessionTimeoutManager() {
     <AlertDialog open={showWarning}>
       <AlertDialogContent className="border-t-4 border-t-primary max-w-[320px]">
         <AlertDialogHeader className="text-center items-center">
-          <AlertDialogTitle className="flex items-center gap-2">
+          <AlertDialogTitle className="flex items-center gap-2 text-lg font-bold">
             <Timer className="h-5 w-5 text-primary animate-pulse" />
-            Sesión por expirar
+            Sesión a punto de expirar
           </AlertDialogTitle>
           
           <CircularCountdown remaining={remainingTime} total={COUNTDOWN_TOTAL} />
           
-          <AlertDialogDescription className="text-sm">
-            La sesión se cerrará por inactividad. <br />
-            <span className="font-semibold text-primary">Cualquier actividad</span> (mouse o teclado) reseteará el contador.
+          <AlertDialogDescription className="text-sm font-medium">
+            Por favor, interactuá con la pantalla para continuar.
           </AlertDialogDescription>
         </AlertDialogHeader>
       </AlertDialogContent>
