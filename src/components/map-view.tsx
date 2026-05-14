@@ -48,6 +48,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const presenceSource = useRef<VectorSource>(new VectorSource());
   
   const stationsLayerRef = useRef<VectorLayer<any> | null>(null);
+  const selectionLayerRef = useRef<VectorLayer<any> | null>(null);
+  const presenceLayerRef = useRef<VectorLayer<any> | null>(null);
   const baseLayerRef = useRef<TileLayer<any> | null>(null);
   const basinsLayerRef = useRef<VectorLayer<any> | null>(null);
   const codesLayerRef = useRef<VectorLayer<any> | null>(null);
@@ -115,27 +117,15 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     const selectionLayer = new VectorLayer({
       source: selectionSource.current,
-      style: new Style({
-        image: new CircleStyle({
-          radius: 7,
-          stroke: new Stroke({ color: '#22c55e', width: 1.5 }),
-          fill: new Fill({ color: 'rgba(34, 197, 94, 0.4)' }),
-        }),
-      }),
       zIndex: 20,
     });
+    selectionLayerRef.current = selectionLayer;
 
     const presenceLayer = new VectorLayer({
       source: presenceSource.current,
-      style: new Style({
-        image: new CircleStyle({
-          radius: 7,
-          stroke: new Stroke({ color: '#ef4444', width: 1.5 }),
-          fill: new Fill({ color: 'rgba(239, 68, 68, 0.4)' }),
-        }),
-      }),
       zIndex: 15,
     });
+    presenceLayerRef.current = presenceLayer;
 
     const map = new Map({
       target: mapRef.current,
@@ -199,6 +189,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     selectionSource.current.clear();
     const selectionFeature = new Feature({
       geometry: new Point(fromLonLat([selectedPoint.lon, selectedPoint.lat])),
+      userEmail: user?.email || 'Mi selección',
     });
     selectionSource.current.addFeature(selectionFeature);
 
@@ -206,15 +197,13 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
       duration: 500
     });
-  }, [selectedPoint?.lat, selectedPoint?.lon]);
+  }, [selectedPoint?.lat, selectedPoint?.lon, user?.email]);
 
-  // Sincronización de presencia de otros usuarios
   useEffect(() => {
     if (!presenceSource.current) return;
     presenceSource.current.clear();
 
     presences?.forEach((presence: any) => {
-      // No mostrar nuestra propia presencia (la local ya está en verde)
       if (presence.userId === user?.uid) return;
 
       const feature = new Feature({
@@ -268,7 +257,11 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   }, [activeLayer]);
 
   useEffect(() => {
-    if (!stationsLayerRef.current) return;
+    if (!stationsLayerRef.current || !selectionLayerRef.current || !presenceLayerRef.current) return;
+
+    const commonTextStroke = activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 });
+
+    // Estilo Estaciones
     stationsLayerRef.current.setStyle((feature, resolution) => {
       const features = feature.get('features');
       const size = features.length;
@@ -304,11 +297,50 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           offsetY: -15,
           font: 'bold 10px "Encode Sans", sans-serif',
           fill: new Fill({ color: isSelected ? '#22c55e' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
-          stroke: activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 }),
+          stroke: commonTextStroke,
           padding: [2, 4, 2, 4],
         }) : undefined
       });
     });
+
+    // Estilo Selección Local (VERDE)
+    selectionLayerRef.current.setStyle((feature) => {
+      return new Style({
+        image: new CircleStyle({
+          radius: 6,
+          stroke: new Stroke({ color: '#22c55e', width: 1 }),
+          fill: new Fill({ color: 'rgba(34, 197, 94, 0.4)' }),
+        }),
+        text: new Text({
+          text: feature.get('userEmail') || 'Mi selección',
+          offsetY: -15,
+          font: 'bold 9px "Encode Sans", sans-serif',
+          fill: new Fill({ color: '#166534' }),
+          stroke: commonTextStroke,
+          padding: [2, 4, 2, 4],
+        })
+      });
+    });
+
+    // Estilo Presencia Remota (ROJO)
+    presenceLayerRef.current.setStyle((feature) => {
+      return new Style({
+        image: new CircleStyle({
+          radius: 6,
+          stroke: new Stroke({ color: '#ef4444', width: 1 }),
+          fill: new Fill({ color: 'rgba(239, 68, 68, 0.4)' }),
+        }),
+        text: new Text({
+          text: feature.get('userEmail') || 'Técnico activo',
+          offsetY: -15,
+          font: 'bold 9px "Encode Sans", sans-serif',
+          fill: new Fill({ color: '#991b1b' }),
+          stroke: commonTextStroke,
+          padding: [2, 4, 2, 4],
+        })
+      });
+    });
+
   }, [activeLayer, selectedPoint?.stationId]);
 
   useEffect(() => {
