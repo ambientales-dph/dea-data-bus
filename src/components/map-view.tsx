@@ -294,8 +294,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   useEffect(() => {
     if (!stationsLayerRef.current || !selectionLayerRef.current || !presenceLayerRef.current) return;
 
-    const commonTextStroke = activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 });
-
     stationsLayerRef.current.setStyle((feature, resolution) => {
       const features = feature.get('features');
       const size = features.length;
@@ -317,23 +315,13 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       const stationFeature = features[0];
       const isSelected = selectedPoint?.stationId === stationFeature.get('stationId');
-      const view = mapInstance.current?.getView();
-      const zoom = view ? view.getZoomForResolution(resolution) : 0;
 
       return new Style({
         image: new CircleStyle({
           radius: 4,
           fill: new Fill({ color: isSelected ? '#22c55e' : '#4E97CA' }),
           stroke: new Stroke({ color: 'white', width: 1 }),
-        }),
-        text: zoom && zoom >= 9 ? new Text({
-          text: stationFeature.get('name'),
-          offsetY: -12,
-          font: 'bold 9px "Encode Sans", sans-serif',
-          fill: new Fill({ color: isSelected ? '#22c55e' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
-          stroke: commonTextStroke,
-          padding: [1, 2, 1, 2],
-        }) : undefined
+        })
       });
     });
 
@@ -522,7 +510,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       {/* Tooltip Dinámico (Hover) - Estilizado según solicitud */}
       {hoveredEmail && tooltipPos && (
         <div 
-          className="fixed z-[100] pointer-events-none bg-gray-200/90 text-black px-2 py-1 rounded-none text-[9px] font-code shadow-md transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200 border border-gray-400"
+          className="fixed z-[100] pointer-events-none bg-gray-200/30 text-black px-2 py-1 rounded-none text-[9px] font-code shadow-md transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200"
           style={{ left: tooltipPos.x, top: tooltipPos.y }}
         >
           {hoveredEmail}
