@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
 import { AuthGuard } from '@/components/auth-guard';
 import { MapView } from '@/components/map-view';
 import { DataEntryForm } from '@/components/data-entry-form';
+import { PresenceManager } from '@/components/presence-manager';
 import { Button } from '@/components/ui/button';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -49,7 +51,6 @@ export default function Home() {
   const handleDeselect = useCallback(() => {
     setSelectedPoint(null);
     localStorage.removeItem('dea_selected_point');
-    // También limpiamos el estado del formulario cuando se deselecciona manualmente
     localStorage.removeItem('dea_form_state');
   }, []);
 
@@ -62,13 +63,12 @@ export default function Home() {
   }, []);
 
   const handleLogout = () => {
-    // Al cerrar sesión manualmente, decidimos si queremos borrar o mantener el estado.
-    // Según requerimiento, queremos que los datos sigan ahí al reiniciar, así que no limpiamos localStorage aquí.
     signOut(auth);
   };
 
   return (
     <AuthGuard>
+      <PresenceManager selectedPoint={selectedPoint} />
       <div className="flex h-screen w-full flex-col bg-background overflow-hidden">
         {/* Header */}
         <header className="flex h-16 items-center justify-between border-b bg-white px-4 md:px-6 shadow-sm z-20 shrink-0">
@@ -104,7 +104,6 @@ export default function Home() {
 
         {/* Main Content */}
         <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
-          {/* Panel del Mapa */}
           <div className="w-full h-[40vh] md:h-auto md:flex-[6] p-2 md:p-4 shrink-0 md:shrink">
             <MapView 
               onPointSelect={handlePointSelect} 
@@ -112,7 +111,6 @@ export default function Home() {
             />
           </div>
 
-          {/* Panel del Formulario */}
           <div className="flex-1 md:flex-[4] border-t md:border-t-0 md:border-l bg-white shadow-xl flex flex-col w-full md:min-w-[420px] overflow-hidden">
             <ScrollArea className="flex-1">
               <div className="p-4 md:p-6 pb-12">

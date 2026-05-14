@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
@@ -15,11 +16,11 @@ import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import GeoJSON from 'ol/format/GeoJSON';
 import { Style, Text, Fill, Circle as CircleStyle, Stroke } from 'ol/style';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
 import { Input } from '@/components/ui/input';
-import { Search, MapPin, Loader2, Layers, Map as MapIcon, Satellite } from 'lucide-react';
+import { Search, MapPin, Loader2, Layers, Map as MapIcon, Satellite, Users } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -44,6 +45,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const mapInstance = useRef<Map | null>(null);
   const stationsSource = useRef<VectorSource>(new VectorSource());
   const selectionSource = useRef<VectorSource>(new VectorSource());
+  const presenceSource = useRef<VectorSource>(new VectorSource());
+  
   const stationsLayerRef = useRef<VectorLayer<any> | null>(null);
   const baseLayerRef = useRef<TileLayer<any> | null>(null);
   const basinsLayerRef = useRef<VectorLayer<any> | null>(null);
@@ -58,6 +61,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
   const onPointSelectRef = useRef(onPointSelect);
   const db = useFirestore();
+  const { user } = useUser();
 
   const [activeLayer, setActiveLayer] = useState<BaseLayerType>('osm');
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,6 +75,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
   const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
   const { data: stations } = useCollection(stationsQuery);
+
+  const presenceQuery = useMemo(() => query(collection(db, 'presence')), [db]);
+  const { data: presences } = useCollection(presenceQuery);
 
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
@@ -118,9 +125,21 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       zIndex: 20,
     });
 
+    const presenceLayer = new VectorLayer({
+      source: presenceSource.current,
+      style: new Style({
+        image: new CircleStyle({
+          radius: 8,
+          stroke: new Stroke({ color: '#22c55e', width: 2.5 }),
+          fill: new Fill({ color: 'rgba(34, 197, 94, 0.4)' }),
+        }),
+      }),
+      zIndex: 15,
+    });
+
     const map = new Map({
       target: mapRef.current,
-      layers: [baseLayer, basinsLayer, codesLayer, stationsLayer, selectionLayer],
+      layers: [baseLayer, basinsLayer, codesLayer, presenceLayer, stationsLayer, selectionLayer],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
         zoom: 5.5,
@@ -187,20 +206,24 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
       duration: 500
     });
-
-    if (!selectedPoint.stationId) {
-      const coord = fromLonLat([selectedPoint.lon, selectedPoint.lat]);
-      const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(coord);
-      const newBasinCode = featuresAtPoint.length > 0 ? featuresAtPoint[0].get('CODIGO') || '' : '';
-      
-      if (newBasinCode && newBasinCode !== selectedPoint.basinCode) {
-        onPointSelectRef.current?.({
-          ...selectedPoint,
-          basinCode: newBasinCode
-        });
-      }
-    }
   }, [selectedPoint?.lat, selectedPoint?.lon]);
+
+  // Sincronización de presencia de otros usuarios
+  useEffect(() => {
+    if (!presenceSource.current) return;
+    presenceSource.current.clear();
+
+    presences?.forEach((presence: any) => {
+      // No mostrar nuestra propia presencia (la local ya está en rojo)
+      if (presence.userId === user?.uid) return;
+
+      const feature = new Feature({
+        geometry: new Point(fromLonLat([presence.longitude, presence.latitude])),
+        userEmail: presence.userEmail,
+      });
+      presenceSource.current.addFeature(feature);
+    });
+  }, [presences, user?.uid]);
 
   useEffect(() => {
     if (!basinsLayerRef.current || !codesLayerRef.current) return;
@@ -451,8 +474,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       <div className="absolute bottom-2 right-2 z-20 rounded-xl bg-white/95 p-3 shadow-xl border border-primary/10">
         <div className="space-y-1">
           <div className="flex items-center justify-end gap-2">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Cuencas</span>
-            <div className="w-4 h-[2px] bg-[#0D9166] opacity-70"></div> 
+            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Técnicos Activos</span>
+            <div className="w-2 h-2 rounded-full bg-[#22c55e] border border-white"></div> 
           </div>
           <div className="flex items-center justify-end gap-2">
             <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Estaciones</span>

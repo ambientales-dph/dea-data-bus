@@ -47,6 +47,19 @@
         "userEmail": { "type": "string" }
       },
       "required": ["reportId", "stationId", "medium", "parameterType", "analyte", "value"]
+    },
+    "Presence": {
+      "title": "Presence",
+      "description": "Ubicación actual que un usuario está visualizando o editando.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "latitude", "longitude"]
     }
   },
   "auth": {
@@ -64,6 +77,10 @@
     "/samples/{sampleId}": {
       "schema": "#/backend/entities/Sample",
       "description": "Colección de resultados de laboratorio y mediciones de campo."
+    },
+    "/presence/{userId}": {
+      "schema": "#/backend/entities/Presence",
+      "description": "Estado de presencia en tiempo real de los usuarios activos."
     }
   }
 }
