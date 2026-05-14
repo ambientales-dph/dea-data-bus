@@ -6,7 +6,6 @@ import { useAuth, useUser } from '@/firebase';
 import {
   AlertDialog,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
@@ -159,10 +158,6 @@ export function SessionTimeoutManager() {
           </AlertDialogTitle>
           
           <CircularCountdown remaining={remainingTime} total={COUNTDOWN_TOTAL} />
-          
-          <AlertDialogDescription className="text-sm font-medium">
-            Por favor, interactuá con la pantalla para continuar.
-          </AlertDialogDescription>
         </AlertDialogHeader>
       </AlertDialogContent>
     </AlertDialog>
