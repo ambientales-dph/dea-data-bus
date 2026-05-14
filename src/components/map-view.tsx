@@ -179,7 +179,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       const pixel = map.getEventPixel(evt.originalEvent);
       
       const feature = map.forEachFeatureAtPixel(pixel, (f) => {
-        // Only return feature if it's a selection or presence point
         const layers = [selectionLayerRef.current, presenceLayerRef.current];
         const isFromOurLayer = map.getLayers().getArray().some(l => 
           layers.includes(l as any) && (l as any).getSource()?.getFeatures().includes(f)
@@ -297,7 +296,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     const commonTextStroke = activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 });
 
-    // Estilo Estaciones (Reducido tamaño)
     stationsLayerRef.current.setStyle((feature, resolution) => {
       const features = feature.get('features');
       const size = features.length;
@@ -324,7 +322,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       return new Style({
         image: new CircleStyle({
-          radius: 4, // Puntos más pequeños
+          radius: 4,
           fill: new Fill({ color: isSelected ? '#22c55e' : '#4E97CA' }),
           stroke: new Stroke({ color: 'white', width: 1 }),
         }),
@@ -339,7 +337,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       });
     });
 
-    // Estilo Selección Local (VERDE) - Sin texto fijo
     selectionLayerRef.current.setStyle(() => {
       return new Style({
         image: new CircleStyle({
@@ -350,7 +347,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       });
     });
 
-    // Estilo Presencia Remota (ROJO) - Sin texto fijo
     presenceLayerRef.current.setStyle(() => {
       return new Style({
         image: new CircleStyle({
@@ -523,10 +519,10 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       <div ref={mapRef} className="absolute inset-0 z-10" />
 
-      {/* Tooltip Dinámico (Hover) */}
+      {/* Tooltip Dinámico (Hover) - Estilizado según solicitud */}
       {hoveredEmail && tooltipPos && (
         <div 
-          className="fixed z-[100] pointer-events-none bg-black/80 text-white px-2 py-1 rounded-md text-[9px] font-code shadow-lg transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200 border border-white/10"
+          className="fixed z-[100] pointer-events-none bg-gray-200/90 text-black px-2 py-1 rounded-none text-[9px] font-code shadow-md transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200 border border-gray-400"
           style={{ left: tooltipPos.x, top: tooltipPos.y }}
         >
           {hoveredEmail}
