@@ -70,6 +70,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [hoveredEmail, setHoveredEmail] = useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number, y: number } | null>(null);
 
   useEffect(() => {
     onPointSelectRef.current = onPointSelect;
@@ -172,6 +174,40 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       setShowResults(false);
     });
 
+    map.on('pointermove', (evt) => {
+      if (evt.dragging) return;
+      const pixel = map.getEventPixel(evt.originalEvent);
+      
+      const feature = map.forEachFeatureAtPixel(pixel, (f) => {
+        // Only return feature if it's a selection or presence point
+        const layers = [selectionLayerRef.current, presenceLayerRef.current];
+        const isFromOurLayer = map.getLayers().getArray().some(l => 
+          layers.includes(l as any) && (l as any).getSource()?.getFeatures().includes(f)
+        );
+        return isFromOurLayer ? f : null;
+      });
+
+      if (feature) {
+        const email = feature.get('userEmail');
+        if (email) {
+          setHoveredEmail(email);
+          setTooltipPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
+          map.getTargetElement().style.cursor = 'help';
+        } else {
+          setHoveredEmail(null);
+          setTooltipPos(null);
+          map.getTargetElement().style.cursor = 'pointer';
+        }
+      } else {
+        const isStation = map.hasFeatureAtPixel(pixel, {
+          layerFilter: (l) => l === stationsLayerRef.current
+        });
+        setHoveredEmail(null);
+        setTooltipPos(null);
+        map.getTargetElement().style.cursor = isStation ? 'pointer' : '';
+      }
+    });
+
     mapInstance.current = map;
 
     return () => {
@@ -261,7 +297,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     const commonTextStroke = activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 });
 
-    // Estilo Estaciones
+    // Estilo Estaciones (Reducido tamaño)
     stationsLayerRef.current.setStyle((feature, resolution) => {
       const features = feature.get('features');
       const size = features.length;
@@ -269,14 +305,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       if (size > 1) {
         return new Style({
           image: new CircleStyle({
-            radius: 12 + Math.min(size, 8),
+            radius: 10 + Math.min(size, 6),
             fill: new Fill({ color: 'rgba(78, 151, 202, 0.7)' }),
             stroke: undefined,
           }),
           text: new Text({
             text: size.toString(),
             fill: new Fill({ color: 'white' }),
-            font: 'bold 12px "Encode Sans", sans-serif',
+            font: 'bold 10px "Encode Sans", sans-serif',
           }),
         });
       }
@@ -288,55 +324,39 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       return new Style({
         image: new CircleStyle({
-          radius: 5,
+          radius: 4, // Puntos más pequeños
           fill: new Fill({ color: isSelected ? '#22c55e' : '#4E97CA' }),
-          stroke: new Stroke({ color: 'white', width: 1.5 }),
+          stroke: new Stroke({ color: 'white', width: 1 }),
         }),
-        text: zoom && zoom >= 8 ? new Text({
+        text: zoom && zoom >= 9 ? new Text({
           text: stationFeature.get('name'),
-          offsetY: -15,
-          font: 'bold 10px "Encode Sans", sans-serif',
+          offsetY: -12,
+          font: 'bold 9px "Encode Sans", sans-serif',
           fill: new Fill({ color: isSelected ? '#22c55e' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
           stroke: commonTextStroke,
-          padding: [2, 4, 2, 4],
+          padding: [1, 2, 1, 2],
         }) : undefined
       });
     });
 
-    // Estilo Selección Local (VERDE)
-    selectionLayerRef.current.setStyle((feature) => {
+    // Estilo Selección Local (VERDE) - Sin texto fijo
+    selectionLayerRef.current.setStyle(() => {
       return new Style({
         image: new CircleStyle({
-          radius: 6,
+          radius: 5,
           stroke: new Stroke({ color: '#22c55e', width: 1 }),
           fill: new Fill({ color: 'rgba(34, 197, 94, 0.4)' }),
-        }),
-        text: new Text({
-          text: feature.get('userEmail') || 'Mi selección',
-          offsetY: -15,
-          font: 'bold 9px "Encode Sans", sans-serif',
-          fill: new Fill({ color: '#166534' }),
-          stroke: commonTextStroke,
-          padding: [2, 4, 2, 4],
         })
       });
     });
 
-    // Estilo Presencia Remota (ROJO)
-    presenceLayerRef.current.setStyle((feature) => {
+    // Estilo Presencia Remota (ROJO) - Sin texto fijo
+    presenceLayerRef.current.setStyle(() => {
       return new Style({
         image: new CircleStyle({
-          radius: 6,
+          radius: 5,
           stroke: new Stroke({ color: '#ef4444', width: 1 }),
           fill: new Fill({ color: 'rgba(239, 68, 68, 0.4)' }),
-        }),
-        text: new Text({
-          text: feature.get('userEmail') || 'Técnico activo',
-          offsetY: -15,
-          font: 'bold 9px "Encode Sans", sans-serif',
-          fill: new Fill({ color: '#991b1b' }),
-          stroke: commonTextStroke,
-          padding: [2, 4, 2, 4],
         })
       });
     });
@@ -502,6 +522,16 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       </div>
 
       <div ref={mapRef} className="absolute inset-0 z-10" />
+
+      {/* Tooltip Dinámico (Hover) */}
+      {hoveredEmail && tooltipPos && (
+        <div 
+          className="fixed z-[100] pointer-events-none bg-black/80 text-white px-2 py-1 rounded-md text-[9px] font-code shadow-lg transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200 border border-white/10"
+          style={{ left: tooltipPos.x, top: tooltipPos.y }}
+        >
+          {hoveredEmail}
+        </div>
+      )}
       
       <div className="absolute bottom-2 right-2 z-20 rounded-xl bg-white/95 p-3 shadow-xl border border-primary/10">
         <div className="space-y-1">
