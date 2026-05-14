@@ -24,7 +24,8 @@ export const AUTH_WHITELIST = [
   'sandru_18neta@hotmail.com',
   'avdemilio@gmail.com',
   'karitosilva@gmail.com',
-  'joaquinmontorsi@gmail.com'
+  'joaquinmontorsi@gmail.com',
+  'ambientales.dph@gmail.com'
 ];
 
 export function isUserWhitelisted(email: string | null): boolean {
