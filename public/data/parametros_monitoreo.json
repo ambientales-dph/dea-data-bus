@@ -1,0 +1,296 @@
+{
+  "Agua Superficial":"
+    },
+    {
+      "Parametro": "Potencial de Hidrógeno (pH)",
+      "Unidad": "upH",
+      "Niveles_Guia": "6.5 a 9.0",
+      "Normativa": "Res. 46/2017 ACUMAR"
+    },
+    {
+      "Parametro": "Temperatura",
+      "Unidad": "°C",
+      "Niveles_Guia": "Registro in situ obligatorio (límite gral. de vuelco <= 45)",
+      "Normativa": "Res. 336/2003 ADA [2]"
+    },
+    {
+      "Parametro": "Conductividad Eléctrica",
+      "Unidad": "uS/cm",
+      "Niveles_Guia": "Registro in situ obligatorio",
+      "Normativa": "Dec. 3511/07 ADA [3]"
+    },
+    {
+      "Parametro": "Cadmio",
+      "Unidad": "ug/l",
+      "Niveles_Guia": "0.2 a 5.0 ug/l (según dureza del agua)",
+      "Normativa": "Ley 24.051 (Dec. 831/93, Tabla 2)"
+    },
+    {
+      "Parametro": "Cromo Total",
+      "Unidad": "ug/l",
+      "Niveles_Guia": "50 ug/l",
+      "Normativa": "Ley 24.051 (Dec. 831/93, Tabla 2) [4]"
+    },
+    {
+      "Parametro": "Plomo",
+      "Unidad": "ug/l",
+      "Niveles_Guia": "1.0 a 7.0 ug/l (según dureza del agua)",
+      "Normativa": "Ley 24.051 (Dec. 831/93, Tabla 2)"
+    }
+  ],
+  "Efluentes Líquidos":"
+    },
+    {
+      "Parametro": "Demanda Química de Oxígeno (DQO)",
+      "Unidad": "mg/l",
+      "Niveles_Guia": "<= 250 (pluvial); <= 500 (suelo/mar); <= 700 (cloaca)",
+      "Normativa": "Res. 336/2003 ADA (Anexo II) [2]"
+    },
+    {
+      "Parametro": "Fósforo Total",
+      "Unidad": "mg/l",
+      "Niveles_Guia": "<= 0.1 (pluvial); <= 10 (cloaca/mar/suelo)",
+      "Normativa": "Res. 336/2003 ADA (Anexo II) [2]"
+    },
+    {
+      "Parametro": "Nitrógeno Total",
+      "Unidad": "mg/l",
+      "Niveles_Guia": "<= 35 (pluvial); <= 105 (cloaca/mar/suelo)",
+      "Normativa": "Res. 336/2003 ADA (Anexo II) [2]"
+    },
+    {
+      "Parametro": "Cromo Hexavalente",
+      "Unidad": "mg/l",
+      "Niveles_Guia": "<= 0.2 (pluvial/cloaca); Ausente en suelo",
+      "Normativa": "Res. 336/2003 ADA (Anexo II) [2]"
+    },
+    {
+      "Parametro": "Mercurio",
+      "Unidad": "mg/l",
+      "Niveles_Guia": "<= 0.005 (pluvial/mar); <= 0.02 (cloaca); Ausente en suelo",
+      "Normativa": "Res. 336/2003 ADA (Anexo II) [2]"
+    },
+    {
+      "Parametro": "Cianuros Totales",
+      "Unidad": "mg/l",
+      "Niveles_Guia": "<= 0.1 (pluvial/cloaca/mar); Ausente en suelo",
+      "Normativa": "Res. 336/2003 ADA (Anexo II) [2]"
+    },
+    {
+      "Parametro": "Hidrocarburos Totales",
+      "Unidad": "mg/l",
+      "Niveles_Guia": "<= 30 (pluvial/cloaca/mar); Ausente en suelo",
+      "Normativa": "Res. 336/2003 ADA (Anexo II) [2]"
+    }
+  ],
+  "Agua Subterránea":"
+    },
+    {
+      "Parametro": "Cloroformo",
+      "Unidad": "ug/l",
+      "Niveles_Guia": "Nivel guía regulado para toxicidad gas/vapor",
+      "Normativa": "Res. 335/08 ADA [5]"
+    },
+    {
+      "Parametro": "DDT",
+      "Unidad": "ug/l",
+      "Niveles_Guia": "Nivel guía regulado para toxicidad gas/vapor",
+      "Normativa": "Res. 335/08 ADA [5]"
+    },
+    {
+      "Parametro": "Cobre",
+      "Unidad": "ug/l",
+      "Niveles_Guia": "Nivel guía regulado para agua subterránea",
+      "Normativa": "Res. 335/08 ADA [5]"
+    },
+    {
+      "Parametro": "Cromo Total",
+      "Unidad": "ug/l",
+      "Niveles_Guia": "Nivel guía regulado para agua subterránea",
+      "Normativa": "Res. 335/08 ADA [5]"
+    }
+  ],
+  "Agua de Consumo":"
+    },
+    {
+      "Parametro": "Bario",
+      "Unidad": "mg/l",
+      "Niveles_Guia": "2.0 mg/l (Límite Máximo)",
+      "Normativa": "Res. 705/07 ADA [6]"
+    },
+    {
+      "Parametro": "Berilio",
+      "Unidad": "mg/l",
+      "Niveles_Guia": "0.004 mg/l (Límite Máximo)",
+      "Normativa": "Res. 705/07 ADA [6]"
+    },
+    {
+      "Parametro": "Bromatos",
+      "Unidad": "ug/l",
+      "Niveles_Guia": "10 ug/l (Límite Máximo)",
+      "Normativa": "Res. 705/07 ADA [7]"
+    },
+    {
+      "Parametro": "Cloritos / Cloratos",
+      "Unidad": "ug/l",
+      "Niveles_Guia": "700 ug/l (Límite Máximo)",
+      "Normativa": "Res. 705/07 ADA [7]"
+    },
+    {
+      "Parametro": "Formaldehído",
+      "Unidad": "ug/l",
+      "Niveles_Guia": "900 ug/l (Límite Máximo)",
+      "Normativa": "Res. 705/07 ADA [7]"
+    },
+    {
+      "Parametro": "Radiactividad Alfa Total",
+      "Unidad": "Bq/l",
+      "Niveles_Guia": "0.5 Bq/l (Límite Máximo)",
+      "Normativa": "Res. 705/07 ADA [7]"
+    }
+  ],
+  "Aire Ambiente":"
+    },
+    {
+      "Parametro": "Material Particulado (PM10)",
+      "Unidad": "mg/m3",
+      "Niveles_Guia": "0.150 (24h); 0.050 (anual)",
+      "Normativa": "Dec. 3395/96 PBA [8]"
+    },
+    {
+      "Parametro": "Monóxido de Carbono (CO)",
+      "Unidad": "mg/m3",
+      "Niveles_Guia": "40.082 (1h); 10.000 (8h)",
+      "Normativa": "Dec. 3395/96 PBA [8]"
+    },
+    {
+      "Parametro": "Ozono (O3)",
+      "Unidad": "mg/m3",
+      "Niveles_Guia": "0.235 (1h)",
+      "Normativa": "Dec. 3395/96 PBA [8]"
+    },
+    {
+      "Parametro": "Óxidos de Nitrógeno (NOx)",
+      "Unidad": "mg/m3",
+      "Niveles_Guia": "0.400 (1h); 0.100 (anual)",
+      "Normativa": "Dec. 3395/96 PBA [8]"
+    },
+    {
+      "Parametro": "Plomo",
+      "Unidad": "mg/m3",
+      "Niveles_Guia": "0.0015 (trimestral)",
+      "Normativa": "Dec. 3395/96 PBA [8]"
+    },
+    {
+      "Parametro": "Benceno",
+      "Unidad": "mg/m3",
+      "Niveles_Guia": "0.000096 (anual)",
+      "Normativa": "Dec. 3395/96 PBA [8]"
+    },
+    {
+      "Parametro": "Cadmio",
+      "Unidad": "mg/m3",
+      "Niveles_Guia": "0.00000011 (anual)",
+      "Normativa": "Dec. 3395/96 PBA [8]"
+    },
+    {
+      "Parametro": "Cromo Hexavalente",
+      "Unidad": "mg/m3",
+      "Niveles_Guia": "0.0000000167 (anual)",
+      "Normativa": "Dec. 3395/96 PBA [8]"
+    },
+    {
+      "Parametro": "Tolueno",
+      "Unidad": "mg/m3",
+      "Niveles_Guia": "1.4 (8h)",
+      "Normativa": "Dec. 3395/96 PBA [8]"
+    },
+    {
+      "Parametro": "Formaldehído",
+      "Unidad": "mg/m3",
+      "Niveles_Guia": "0.000062 (anual)",
+      "Normativa": "Dec. 3395/96 PBA [8]"
+    }
+  ],
+  "Suelos":"
+    },
+    {
+      "Parametro": "Mercurio",
+      "Unidad": "ug/g (peso seco)",
+      "Niveles_Guia": "0.8 (agrícola); 2 (residencial); 20 (industrial)",
+      "Normativa": "Ley 24.051 (Dec. 831/93, Tabla 9) [9]"
+    },
+    {
+      "Parametro": "Níquel",
+      "Unidad": "ug/g (peso seco)",
+      "Niveles_Guia": "150 (agrícola); 100 (residencial); 500 (industrial)",
+      "Normativa": "Ley 24.051 (Dec. 831/93, Tabla 9) [9]"
+    },
+    {
+      "Parametro": "PCBs (Bifenilos Policlorados)",
+      "Unidad": "ug/g (peso seco)",
+      "Niveles_Guia": "0.5 (agrícola); 5 (residencial); 50 (industrial)",
+      "Normativa": "Ley 24.051 (Dec. 831/93, Tabla 9) [9]"
+    },
+    {
+      "Parametro": "Dioxinas y Furanos",
+      "Unidad": "ug/g (peso seco)",
+      "Niveles_Guia": "0.00001 (agrícola); 0.001 (industrial)",
+      "Normativa": "Ley 24.051 (Dec. 831/93, Tabla 9) [9]"
+    },
+    {
+      "Parametro": "Pireno (HAPs)",
+      "Unidad": "ug/g (peso seco)",
+      "Niveles_Guia": "0.1 (agrícola); 10 (residencial); 100 (industrial)",
+      "Normativa": "Ley 24.051 (Dec. 831/93, Tabla 9) [9]"
+    }
+  ],
+  "Sedimentos":"
+    },
+    {
+      "Parametro": "Cadmio (Cd)",
+      "Unidad": "mg/kg",
+      "Niveles_Guia": "0.8 (Nivel Tope); 12 (Valor Intervención)",
+      "Normativa": "Ley 24.051 / Valores Ref. Holandeses"
+    },
+    {
+      "Parametro": "Cromo (Cr)",
+      "Unidad": "mg/kg",
+      "Niveles_Guia": "100 (Nivel Tope); 380 (Valor Intervención)",
+      "Normativa": "Ley 24.051 / Valores Ref. Holandeses"
+    },
+    {
+      "Parametro": "Plomo (Pb)",
+      "Unidad": "mg/kg",
+      "Niveles_Guia": "85 (Nivel Tope); 530 (Valor Intervención)",
+      "Normativa": "Ley 24.051 / Valores Ref. Holandeses"
+    },
+    {
+      "Parametro": "Mercurio (Hg)",
+      "Unidad": "mg/kg",
+      "Niveles_Guia": "0.3 (Nivel Tope); 10 (Valor Intervención)",
+      "Normativa": "Ley 24.051 / Valores Ref. Holandeses"
+    },
+    {
+      "Parametro": "Zinc (Zn)",
+      "Unidad": "mg/kg",
+      "Niveles_Guia": "140 (Nivel Tope); 720 (Valor Intervención)",
+      "Normativa": "Ley 24.051 / Valores Ref. Holandeses"
+    }
+  ],
+  "Biota":"
+    },
+    {
+      "Parametro": "Densidad celular (Fitoplancton)",
+      "Unidad": "cel/mL",
+      "Niveles_Guia": "Análisis cuantitativo microscópico para evaluación de floraciones",
+      "Normativa": "Directrices REMAQUA / CONICET [11]"
+    },
+    {
+      "Parametro": "Biovolumen (Fitoplancton)",
+      "Unidad": "um3/mL",
+      "Niveles_Guia": "Sumatoria de densidad por biovolumen celular de las especies presentes",
+      "Normativa": "Directrices REMAQUA / CONICET [11]"
+    }
+  ]
+}

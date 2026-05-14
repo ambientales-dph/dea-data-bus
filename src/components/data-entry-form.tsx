@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,7 @@ const stationSchema = z.object({
 
 type StationValues = z.infer<typeof stationSchema>;
 
-type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'report-view' | 'select-project';
+type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'report-view' | 'select-project' | 'select-template';
 
 export function DataEntryForm({ 
   selectedPoint,
@@ -50,6 +50,8 @@ export function DataEntryForm({
   
   const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('manual');
 
   const [isEditingCoords, setIsEditingCoords] = useState(false);
   const [editLat, setEditLat] = useState('');
@@ -57,6 +59,18 @@ export function DataEntryForm({
 
   const lastPointKeyRef = useRef<string | null>(null);
   const isInitialLoadRef = useRef(true);
+
+  useEffect(() => {
+    // Cargar plantillas desde el JSON local
+    fetch('/data/parametros_monitoreo.json')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.medios) {
+          setTemplates(data.medios);
+        }
+      })
+      .catch(err => console.error("Error al cargar plantillas", err));
+  }, []);
 
   useEffect(() => {
     if (selectedPoint && isInitialLoadRef.current) {
@@ -72,6 +86,7 @@ export function DataEntryForm({
             setCurrentReportId(parsed.currentReportId || null);
             setViewingReportId(parsed.viewingReportId || null);
             setSelectedProject(parsed.selectedProject || '');
+            setSelectedTemplate(parsed.selectedTemplate || 'manual');
           } else {
             setActiveView(selectedPoint.stationId ? 'summary' : 'create-station');
           }
@@ -105,6 +120,7 @@ export function DataEntryForm({
       setViewingReportId(null);
       setIsEditingCoords(false);
       setSelectedProject('');
+      setSelectedTemplate('manual');
       
       lastPointKeyRef.current = currentKey;
     }
@@ -112,10 +128,10 @@ export function DataEntryForm({
 
   useEffect(() => {
     if (selectedPoint) {
-      const state = { activeView, currentReportId, viewingReportId, selectedProject };
+      const state = { activeView, currentReportId, viewingReportId, selectedProject, selectedTemplate };
       localStorage.setItem('dea_form_state', JSON.stringify(state));
     }
-  }, [activeView, currentReportId, viewingReportId, selectedProject, selectedPoint]);
+  }, [activeView, currentReportId, viewingReportId, selectedProject, selectedTemplate, selectedPoint]);
 
   useEffect(() => {
     const stored = localStorage.getItem('trello_cards_sync');
@@ -360,7 +376,12 @@ export function DataEntryForm({
         <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
         </Button>
-        <SamplingReportForm reportId={currentReportId} stationId={selectedPoint.stationId!} onClose={() => setActiveView('summary')} />
+        <SamplingReportForm 
+          reportId={currentReportId} 
+          stationId={selectedPoint.stationId!} 
+          onClose={() => setActiveView('summary')} 
+          templateId={selectedTemplate}
+        />
       </div>
     );
   }
@@ -397,7 +418,7 @@ export function DataEntryForm({
           <CardHeader className="pb-4">
             <CardTitle className="text-md flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-primary" />
-              Seleccionar Proyecto
+              1. Seleccionar Proyecto
             </CardTitle>
             <CardDescription className="text-xs">Asociá este nuevo reporte a un proyecto activo de Trello.</CardDescription>
           </CardHeader>
@@ -421,13 +442,56 @@ export function DataEntryForm({
             </div>
             <Button 
               className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md" 
-              disabled={!selectedProject || isStartingReport} 
+              disabled={!selectedProject} 
+              onClick={() => setActiveView('select-template')}
+            >
+              Siguiente: Elegir Planilla <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (activeView === 'select-template' && selectedPoint.stationId) {
+    return (
+      <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('select-project')} className="mb-2">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al proyecto
+        </Button>
+        <Card className="border-t-4 border-t-accent shadow-lg overflow-hidden">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-md flex items-center gap-2">
+              <LayoutList className="h-5 w-5 text-accent" />
+              2. Elegir Planilla de Carga
+            </CardTitle>
+            <CardDescription className="text-xs">Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Medio / Protocolo</Label>
+              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                <SelectTrigger className="w-full h-11 text-xs font-medium border-accent/20 bg-accent/5">
+                  <SelectValue placeholder="Elegí un protocolo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual" className="text-xs font-bold">Carga Manual (uno por uno)</SelectItem>
+                  <Separator className="my-1" />
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button 
+              className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md" 
+              disabled={isStartingReport} 
               onClick={handleStartReport}
             >
               {isStartingReport ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Iniciando...
+                  Generando Reporte...
                 </>
               ) : (
                 "Confirmar e Iniciar Reporte"
