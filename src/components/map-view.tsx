@@ -117,9 +117,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       source: selectionSource.current,
       style: new Style({
         image: new CircleStyle({
-          radius: 8,
-          stroke: new Stroke({ color: '#ef4444', width: 3 }),
-          fill: new Fill({ color: 'rgba(239, 68, 68, 0.3)' }),
+          radius: 7,
+          stroke: new Stroke({ color: '#22c55e', width: 1.5 }),
+          fill: new Fill({ color: 'rgba(34, 197, 94, 0.4)' }),
         }),
       }),
       zIndex: 20,
@@ -129,9 +129,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       source: presenceSource.current,
       style: new Style({
         image: new CircleStyle({
-          radius: 8,
-          stroke: new Stroke({ color: '#22c55e', width: 2.5 }),
-          fill: new Fill({ color: 'rgba(34, 197, 94, 0.4)' }),
+          radius: 7,
+          stroke: new Stroke({ color: '#ef4444', width: 1.5 }),
+          fill: new Fill({ color: 'rgba(239, 68, 68, 0.4)' }),
         }),
       }),
       zIndex: 15,
@@ -214,7 +214,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     presenceSource.current.clear();
 
     presences?.forEach((presence: any) => {
-      // No mostrar nuestra propia presencia (la local ya está en rojo)
+      // No mostrar nuestra propia presencia (la local ya está en verde)
       if (presence.userId === user?.uid) return;
 
       const feature = new Feature({
@@ -296,14 +296,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       return new Style({
         image: new CircleStyle({
           radius: 5,
-          fill: new Fill({ color: isSelected ? '#ef4444' : '#4E97CA' }),
+          fill: new Fill({ color: isSelected ? '#22c55e' : '#4E97CA' }),
           stroke: new Stroke({ color: 'white', width: 1.5 }),
         }),
         text: zoom && zoom >= 8 ? new Text({
           text: stationFeature.get('name'),
           offsetY: -15,
           font: 'bold 10px "Encode Sans", sans-serif',
-          fill: new Fill({ color: isSelected ? '#ef4444' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
+          fill: new Fill({ color: isSelected ? '#22c55e' : (activeLayer === 'satellite' ? 'white' : '#1e3a8a') }),
           stroke: activeLayer === 'satellite' ? new Stroke({ color: 'black', width: 2 }) : new Stroke({ color: 'white', width: 2 }),
           padding: [2, 4, 2, 4],
         }) : undefined
@@ -475,11 +475,11 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         <div className="space-y-1">
           <div className="flex items-center justify-end gap-2">
             <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Técnicos Activos</span>
-            <div className="w-2 h-2 rounded-full bg-[#22c55e] border border-white"></div> 
+            <div className="w-2 h-2 rounded-full bg-[#ef4444] border border-white"></div> 
           </div>
           <div className="flex items-center justify-end gap-2">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Estaciones</span>
-            <div className="w-2 h-2 rounded-full bg-[#4E97CA] border border-white"></div> 
+            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Mi Selección</span>
+            <div className="w-2 h-2 rounded-full bg-[#22c55e] border border-white"></div> 
           </div>
         </div>
       </div>
