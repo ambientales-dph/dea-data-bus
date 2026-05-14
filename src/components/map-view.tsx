@@ -20,7 +20,7 @@ import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
 import { Input } from '@/components/ui/input';
-import { Search, MapPin, Loader2, Layers, Map as MapIcon, Satellite, Users } from 'lucide-react';
+import { Search, MapPin, Loader2, Layers, Map as MapIcon, Satellite } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -39,6 +39,9 @@ interface SearchResult {
 }
 
 type BaseLayerType = 'osm' | 'grayscale' | 'satellite';
+
+// Umbral de caducidad para presencia (2 minutos)
+const PRESENCE_EXPIRATION_MS = 2 * 60 * 1000;
 
 export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -234,19 +237,34 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     });
   }, [selectedPoint?.lat, selectedPoint?.lon, user?.email]);
 
+  // Sincronización de presencia remota con filtrado de caducidad
   useEffect(() => {
     if (!presenceSource.current) return;
-    presenceSource.current.clear();
 
-    presences?.forEach((presence: any) => {
-      if (presence.userId === user?.uid) return;
+    const renderPresence = () => {
+      presenceSource.current.clear();
+      const now = Date.now();
 
-      const feature = new Feature({
-        geometry: new Point(fromLonLat([presence.longitude, presence.latitude])),
-        userEmail: presence.userEmail,
+      presences?.forEach((presence: any) => {
+        if (presence.userId === user?.uid) return;
+
+        // Verificar si el punto ha caducado (si no ha enviado heartbeat en X tiempo)
+        const updatedAt = presence.updatedAt?.toMillis?.() || (presence.updatedAt instanceof Date ? presence.updatedAt.getTime() : now);
+        if (now - updatedAt > PRESENCE_EXPIRATION_MS) return;
+
+        const feature = new Feature({
+          geometry: new Point(fromLonLat([presence.longitude, presence.latitude])),
+          userEmail: presence.userEmail,
+        });
+        presenceSource.current.addFeature(feature);
       });
-      presenceSource.current.addFeature(feature);
-    });
+    };
+
+    renderPresence();
+
+    // Re-evaluar la caducidad cada minuto para limpiar puntos fantasma incluso si no hay cambios en DB
+    const pruneInterval = setInterval(renderPresence, 60000);
+    return () => clearInterval(pruneInterval);
   }, [presences, user?.uid]);
 
   useEffect(() => {
@@ -328,7 +346,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     selectionLayerRef.current.setStyle(() => {
       return new Style({
         image: new CircleStyle({
-          radius: 5,
+          radius: 3.5,
           stroke: new Stroke({ color: '#22c55e', width: 1 }),
           fill: new Fill({ color: 'rgba(34, 197, 94, 0.4)' }),
         })
@@ -338,7 +356,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     presenceLayerRef.current.setStyle(() => {
       return new Style({
         image: new CircleStyle({
-          radius: 5,
+          radius: 3.5,
           stroke: new Stroke({ color: '#ef4444', width: 1 }),
           fill: new Fill({ color: 'rgba(239, 68, 68, 0.4)' }),
         })
@@ -507,10 +525,10 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       <div ref={mapRef} className="absolute inset-0 z-10" />
 
-      {/* Tooltip Dinámico (Hover) - Estilizado según solicitud */}
+      {/* Tooltip Dinámico (Hover) */}
       {hoveredEmail && tooltipPos && (
         <div 
-          className="fixed z-[100] pointer-events-none bg-gray-200/30 text-black px-2 py-1 rounded-none text-[9px] font-code shadow-md transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200"
+          className="fixed z-[100] pointer-events-none bg-gray-200/30 text-black px-2 py-1 rounded-none text-[9px] font-code shadow-none transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200"
           style={{ left: tooltipPos.x, top: tooltipPos.y }}
         >
           {hoveredEmail}
