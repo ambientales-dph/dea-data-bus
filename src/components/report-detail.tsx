@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle2, User, Briefcase, Pencil, Check, X } from 'lucide-react';
+import { Loader2, CheckCircle2, User, Briefcase, Pencil, Check, X, Layers } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +26,6 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
   const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
 
-  // Cargar proyectos de Trello desde localStorage
   useEffect(() => {
     const stored = localStorage.getItem('trello_cards_sync');
     if (stored) {
@@ -39,11 +38,9 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
     }
   }, []);
 
-  // Obtener datos del reporte
   const reportRef = useMemo(() => doc(db, 'reports', reportId), [db, reportId]);
   const { data: reportData, loading: reportLoading } = useDoc(reportRef);
 
-  // Consulta de analitos
   const samplesQuery = useMemo(() => {
     return query(
       collection(db, 'samples'),
@@ -53,7 +50,16 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
 
   const { data: samples, loading: samplesLoading } = useCollection(samplesQuery);
 
-  // Sincronizar proyecto seleccionado cuando se carga el reporte
+  const groupedSamples = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    samples.forEach((s: any) => {
+      const m = s.medium || 'other';
+      if (!groups[m]) groups[m] = [];
+      groups[m].push(s);
+    });
+    return groups;
+  }, [samples]);
+
   useEffect(() => {
     if (reportData?.trelloCardName) {
       setSelectedProject(reportData.trelloCardName);
@@ -81,14 +87,6 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
       });
   };
 
-  const sortedSamples = useMemo(() => {
-    return [...samples].sort((a: any, b: any) => {
-      const timeA = a.timestamp?.toMillis?.() || 0;
-      const timeB = b.timestamp?.toMillis?.() || 0;
-      return timeA - timeB;
-    });
-  }, [samples]);
-
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '---';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -102,7 +100,7 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
   };
 
   const mediumLabel = (m: string) => {
-    const labels: any = { water: 'Agua', air: 'Aire', soil: 'Suelo' };
+    const labels: any = { water: 'Agua', air: 'Aire', soil: 'Suelo', other: 'Otro' };
     return labels[m] || m;
   };
 
@@ -132,7 +130,6 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
           </div>
           
           <div className="mt-3 space-y-2">
-            {/* Sección de Proyecto con edición */}
             <div className="flex flex-col gap-2">
               {isEditingProject ? (
                 <div className="flex items-center gap-2 bg-primary/5 p-2 rounded-md border border-primary/20 animate-in fade-in duration-200">
@@ -180,45 +177,56 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
           </div>
         </CardHeader>
         <CardContent className="p-0 border-t">
-          <ScrollArea className="h-[350px]">
-            <Table>
-              <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                <TableRow>
-                  <TableHead className="text-[10px] uppercase font-bold">Medio</TableHead>
-                  <TableHead className="text-[10px] uppercase font-bold">Analito</TableHead>
-                  <TableHead className="text-[10px] uppercase font-bold">Valor</TableHead>
-                  <TableHead className="text-[10px] uppercase font-bold text-right">Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedSamples.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-12 text-muted-foreground italic">
-                      Este reporte no contiene analitos registrados.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  sortedSamples.map((sample: any) => (
-                    <TableRow key={sample.id}>
-                      <TableCell className="text-xs py-2">{mediumLabel(sample.medium)}</TableCell>
-                      <TableCell className="text-xs py-2 font-medium">{sample.analyte}</TableCell>
-                      <TableCell className="text-xs py-2 font-code">{sample.value}</TableCell>
-                      <TableCell className="text-right py-2">
-                        <Badge variant="ghost" className="text-green-600 bg-green-50 gap-1 h-5 px-1.5">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Verificado
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          <ScrollArea className="h-[400px]">
+            {Object.keys(groupedSamples).length === 0 ? (
+               <div className="text-center py-12 text-muted-foreground italic text-xs">
+                 Este reporte no contiene analitos registrados.
+               </div>
+            ) : (
+              Object.entries(groupedSamples).map(([medium, items]) => (
+                <div key={medium} className="mb-4">
+                  <div className="bg-muted/50 px-4 py-2 sticky top-0 z-10 border-y flex items-center gap-2">
+                    <Layers className="h-3 w-3 text-accent" />
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                      Matriz: {mediumLabel(medium)}
+                    </span>
+                  </div>
+                  <Table>
+                    <TableHeader className="sr-only">
+                      <TableRow>
+                        <TableHead>Analito</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Estado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((sample: any) => (
+                        <TableRow key={sample.id}>
+                          <TableCell className="text-xs py-2 pl-6">
+                             <div className="font-bold">{sample.analyte}</div>
+                             <div className="text-[9px] text-muted-foreground uppercase">{sample.parameterType}</div>
+                          </TableCell>
+                          <TableCell className="text-xs py-2 font-code font-bold text-primary">
+                            {sample.value}
+                          </TableCell>
+                          <TableCell className="text-right py-2 pr-4">
+                            <Badge variant="ghost" className="text-green-600 bg-green-50 gap-1 h-5 px-1.5">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Verificado
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))
+            )}
           </ScrollArea>
         </CardContent>
         <CardFooter className="pt-6 border-t bg-muted/5 flex justify-between items-center">
           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-            {sortedSamples.length} Analitos totales
+            {samples.length} Analitos totales
           </p>
           <Button onClick={onClose} variant="outline" className="text-xs">
             Cerrar detalle

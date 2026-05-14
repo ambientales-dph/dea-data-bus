@@ -11,13 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Save, FlaskConical, CheckCircle2, User, LayoutList, Loader2, Star, Search, Check, X } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Plus, Save, FlaskConical, CheckCircle2, Loader2, Star, Search, Check, Info } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 
 const analyteSchema = z.object({
   medium: z.enum(['water', 'air', 'soil']),
@@ -43,7 +43,6 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
   const [planillaValues, setPlanillaValues] = useState<Record<string, string>>({});
   const [isSavingPlanilla, setIsSavingPlanilla] = useState(false);
 
-  // Estados para modo personalizado
   const [allParams, setAllParams] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedParams, setSelectedParams] = useState<any[]>([]);
@@ -53,21 +52,18 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
   const reportRef = useMemo(() => doc(db, 'reports', reportId), [db, reportId]);
   const { data: reportData } = useDoc(reportRef);
 
-  // Carga de universo de parámetros
   useEffect(() => {
     fetch('/data/parametros_monitoreo.json')
       .then(res => res.json())
       .then(data => {
         const flattened = data.medios.flatMap((m: any) => 
-          m.parametros.map((p: any) => ({ ...p, mediumOrigin: m.id }))
+          m.parametros.map((p: any) => ({ ...p, mediumOrigin: m.id, mediumKey: m.medium }))
         );
-        // Eliminar duplicados por nombre
         const unique = Array.from(new Map(flattened.map((p: any) => [p.nombre, p])).values());
         setAllParams(unique);
       });
   }, []);
 
-  // Carga de plantilla
   useEffect(() => {
     if (!templateId) return;
 
@@ -96,7 +92,16 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
 
   const samplesQuery = useMemo(() => query(collection(db, 'samples'), where('reportId', '==', reportId)), [db, reportId]);
   const { data: samplesData } = useCollection(samplesQuery);
-  const savedSamples = useMemo(() => [...samplesData].sort((a: any, b: any) => (a.timestamp?.toMillis?.() || 0) - (b.timestamp?.toMillis?.() || 0)), [samplesData]);
+  
+  const groupedSamples = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    samplesData.forEach((s: any) => {
+      const m = s.medium || 'other';
+      if (!groups[m]) groups[m] = [];
+      groups[m].push(s);
+    });
+    return groups;
+  }, [samplesData]);
 
   const form = useForm<AnalyteValues>({
     resolver: zodResolver(analyteSchema),
@@ -116,7 +121,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
         const val = planillaValues[param.nombre];
         if (val && val.trim() !== '') {
           const sampleData = {
-            medium: template.medium || 'water',
+            medium: template.medium || param.mediumKey || 'water',
             parameterType: param.categoria,
             analyte: param.nombre,
             value: val,
@@ -177,6 +182,11 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
     );
   };
 
+  const mediumLabel = (m: string) => {
+    const labels: any = { water: 'Agua', air: 'Aire', soil: 'Suelo/Sedim.', other: 'Otro' };
+    return labels[m] || m;
+  };
+
   return (
     <div className="space-y-4">
       <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
@@ -205,7 +215,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
                 </Label>
                 <div className="relative">
                   <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filtrar..." className="h-8 pl-8 text-xs" />
+                  <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filtrar por nombre o ley..." className="h-8 pl-8 text-xs" />
                 </div>
                 <ScrollArea className="h-48 border rounded-md p-1 bg-white">
                   <div className="space-y-0.5">
@@ -216,7 +226,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
                           <Checkbox checked={isSelected} className="h-3.5 w-3.5" />
                           <div className="flex-1 overflow-hidden">
                             <p className="text-[11px] font-bold truncate leading-none">{p.nombre}</p>
-                            <p className="text-[8px] text-muted-foreground uppercase">{p.categoria}</p>
+                            <p className="text-[8px] text-muted-foreground uppercase">{p.unidades} • {p.ley || 'Sin ley'}</p>
                           </div>
                         </div>
                       );
@@ -233,14 +243,25 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
             <div className="space-y-2 animate-in fade-in duration-300">
               <div className="grid grid-cols-1 gap-1.5">
                 {(template.parametros || template.parameters).map((param: any) => (
-                  <div key={param.nombre} className="flex items-center gap-2 p-1.5 rounded-sm bg-muted/20 border border-muted/20 group hover:border-primary/20 transition-all">
+                  <div key={param.nombre} className="flex items-center gap-2 p-2 rounded-sm bg-muted/20 border border-muted/20 group hover:border-primary/20 transition-all">
                     <div className="flex-1 min-w-0">
-                      <Label className="text-[10px] font-bold text-primary leading-none block truncate" title={param.nombre}>{param.nombre}</Label>
-                      <span className="text-[8px] text-muted-foreground uppercase font-medium">{param.categoria}</span>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                         <Label className="text-[10px] font-bold text-primary leading-none truncate" title={param.nombre}>{param.nombre}</Label>
+                         <span className="text-[9px] font-code bg-primary/10 text-primary px-1 rounded">{param.unidades}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 opacity-70">
+                         <span className="text-[8px] text-muted-foreground uppercase font-bold">{param.categoria}</span>
+                         {param.nivelGuia && (
+                           <span className="text-[8px] text-destructive flex items-center gap-0.5 font-bold">
+                             <Info className="h-2 w-2" /> Guía: {param.nivelGuia}
+                           </span>
+                         )}
+                         {param.ley && <span className="text-[8px] text-muted-foreground italic truncate max-w-[120px]">Norma: {param.ley}</span>}
+                      </div>
                     </div>
                     <Input 
                       placeholder="Valor" 
-                      className="h-7 w-24 text-[11px] font-code py-0 px-2 bg-white"
+                      className="h-8 w-24 text-[11px] font-code py-0 px-2 bg-white text-right border-primary/20 focus:border-primary"
                       value={planillaValues[param.nombre] || ''}
                       onChange={(e) => setPlanillaValues(prev => ({...prev, [param.nombre]: e.target.value}))}
                     />
@@ -280,27 +301,40 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
       <Card className="border-t shadow-inner">
         <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
           <CardTitle className="text-[11px] font-bold uppercase flex items-center gap-1.5 text-muted-foreground">
-            <FlaskConical className="h-3.5 w-3.5" /> Analitos ({savedSamples.length})
+            <FlaskConical className="h-3.5 w-3.5" /> Analitos ({samplesData.length})
           </CardTitle>
           <Button onClick={onClose} size="sm" className="h-7 text-[10px] px-3 bg-green-600 hover:bg-green-700">Listo</Button>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="h-32 rounded-md">
-            <Table>
-              <TableBody>
-                {savedSamples.length === 0 ? (
-                  <TableRow><TableCell className="text-center py-6 text-[10px] italic text-muted-foreground">Sin datos registrados.</TableCell></TableRow>
-                ) : (
-                  savedSamples.map((sample: any) => (
-                    <TableRow key={sample.id} className="h-7 border-b-0 hover:bg-muted/30 transition-colors">
-                      <TableCell className="text-[10px] py-1 pl-3 font-medium">{sample.analyte}</TableCell>
-                      <TableCell className="text-[10px] py-1 font-code text-primary font-bold">{sample.value}</TableCell>
-                      <TableCell className="text-right py-1 pr-3"><Check className="h-3 w-3 text-green-500 inline" /></TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          <ScrollArea className="h-40 rounded-md">
+            {Object.keys(groupedSamples).length === 0 ? (
+              <div className="text-center py-6 text-[10px] italic text-muted-foreground">Sin datos registrados.</div>
+            ) : (
+              Object.entries(groupedSamples).map(([medium, items]) => (
+                <div key={medium} className="mb-2">
+                  <div className="bg-muted/40 px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground border-y flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    {mediumLabel(medium)}
+                  </div>
+                  <Table>
+                    <TableBody>
+                      {items.map((sample: any) => (
+                        <TableRow key={sample.id} className="h-7 border-b-0 hover:bg-muted/30 transition-colors">
+                          <TableCell className="text-[10px] py-1 pl-4 font-medium flex items-center gap-2">
+                            {sample.analyte}
+                            <span className="text-[8px] text-muted-foreground uppercase">({sample.parameterType})</span>
+                          </TableCell>
+                          <TableCell className="text-[10px] py-1 font-code text-primary font-bold text-right pr-4">
+                            {sample.value}
+                            <Check className="h-2.5 w-2.5 text-green-500 inline ml-1.5" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))
+            )}
           </ScrollArea>
         </CardContent>
       </Card>

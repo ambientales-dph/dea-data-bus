@@ -1,52 +1,33 @@
+
 {
   "medios": [
     {
       "id": "agua_superficial",
       "nombre": "Agua Superficial",
+      "medium": "water",
       "parametros": [
-        { "nombre": "pH", "categoria": "Fisicoquímico" },
-        { "nombre": "Temperatura", "categoria": "Fisicoquímico" },
-        { "nombre": "Oxígeno Disuelto (OD)", "categoria": "Fisicoquímico" },
-        { "nombre": "Conductividad Eléctrica", "categoria": "Fisicoquímico" },
-        { "nombre": "Turbidez", "categoria": "Fisicoquímico" },
-        { "nombre": "Sólidos Suspendidos Totales", "categoria": "Químico" },
-        { "nombre": "Demanda Química de Oxígeno (DQO)", "categoria": "Químico" }
+        { "nombre": "pH", "categoria": "FISICOQUIMICO", "unidades": "unidades", "nivelGuia": "6.5 - 8.5", "ley": "Ley 24.051" },
+        { "nombre": "Temperatura", "categoria": "FISICOQUIMICO", "unidades": "°C", "nivelGuia": "Var. < 3°C", "ley": "Dec. 831/93" },
+        { "nombre": "Conductividad", "categoria": "FISICOQUIMICO", "unidades": "µS/cm", "nivelGuia": "---", "ley": "---" },
+        { "nombre": "Oxígeno Disuelto", "categoria": "GASES", "unidades": "mg/L", "nivelGuia": "> 5", "ley": "Ley 24.051" },
+        { "nombre": "Plomo (Pb)", "categoria": "METALES", "unidades": "µg/L", "nivelGuia": "1.0", "ley": "Nivel Guía Agua Dulce" },
+        { "nombre": "Cadmio (Cd)", "categoria": "METALES", "unidades": "µg/L", "nivelGuia": "0.2", "ley": "Nivel Guía Agua Dulce" },
+        { "nombre": "Cromo Total (Cr)", "categoria": "METALES", "unidades": "µg/L", "nivelGuia": "2.0", "ley": "Nivel Guía Agua Dulce" },
+        { "nombre": "Mercurio (Hg)", "categoria": "METALES", "unidades": "µg/L", "nivelGuia": "0.1", "ley": "Nivel Guía Agua Dulce" }
       ]
     },
     {
-      "id": "agua_subterranea",
-      "nombre": "Agua Subterránea",
-      "parametros": [
-        { "nombre": "pH", "categoria": "Fisicoquímico" },
-        { "nombre": "Nivel Estático (m)", "categoria": "Hidráulico" },
-        { "nombre": "Conductividad Eléctrica", "categoria": "Fisicoquímico" },
-        { "nombre": "Temperatura", "categoria": "Fisicoquímico" },
-        { "nombre": "Cloruros", "categoria": "Aniones" },
-        { "nombre": "Nitratos", "categoria": "Nutrientes" },
-        { "nombre": "Bicarbonatos", "categoria": "Alcalinidad" }
-      ]
-    },
-    {
-      "id": "efluentes",
-      "nombre": "Efluentes Líquidos",
-      "parametros": [
-        { "nombre": "Caudal", "categoria": "Hidrometría" },
-        { "nombre": "pH", "categoria": "Fisicoquímico" },
-        { "nombre": "DBO5", "categoria": "Químico" },
-        { "nombre": "DQO", "categoria": "Químico" },
-        { "nombre": "Sustancias Fenólicas", "categoria": "Orgánicos" },
-        { "nombre": "Hidrocarburos Totales", "categoria": "Orgánicos" }
-      ]
-    },
-    {
-      "id": "suelo",
+      "id": "suelo_sedimento",
       "nombre": "Suelo / Sedimento",
+      "medium": "soil",
       "parametros": [
-        { "nombre": "Humedad (%)", "categoria": "Físico" },
-        { "nombre": "Materia Orgánica", "categoria": "Químico" },
-        { "nombre": "Fósforo Extractable", "categoria": "Nutrientes" },
-        { "nombre": "Nitrógeno Total", "categoria": "Nutrientes" },
-        { "nombre": "Metales Pesados (Pb, Cd, Cr)", "categoria": "Metales" }
+        { "nombre": "Humedad (%)", "categoria": "FISICO", "unidades": "%", "nivelGuia": "---", "ley": "---" },
+        { "nombre": "Materia Orgánica", "categoria": "QUIMICO", "unidades": "%", "nivelGuia": "---", "ley": "---" },
+        { "nombre": "Fósforo Extractable", "categoria": "NUTRIENTES", "unidades": "ppm", "nivelGuia": "---", "ley": "---" },
+        { "nombre": "Nitrógeno Total", "categoria": "NUTRIENTES", "unidades": "%", "nivelGuia": "---", "ley": "---" },
+        { "nombre": "Plomo (Pb) en Suelo", "categoria": "METALES", "unidades": "mg/kg", "nivelGuia": "95", "ley": "Ley 24.051 (Residencial)" },
+        { "nombre": "Cadmio (Cd) en Suelo", "categoria": "METALES", "unidades": "mg/kg", "nivelGuia": "0.5", "ley": "Ley 24.051 (Residencial)" },
+        { "nombre": "Cromo (Cr) en Suelo", "categoria": "METALES", "unidades": "mg/kg", "nivelGuia": "250", "ley": "Ley 24.051 (Residencial)" }
       ]
     }
   ]
