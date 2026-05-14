@@ -23,11 +23,37 @@ export function SessionTimeoutManager() {
   const [showWarning, setShowWarning] = useState(false);
   const [remainingTime, setRemainingTime] = useState(60);
   const lastActivityRef = useRef<number>(Date.now());
-  const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const wakeLockRef = useRef<any>(null);
+
+  // Función para intentar despertar/mantener la pantalla encendida
+  const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+      } catch (err) {
+        // Silencioso: Los navegadores pueden bloquear esto si no hay interacción previa
+      }
+    }
+  };
+
+  const releaseWakeLock = () => {
+    if (wakeLockRef.current != null) {
+      wakeLockRef.current.release().then(() => {
+        wakeLockRef.current = null;
+      });
+    }
+  };
+
+  const handleSignOut = useCallback(() => {
+    releaseWakeLock();
+    setShowWarning(false);
+    signOut(auth);
+  }, [auth]);
 
   const resetTimer = useCallback(() => {
     lastActivityRef.current = Date.now();
     if (showWarning) {
+      releaseWakeLock();
       setShowWarning(false);
       setRemainingTime(60);
     }
@@ -44,15 +70,15 @@ export function SessionTimeoutManager() {
       window.addEventListener(event, handleActivity);
     });
 
-    // Verificador de inactividad (robusto ante hibernación)
     const interval = setInterval(() => {
       const now = Date.now();
       const diff = now - lastActivityRef.current;
 
       if (diff >= INACTIVITY_TIMEOUT) {
-        signOut(auth);
+        handleSignOut();
       } else if (diff >= WARNING_TIMEOUT && !showWarning) {
         setShowWarning(true);
+        requestWakeLock(); // Solicitar mantener pantalla encendida al mostrar advertencia
       }
     }, 1000);
 
@@ -61,8 +87,9 @@ export function SessionTimeoutManager() {
         window.removeEventListener(event, handleActivity);
       });
       clearInterval(interval);
+      releaseWakeLock();
     };
-  }, [user, auth, resetTimer, showWarning]);
+  }, [user, auth, resetTimer, showWarning, handleSignOut]);
 
   // Cronómetro del diálogo de advertencia
   useEffect(() => {
@@ -71,11 +98,11 @@ export function SessionTimeoutManager() {
       timer = setInterval(() => {
         setRemainingTime(prev => prev - 1);
       }, 1000);
-    } else if (remainingTime === 0) {
-      signOut(auth);
+    } else if (remainingTime === 0 && showWarning) {
+      handleSignOut();
     }
     return () => clearInterval(timer);
-  }, [showWarning, remainingTime, auth]);
+  }, [showWarning, remainingTime, handleSignOut]);
 
   if (!showWarning) return null;
 
