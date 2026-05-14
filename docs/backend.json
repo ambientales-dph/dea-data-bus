@@ -8,7 +8,7 @@
       "properties": {
         "name": { "type": "string", "description": "Denominación de la estación." },
         "latitude": { "type": "number", "description": "Latitud geográfica." },
-        "longitude": { "type": "number", "description": "Longitud geográfica." },
+        "longitude": { "type": "number", "description": "Logitud geográfica." },
         "basinCode": { "type": "string", "description": "Código de la cuenca detectado." },
         "userId": { "type": "string", "description": "ID del usuario que creó la estación." },
         "userEmail": { "type": "string", "description": "Email del usuario creador." },
@@ -55,6 +55,7 @@
       "properties": {
         "userId": { "type": "string" },
         "userEmail": { "type": "string" },
+        "name": { "type": "string", "description": "Nombre del punto o estación seleccionada." },
         "latitude": { "type": "number" },
         "longitude": { "type": "number" },
         "updatedAt": { "type": "string", "format": "date-time" }

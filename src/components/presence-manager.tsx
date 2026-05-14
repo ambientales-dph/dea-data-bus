@@ -28,6 +28,7 @@ export function PresenceManager({ selectedPoint }: { selectedPoint: SelectedPoin
         await setDoc(presenceRef, {
           userId: user.uid,
           userEmail: user.email,
+          name: selectedPoint.name || '',
           latitude: selectedPoint.lat,
           longitude: selectedPoint.lon,
           updatedAt: serverTimestamp(),

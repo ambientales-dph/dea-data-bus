@@ -73,7 +73,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [hoveredEmail, setHoveredEmail] = useState<string | null>(null);
+  const [hoveredText, setHoveredText] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number, y: number } | null>(null);
 
   useEffect(() => {
@@ -181,32 +181,39 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       if (evt.dragging) return;
       const pixel = map.getEventPixel(evt.originalEvent);
       
-      const feature = map.forEachFeatureAtPixel(pixel, (f) => {
-        const layers = [selectionLayerRef.current, presenceLayerRef.current];
-        const isFromOurLayer = map.getLayers().getArray().some(l => 
-          layers.includes(l as any) && (l as any).getSource()?.getFeatures().includes(f)
-        );
-        return isFromOurLayer ? f : null;
-      });
+      const feature = map.forEachFeatureAtPixel(pixel, (f) => f);
 
       if (feature) {
-        const email = feature.get('userEmail');
-        if (email) {
-          setHoveredEmail(email);
-          setTooltipPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
-          map.getTargetElement().style.cursor = 'help';
+        let text = '';
+        const features = feature.get('features'); // Clusters de estaciones
+
+        if (features) {
+          // Es un clúster de estaciones
+          const names = features.map((f: any) => f.get('name')).filter(Boolean);
+          text = names.join('\n');
         } else {
-          setHoveredEmail(null);
-          setTooltipPos(null);
+          // Es una selección local, presencia remota o una estación individual (si no estuviera en clúster)
+          const email = feature.get('userEmail');
+          const name = feature.get('name');
+
+          if (email && name) text = `${email} - ${name}`;
+          else if (email) text = email;
+          else if (name) text = name;
+        }
+
+        if (text) {
+          setHoveredText(text);
+          setTooltipPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
           map.getTargetElement().style.cursor = 'pointer';
+        } else {
+          setHoveredText(null);
+          setTooltipPos(null);
+          map.getTargetElement().style.cursor = '';
         }
       } else {
-        const isStation = map.hasFeatureAtPixel(pixel, {
-          layerFilter: (l) => l === stationsLayerRef.current
-        });
-        setHoveredEmail(null);
+        setHoveredText(null);
         setTooltipPos(null);
-        map.getTargetElement().style.cursor = isStation ? 'pointer' : '';
+        map.getTargetElement().style.cursor = '';
       }
     });
 
@@ -228,6 +235,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     const selectionFeature = new Feature({
       geometry: new Point(fromLonLat([selectedPoint.lon, selectedPoint.lat])),
       userEmail: user?.email || 'Mi selección',
+      name: selectedPoint.name || '',
     });
     selectionSource.current.addFeature(selectionFeature);
 
@@ -235,7 +243,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
       duration: 500
     });
-  }, [selectedPoint?.lat, selectedPoint?.lon, user?.email]);
+  }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.name, user?.email]);
 
   // Sincronización de presencia remota con filtrado de caducidad
   useEffect(() => {
@@ -248,13 +256,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       presences?.forEach((presence: any) => {
         if (presence.userId === user?.uid) return;
 
-        // Verificar si el punto ha caducado (si no ha enviado heartbeat en X tiempo)
+        // Verificar si el punto ha caducado
         const updatedAt = presence.updatedAt?.toMillis?.() || (presence.updatedAt instanceof Date ? presence.updatedAt.getTime() : now);
         if (now - updatedAt > PRESENCE_EXPIRATION_MS) return;
 
         const feature = new Feature({
           geometry: new Point(fromLonLat([presence.longitude, presence.latitude])),
           userEmail: presence.userEmail,
+          name: presence.name || '',
         });
         presenceSource.current.addFeature(feature);
       });
@@ -262,7 +271,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
     renderPresence();
 
-    // Re-evaluar la caducidad cada minuto para limpiar puntos fantasma incluso si no hay cambios en DB
     const pruneInterval = setInterval(renderPresence, 60000);
     return () => clearInterval(pruneInterval);
   }, [presences, user?.uid]);
@@ -319,7 +327,7 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       if (size > 1) {
         return new Style({
           image: new CircleStyle({
-            radius: 10 + Math.min(size, 6),
+            radius: 9 + Math.min(size, 5),
             fill: new Fill({ color: 'rgba(78, 151, 202, 0.7)' }),
             stroke: undefined,
           }),
@@ -336,9 +344,9 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       return new Style({
         image: new CircleStyle({
-          radius: 4,
+          radius: 3.5,
           fill: new Fill({ color: isSelected ? '#22c55e' : '#4E97CA' }),
-          stroke: new Stroke({ color: 'white', width: 1 }),
+          stroke: new Stroke({ color: 'white', width: 0.8 }),
         })
       });
     });
@@ -346,8 +354,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     selectionLayerRef.current.setStyle(() => {
       return new Style({
         image: new CircleStyle({
-          radius: 3.5,
-          stroke: new Stroke({ color: '#22c55e', width: 1 }),
+          radius: 3,
+          stroke: new Stroke({ color: '#22c55e', width: 0.8 }),
           fill: new Fill({ color: 'rgba(34, 197, 94, 0.4)' }),
         })
       });
@@ -356,8 +364,8 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     presenceLayerRef.current.setStyle(() => {
       return new Style({
         image: new CircleStyle({
-          radius: 3.5,
-          stroke: new Stroke({ color: '#ef4444', width: 1 }),
+          radius: 3,
+          stroke: new Stroke({ color: '#ef4444', width: 0.8 }),
           fill: new Fill({ color: 'rgba(239, 68, 68, 0.4)' }),
         })
       });
@@ -526,12 +534,12 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
       <div ref={mapRef} className="absolute inset-0 z-10" />
 
       {/* Tooltip Dinámico (Hover) */}
-      {hoveredEmail && tooltipPos && (
+      {hoveredText && tooltipPos && (
         <div 
-          className="fixed z-[100] pointer-events-none bg-gray-200/30 text-black px-2 py-1 rounded-none text-[9px] font-code shadow-none transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200"
+          className="fixed z-[100] pointer-events-none bg-gray-200/30 text-black px-2 py-1 rounded-none text-[9px] font-code shadow-none transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200 whitespace-pre-line"
           style={{ left: tooltipPos.x, top: tooltipPos.y }}
         >
-          {hoveredEmail}
+          {hoveredText}
         </div>
       )}
       
