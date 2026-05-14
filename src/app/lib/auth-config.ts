@@ -1,4 +1,3 @@
-
 export const AUTH_WHITELIST = [
   'user@example.com',
   'admin@geodatos.com',
@@ -30,5 +29,6 @@ export const AUTH_WHITELIST = [
 
 export function isUserWhitelisted(email: string | null): boolean {
   if (!email) return false;
-  return AUTH_WHITELIST.includes(email.toLowerCase());
+  const cleanEmail = email.trim().toLowerCase();
+  return AUTH_WHITELIST.some(whitelisted => whitelisted.toLowerCase() === cleanEmail);
 }

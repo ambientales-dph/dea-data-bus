@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Timer } from 'lucide-react';
 
-// Valores de producción: 10 minutos total, advertencia a los 9 minutos
 const INACTIVITY_TIMEOUT = 10 * 60 * 1000; 
 const WARNING_TIMEOUT = 9 * 60 * 1000; 
 const COUNTDOWN_TOTAL = 60;
@@ -73,9 +72,7 @@ export function SessionTimeoutManager() {
     if ('wakeLock' in navigator) {
       try {
         wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
-      } catch (err) {
-        // Silencioso
-      }
+      } catch (err) {}
     }
   };
 
@@ -105,8 +102,10 @@ export function SessionTimeoutManager() {
   useEffect(() => {
     if (!user) return;
 
+    // IMPORTANTE: Reiniciar el tiempo de actividad al detectar un nuevo usuario logueado
+    resetTimer();
+
     const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
-    
     const handleActivity = () => resetTimer();
 
     events.forEach(event => {
@@ -156,7 +155,6 @@ export function SessionTimeoutManager() {
             <Timer className="h-5 w-5 animate-pulse" />
             Sesión a punto de expirar
           </AlertDialogTitle>
-          
           <CircularCountdown remaining={remainingTime} total={COUNTDOWN_TOTAL} />
         </AlertDialogHeader>
       </AlertDialogContent>
