@@ -11,6 +11,9 @@ service cloud.firestore {
     match /samples/{sampleId} {
       allow read, write: if request.auth != null;
     }
+    match /custom_templates/{templateId} {
+      allow read, write: if request.auth != null;
+    }
     match /presence/{userId} {
       allow read, write: if request.auth != null;
     }

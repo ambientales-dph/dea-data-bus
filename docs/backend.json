@@ -48,6 +48,28 @@
       },
       "required": ["reportId", "stationId", "medium", "parameterType", "analyte", "value"]
     },
+    "CustomTemplate": {
+      "title": "CustomTemplate",
+      "description": "Plantilla de parámetros personalizada creada por un usuario.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "medium": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "nombre": { "type": "string" },
+              "categoria": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["name", "parameters"]
+    },
     "Presence": {
       "title": "Presence",
       "description": "Ubicación actual que un usuario está visualizando o editando.",
@@ -78,6 +100,10 @@
     "/samples/{sampleId}": {
       "schema": "#/backend/entities/Sample",
       "description": "Colección de resultados de laboratorio y mediciones de campo."
+    },
+    "/custom_templates/{templateId}": {
+      "schema": "#/backend/entities/CustomTemplate",
+      "description": "Plantillas personalizadas creadas por técnicos."
     },
     "/presence/{userId}": {
       "schema": "#/backend/entities/Presence",

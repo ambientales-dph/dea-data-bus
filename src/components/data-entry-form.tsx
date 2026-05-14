@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -5,13 +6,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, doc, setDoc, serverTimestamp, query, where, orderBy, limit, getDocs, addDoc } from 'firebase/firestore';
-import { useFirestore, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useUser, useDoc, useCollection, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList, Star } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -60,8 +61,11 @@ export function DataEntryForm({
   const lastPointKeyRef = useRef<string | null>(null);
   const isInitialLoadRef = useRef(true);
 
+  // Cargar plantillas del sistema y personalizadas
+  const customTemplatesQuery = useMemo(() => query(collection(db, 'custom_templates')), [db]);
+  const { data: customTemplates } = useCollection(customTemplatesQuery);
+
   useEffect(() => {
-    // Cargar plantillas desde el JSON local
     fetch('/data/parametros_monitoreo.json')
       .then(res => res.json())
       .then(data => {
@@ -239,6 +243,14 @@ export function DataEntryForm({
     });
   };
 
+  const handleConfirmTemplate = () => {
+    if (currentReportId) {
+      setActiveView('report-entry');
+    } else {
+      handleStartReport();
+    }
+  };
+
   const handleStartReport = async () => {
     if (!selectedPoint?.stationId || !user) return;
     if (!selectedProject) {
@@ -319,10 +331,10 @@ export function DataEntryForm({
 
   const handleOpenExistingReport = (reportId: string) => {
     setCurrentReportId(reportId);
-    setActiveView('report-entry');
+    setActiveView('select-template'); // Cambiamos a selección de planilla
     toast({
-      title: "Reporte abierto",
-      description: "Continuando con la carga de datos.",
+      title: "Continuar reporte",
+      description: "Elegí qué planilla querés cargar a continuación.",
     });
   };
 
@@ -456,14 +468,14 @@ export function DataEntryForm({
   if (activeView === 'select-template' && selectedPoint.stationId) {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('select-project')} className="mb-2">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al proyecto
+        <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('consult') : setActiveView('select-project')} className="mb-2">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver
         </Button>
         <Card className="border-t-4 border-t-accent shadow-lg overflow-hidden">
           <CardHeader className="pb-4">
             <CardTitle className="text-md flex items-center gap-2">
               <LayoutList className="h-5 w-5 text-accent" />
-              2. Elegir Planilla de Carga
+              {currentReportId ? 'Agregar Planilla al Reporte' : '2. Elegir Planilla de Carga'}
             </CardTitle>
             <CardDescription className="text-xs">Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.</CardDescription>
           </CardHeader>
@@ -476,7 +488,22 @@ export function DataEntryForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="manual" className="text-xs font-bold">Carga Manual (uno por uno)</SelectItem>
+                  <SelectItem value="personalizada" className="text-xs font-bold text-primary flex items-center gap-1">
+                    <Star className="h-3 w-3 inline mr-1 fill-primary" /> Crear Planilla Personalizada
+                  </SelectItem>
+                  {customTemplates && customTemplates.length > 0 && (
+                    <>
+                      <Separator className="my-1" />
+                      <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase">Tus Planillas</div>
+                      {customTemplates.map((ct: any) => (
+                        <SelectItem key={ct.id} value={`custom_${ct.id}`} className="text-xs">
+                          {ct.name}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                   <Separator className="my-1" />
+                  <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase">Plantillas del Sistema</div>
                   {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>
                   ))}
@@ -486,7 +513,7 @@ export function DataEntryForm({
             <Button 
               className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md" 
               disabled={isStartingReport} 
-              onClick={handleStartReport}
+              onClick={handleConfirmTemplate}
             >
               {isStartingReport ? (
                 <>
@@ -494,7 +521,7 @@ export function DataEntryForm({
                   Generando Reporte...
                 </>
               ) : (
-                "Confirmar e Iniciar Reporte"
+                currentReportId ? "Iniciar Carga" : "Confirmar e Iniciar Reporte"
               )}
             </Button>
           </CardContent>
@@ -611,7 +638,7 @@ export function DataEntryForm({
               <FileText className="h-6 w-6" /> Crear reporte de muestreo
             </Button>
             <Button variant="outline" className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5 shadow-sm" onClick={() => setActiveView('consult')}>
-              <Search className="h-6 w-6" /> Ver
+              <Search className="h-6 w-6" /> Ver Historial
             </Button>
           </div>
         </div>
