@@ -11,10 +11,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Timer } from 'lucide-react';
 
-// Valores temporales para pruebas: 1 minuto total, advertencia a los 30 segundos
-const INACTIVITY_TIMEOUT = 60 * 1000; 
-const WARNING_TIMEOUT = 30 * 1000; 
-const COUNTDOWN_TOTAL = 30;
+// Valores de producción: 10 minutos total, advertencia a los 9 minutos
+const INACTIVITY_TIMEOUT = 10 * 60 * 1000; 
+const WARNING_TIMEOUT = 9 * 60 * 1000; 
+const COUNTDOWN_TOTAL = 60;
 
 interface CircularProgressProps {
   remaining: number;
@@ -23,17 +23,17 @@ interface CircularProgressProps {
   strokeWidth?: number;
 }
 
-function CircularCountdown({ remaining, total, size = 80, strokeWidth = 6 }: CircularProgressProps) {
+function CircularCountdown({ remaining, total, size = 100, strokeWidth = 8 }: CircularProgressProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const progress = (remaining / total) * 100;
   const offset = circumference - (progress / 100) * circumference;
 
   return (
-    <div className="relative flex items-center justify-center mx-auto my-4" style={{ width: size, height: size }}>
+    <div className="relative flex items-center justify-center mx-auto my-6" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="transform -rotate-90">
         <circle
-          className="text-muted/20"
+          className="text-muted/10"
           strokeWidth={strokeWidth}
           stroke="currentColor"
           fill="transparent"
@@ -54,7 +54,7 @@ function CircularCountdown({ remaining, total, size = 80, strokeWidth = 6 }: Cir
           cy={size / 2}
         />
       </svg>
-      <span className="absolute text-xl font-bold text-primary font-code">
+      <span className="absolute text-2xl font-bold text-primary font-code">
         {remaining}
       </span>
     </div>
@@ -150,10 +150,10 @@ export function SessionTimeoutManager() {
 
   return (
     <AlertDialog open={showWarning}>
-      <AlertDialogContent className="border-t-4 border-t-primary max-w-[320px]">
-        <AlertDialogHeader className="text-center items-center">
-          <AlertDialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <Timer className="h-5 w-5 text-primary animate-pulse" />
+      <AlertDialogContent className="border-t-4 border-t-primary max-w-[280px] p-8">
+        <AlertDialogHeader className="text-center items-center space-y-4">
+          <AlertDialogTitle className="flex items-center gap-2 text-lg font-bold text-primary">
+            <Timer className="h-5 w-5 animate-pulse" />
             Sesión a punto de expirar
           </AlertDialogTitle>
           
