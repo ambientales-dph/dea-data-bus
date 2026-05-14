@@ -5,10 +5,8 @@ import { signOut } from 'firebase/auth';
 import { useAuth, useUser } from '@/firebase';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
@@ -17,22 +15,67 @@ import { Timer } from 'lucide-react';
 // Valores temporales para pruebas: 1 minuto total, advertencia a los 30 segundos
 const INACTIVITY_TIMEOUT = 60 * 1000; 
 const WARNING_TIMEOUT = 30 * 1000; 
+const COUNTDOWN_TOTAL = 30;
+
+interface CircularProgressProps {
+  remaining: number;
+  total: number;
+  size?: number;
+  strokeWidth?: number;
+}
+
+function CircularCountdown({ remaining, total, size = 80, strokeWidth = 6 }: CircularProgressProps) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const progress = (remaining / total) * 100;
+  const offset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="relative flex items-center justify-center mx-auto my-4" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="transform -rotate-90">
+        <circle
+          className="text-muted/20"
+          strokeWidth={strokeWidth}
+          stroke="currentColor"
+          fill="transparent"
+          r={radius}
+          cx={size / 2}
+          cy={size / 2}
+        />
+        <circle
+          className="text-primary transition-all duration-1000 ease-linear"
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          stroke="currentColor"
+          fill="transparent"
+          r={radius}
+          cx={size / 2}
+          cy={size / 2}
+        />
+      </svg>
+      <span className="absolute text-xl font-bold text-primary font-code">
+        {remaining}
+      </span>
+    </div>
+  );
+}
 
 export function SessionTimeoutManager() {
   const auth = useAuth();
   const { user } = useUser();
   const [showWarning, setShowWarning] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(30);
+  const [remainingTime, setRemainingTime] = useState(COUNTDOWN_TOTAL);
   const lastActivityRef = useRef<number>(Date.now());
   const wakeLockRef = useRef<any>(null);
 
-  // Función para intentar despertar/mantener la pantalla encendida
   const requestWakeLock = async () => {
     if ('wakeLock' in navigator) {
       try {
         wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
       } catch (err) {
-        // Silencioso: Los navegadores pueden bloquear esto si no hay interacción previa
+        // Silencioso
       }
     }
   };
@@ -56,7 +99,7 @@ export function SessionTimeoutManager() {
     if (showWarning) {
       releaseWakeLock();
       setShowWarning(false);
-      setRemainingTime(30);
+      setRemainingTime(COUNTDOWN_TOTAL);
     }
   }, [showWarning]);
 
@@ -79,7 +122,7 @@ export function SessionTimeoutManager() {
         handleSignOut();
       } else if (diff >= WARNING_TIMEOUT && !showWarning) {
         setShowWarning(true);
-        requestWakeLock(); // Solicitar mantener pantalla encendida al mostrar advertencia
+        requestWakeLock();
       }
     }, 1000);
 
@@ -92,7 +135,6 @@ export function SessionTimeoutManager() {
     };
   }, [user, auth, resetTimer, showWarning, handleSignOut]);
 
-  // Cronómetro del diálogo de advertencia
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (showWarning && remainingTime > 0) {
@@ -109,22 +151,20 @@ export function SessionTimeoutManager() {
 
   return (
     <AlertDialog open={showWarning}>
-      <AlertDialogContent className="border-t-4 border-t-primary">
-        <AlertDialogHeader>
+      <AlertDialogContent className="border-t-4 border-t-primary max-w-[320px]">
+        <AlertDialogHeader className="text-center items-center">
           <AlertDialogTitle className="flex items-center gap-2">
             <Timer className="h-5 w-5 text-primary animate-pulse" />
             Sesión por expirar
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-base">
-            Tu sesión se cerrará por inactividad en <span className="font-bold text-primary text-lg">{remainingTime}</span> segundos.
-            ¿Querés mantener la sesión abierta?
+          
+          <CircularCountdown remaining={remainingTime} total={COUNTDOWN_TOTAL} />
+          
+          <AlertDialogDescription className="text-sm">
+            La sesión se cerrará por inactividad. <br />
+            <span className="font-semibold text-primary">Cualquier actividad</span> (mouse o teclado) reseteará el contador.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogAction onClick={resetTimer} className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
-            Mantener sesión abierta
-          </AlertDialogAction>
-        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
