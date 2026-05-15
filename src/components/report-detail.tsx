@@ -100,7 +100,13 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
   };
 
   const mediumLabel = (m: string) => {
-    const labels: any = { water: 'Agua', air: 'Aire', soil: 'Suelo', other: 'Otro' };
+    const labels: any = { 
+      agua_superficial: 'Agua Superficial', 
+      agua_subterranea: 'Agua Subterránea', 
+      suelo: 'Suelo', 
+      sedimentos: 'Sedimento',
+      other: 'Otro' 
+    };
     return labels[m] || m;
   };
 

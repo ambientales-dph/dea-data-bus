@@ -38,7 +38,7 @@
       "properties": {
         "reportId": { "type": "string", "description": "Referencia al reporte de origen." },
         "stationId": { "type": "string", "description": "Referencia a la estación de origen." },
-        "medium": { "type": "string", "enum": ["water", "air", "soil"], "description": "Medio ambiental (Agua, Aire, Suelo)." },
+        "medium": { "type": "string", "enum": ["agua_superficial", "agua_subterranea", "suelo", "sedimentos"], "description": "Medio ambiental (Matriz)." },
         "parameterType": { "type": "string", "description": "Categoría del parámetro (Fisicoquímico, etc)." },
         "analyte": { "type": "string", "description": "Nombre del analito (pH, Pb, etc)." },
         "value": { "type": "string", "description": "Valor numérico o resultado de la medición." },
@@ -63,7 +63,10 @@
             "type": "object",
             "properties": {
               "nombre": { "type": "string" },
-              "categoria": { "type": "string" }
+              "categoria": { "type": "string" },
+              "unidades": { "type": "string" },
+              "nivelGuia": { "type": "string" },
+              "ley": { "type": "string" }
             }
           }
         }

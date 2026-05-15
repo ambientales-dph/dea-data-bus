@@ -20,7 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 const analyteSchema = z.object({
-  medium: z.enum(['water', 'air', 'soil']),
+  medium: z.enum(['agua_superficial', 'agua_subterranea', 'suelo', 'sedimentos']),
   parameterType: z.string().min(2, 'Requerido'),
   analyte: z.string().min(1, 'Requerido'),
   value: z.string().min(1, 'Requerido'),
@@ -105,7 +105,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
 
   const form = useForm<AnalyteValues>({
     resolver: zodResolver(analyteSchema),
-    defaultValues: { medium: 'water', parameterType: '', analyte: '', value: '' },
+    defaultValues: { medium: 'agua_superficial', parameterType: '', analyte: '', value: '' },
   });
 
   const handleSavePlanilla = async () => {
@@ -121,7 +121,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
         const val = planillaValues[param.nombre];
         if (val && val.trim() !== '') {
           const sampleData = {
-            medium: template.medium || param.mediumKey || 'water',
+            medium: template.medium || param.mediumKey || 'agua_superficial',
             parameterType: param.categoria,
             analyte: param.nombre,
             value: val,
@@ -153,7 +153,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
     setIsSavingTemplate(true);
     const templateData = {
       name: customTemplateName,
-      medium: 'water',
+      medium: 'agua_superficial',
       userId: user.uid,
       createdAt: serverTimestamp(),
       parameters: selectedParams
@@ -183,7 +183,13 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
   };
 
   const mediumLabel = (m: string) => {
-    const labels: any = { water: 'Agua', air: 'Aire', soil: 'Suelo/Sedim.', other: 'Otro' };
+    const labels: any = { 
+      agua_superficial: 'Agua Superficial', 
+      agua_subterranea: 'Agua Subterránea', 
+      suelo: 'Suelo', 
+      sedimentos: 'Sedimento',
+      other: 'Otro' 
+    };
     return labels[m] || m;
   };
 
@@ -284,7 +290,12 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
               <div className="space-y-1"><Label className="text-[10px] uppercase font-bold">Medio</Label>
                 <Select onValueChange={(v) => form.setValue('medium', v as any)} value={form.watch('medium')}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="water">Agua</SelectItem><SelectItem value="air">Aire</SelectItem><SelectItem value="soil">Suelo</SelectItem></SelectContent>
+                  <SelectContent>
+                    <SelectItem value="agua_superficial">Agua Superficial</SelectItem>
+                    <SelectItem value="agua_subterranea">Agua Subterránea</SelectItem>
+                    <SelectItem value="suelo">Suelo</SelectItem>
+                    <SelectItem value="sedimentos">Sedimentos</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1"><Label className="text-[10px] uppercase font-bold">Categoría</Label><Input placeholder="Fisicoquímico" {...form.register('parameterType')} className="h-8 text-xs" /></div>

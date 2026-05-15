@@ -2,32 +2,55 @@
 {
   "medios": [
     {
-      "id": "agua_superficial",
+      "id": "agua_superficial_std",
       "nombre": "Agua Superficial",
-      "medium": "water",
+      "medium": "agua_superficial",
       "parametros": [
-        { "nombre": "pH", "categoria": "FISICOQUIMICO", "unidades": "unidades", "nivelGuia": "6.5 - 8.5", "ley": "Ley 24.051" },
-        { "nombre": "Temperatura", "categoria": "FISICOQUIMICO", "unidades": "°C", "nivelGuia": "Var. < 3°C", "ley": "Dec. 831/93" },
-        { "nombre": "Conductividad", "categoria": "FISICOQUIMICO", "unidades": "µS/cm", "nivelGuia": "---", "ley": "---" },
-        { "nombre": "Oxígeno Disuelto", "categoria": "GASES", "unidades": "mg/L", "nivelGuia": "> 5", "ley": "Ley 24.051" },
-        { "nombre": "Plomo (Pb)", "categoria": "METALES", "unidades": "µg/L", "nivelGuia": "1.0", "ley": "Nivel Guía Agua Dulce" },
-        { "nombre": "Cadmio (Cd)", "categoria": "METALES", "unidades": "µg/L", "nivelGuia": "0.2", "ley": "Nivel Guía Agua Dulce" },
-        { "nombre": "Cromo Total (Cr)", "categoria": "METALES", "unidades": "µg/L", "nivelGuia": "2.0", "ley": "Nivel Guía Agua Dulce" },
-        { "nombre": "Mercurio (Hg)", "categoria": "METALES", "unidades": "µg/L", "nivelGuia": "0.1", "ley": "Nivel Guía Agua Dulce" }
+        { "nombre": "pH", "categoria": "Fisicoquímico", "unidades": "UPH", "nivelGuia": "6.5-8.5", "ley": "Ley 11.723" },
+        { "nombre": "Temperatura", "categoria": "Fisicoquímico", "unidades": "°C", "nivelGuia": "< 30", "ley": "Res. ADA 336/03" },
+        { "nombre": "Conductividad", "categoria": "Fisicoquímico", "unidades": "µS/cm", "nivelGuia": "-", "ley": "-" },
+        { "nombre": "Oxígeno Disuelto", "categoria": "Fisicoquímico", "unidades": "mg/L", "nivelGuia": "> 5", "ley": "Ley 11.723" },
+        { "nombre": "Plomo (Pb)", "categoria": "Metales", "unidades": "mg/L", "nivelGuia": "0.05", "ley": "Ley 24.051" },
+        { "nombre": "Cadmio (Cd)", "categoria": "Metales", "unidades": "mg/L", "nivelGuia": "0.005", "ley": "Ley 24.051" },
+        { "nombre": "Cromo Total (Cr)", "categoria": "Metales", "unidades": "mg/L", "nivelGuia": "0.05", "ley": "Ley 24.051" },
+        { "nombre": "Mercurio (Hg)", "categoria": "Metales", "unidades": "mg/L", "nivelGuia": "0.001", "ley": "Ley 24.051" },
+        { "nombre": "Arsénico (As)", "categoria": "Metales", "unidades": "mg/L", "nivelGuia": "0.05", "ley": "Ley 24.051" }
       ]
     },
     {
-      "id": "suelo_sedimento",
-      "nombre": "Suelo / Sedimento",
-      "medium": "soil",
+      "id": "agua_subterranea_std",
+      "nombre": "Agua Subterránea",
+      "medium": "agua_subterranea",
       "parametros": [
-        { "nombre": "Humedad (%)", "categoria": "FISICO", "unidades": "%", "nivelGuia": "---", "ley": "---" },
-        { "nombre": "Materia Orgánica", "categoria": "QUIMICO", "unidades": "%", "nivelGuia": "---", "ley": "---" },
-        { "nombre": "Fósforo Extractable", "categoria": "NUTRIENTES", "unidades": "ppm", "nivelGuia": "---", "ley": "---" },
-        { "nombre": "Nitrógeno Total", "categoria": "NUTRIENTES", "unidades": "%", "nivelGuia": "---", "ley": "---" },
-        { "nombre": "Plomo (Pb) en Suelo", "categoria": "METALES", "unidades": "mg/kg", "nivelGuia": "95", "ley": "Ley 24.051 (Residencial)" },
-        { "nombre": "Cadmio (Cd) en Suelo", "categoria": "METALES", "unidades": "mg/kg", "nivelGuia": "0.5", "ley": "Ley 24.051 (Residencial)" },
-        { "nombre": "Cromo (Cr) en Suelo", "categoria": "METALES", "unidades": "mg/kg", "nivelGuia": "250", "ley": "Ley 24.051 (Residencial)" }
+        { "nombre": "Nivel Estático", "categoria": "Hidrodinámica", "unidades": "m", "nivelGuia": "-", "ley": "-" },
+        { "nombre": "pH", "categoria": "Fisicoquímico", "unidades": "UPH", "nivelGuia": "6.5-9.5", "ley": "CAA Cap. XII" },
+        { "nombre": "Nitratos", "categoria": "Aniones", "unidades": "mg/L", "nivelGuia": "45", "ley": "CAA Cap. XII" },
+        { "nombre": "Cloruros", "categoria": "Aniones", "unidades": "mg/L", "nivelGuia": "350", "ley": "CAA Cap. XII" },
+        { "nombre": "Plomo (Pb)", "categoria": "Metales", "unidades": "mg/L", "nivelGuia": "0.05", "ley": "Ley 24.051" },
+        { "nombre": "Arsénico (As)", "categoria": "Metales", "unidades": "mg/L", "nivelGuia": "0.01", "ley": "CAA Cap. XII" }
+      ]
+    },
+    {
+      "id": "suelo_std",
+      "nombre": "Suelo",
+      "medium": "suelo",
+      "parametros": [
+        { "nombre": "Humedad", "categoria": "Fisicoquímico", "unidades": "%", "nivelGuia": "-", "ley": "-" },
+        { "nombre": "Materia Orgánica", "categoria": "Fisicoquímico", "unidades": "%", "nivelGuia": "-", "ley": "-" },
+        { "nombre": "Hidrocarburos Totales (TPH)", "categoria": "Orgánicos", "unidades": "mg/kg", "nivelGuia": "100", "ley": "Ley 24.051" },
+        { "nombre": "Plomo (Pb)", "categoria": "Metales", "unidades": "mg/kg", "nivelGuia": "500", "ley": "Ley 24.051" },
+        { "nombre": "Cobre (Cu)", "categoria": "Metales", "unidades": "mg/kg", "nivelGuia": "100", "ley": "Ley 24.051" }
+      ]
+    },
+    {
+      "id": "sedimento_std",
+      "nombre": "Sedimento",
+      "medium": "sedimentos",
+      "parametros": [
+        { "nombre": "Tamaño de Grano", "categoria": "Físico", "unidades": "-", "nivelGuia": "-", "ley": "-" },
+        { "nombre": "Carbono Orgánico Total", "categoria": "Fisicoquímico", "unidades": "%", "nivelGuia": "-", "ley": "-" },
+        { "nombre": "Cromo (Cr)", "categoria": "Metales", "unidades": "mg/kg", "nivelGuia": "37.3", "ley": "ISQG-Freshwater" },
+        { "nombre": "Cinc (Zn)", "categoria": "Metales", "unidades": "mg/kg", "nivelGuia": "123", "ley": "ISQG-Freshwater" }
       ]
     }
   ]
