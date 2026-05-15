@@ -22,17 +22,23 @@ export interface SelectedPoint {
   basinCode?: string;
 }
 
-const DEFAULT_SIDEBAR_WIDTH = 420;
 const MIN_SIDEBAR_WIDTH = 320;
 const MAX_SIDEBAR_WIDTH = 800;
 
 export default function Home() {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const [sidebarWidth, setSidebarWidth] = useState(420); // Fallback inicial
   const [isResizing, setIsResizing] = useState(false);
   const resizerRef = useRef<HTMLDivElement>(null);
   const auth = useAuth();
   const { user } = useUser();
+
+  // Inicializar el ancho al 50% en el cliente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSidebarWidth(window.innerWidth / 2);
+    }
+  }, []);
 
   // Restaurar punto seleccionado tras reinicio de sesión
   useEffect(() => {
@@ -144,7 +150,8 @@ export default function Home() {
           {/* Map Clipping Parent */}
           <div className="w-full h-[40vh] md:h-auto md:flex-1 relative overflow-hidden bg-muted/20">
             {/* fixed-width Map Container to prevent zoom change on resize */}
-            <div className="absolute inset-0 md:w-[100vw]">
+            {/* We shift it -25vw to center the 50% coordinate in the 50% visible area */}
+            <div className="absolute inset-0 md:w-[100vw] md:-left-[25vw]">
               <div className="h-full w-full p-2 md:p-4">
                 <MapView 
                   onPointSelect={handlePointSelect} 
