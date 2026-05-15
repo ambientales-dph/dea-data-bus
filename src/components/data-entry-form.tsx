@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -20,6 +19,7 @@ import { SamplingReportForm } from './sampling-report-form';
 import { ReportList } from './report-list';
 import { ReportDetail } from './report-detail';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const stationSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -51,6 +51,7 @@ export function DataEntryForm({
   
   const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
+  const [projectSearch, setProjectSearch] = useState<string>('');
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('manual');
 
@@ -91,6 +92,7 @@ export function DataEntryForm({
             setViewingReportId(parsed.viewingReportId || null);
             setSelectedProject(parsed.selectedProject || '');
             setSelectedTemplate(parsed.selectedTemplate || 'manual');
+            if (parsed.selectedProject) setProjectSearch(parsed.selectedProject);
           } else {
             setActiveView(selectedPoint.stationId ? 'summary' : 'create-station');
           }
@@ -124,6 +126,7 @@ export function DataEntryForm({
       setViewingReportId(null);
       setIsEditingCoords(false);
       setSelectedProject('');
+      setProjectSearch('');
       setSelectedTemplate('manual');
       
       lastPointKeyRef.current = currentKey;
@@ -146,6 +149,13 @@ export function DataEntryForm({
       } catch (e) {}
     }
   }, []);
+
+  const filteredTrelloProjects = useMemo(() => {
+    if (!projectSearch) return trelloProjects;
+    return trelloProjects.filter(p => 
+      p.toLowerCase().includes(projectSearch.toLowerCase())
+    );
+  }, [trelloProjects, projectSearch]);
 
   const stationRef = useMemo(() => {
     if (!selectedPoint?.stationId) return null;
@@ -434,23 +444,45 @@ export function DataEntryForm({
             </CardTitle>
             <CardDescription className="text-xs">Asociá este nuevo reporte a un proyecto activo de Trello.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="space-y-2">
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Proyecto de Trello</Label>
-              <Select value={selectedProject} onValueChange={setSelectedProject}>
-                <SelectTrigger className="w-full h-11 text-xs font-medium border-primary/20 bg-primary/5">
-                  <SelectValue placeholder="Buscá el proyecto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {trelloProjects.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-muted-foreground italic">No se encontraron proyectos sincronizados.</div>
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Buscá el proyecto..." 
+                  className="pl-9 h-11 text-xs font-medium border-primary/20 focus-visible:ring-primary/50"
+                  value={projectSearch}
+                  onChange={(e) => setProjectSearch(e.target.value)}
+                />
+              </div>
+              
+              <ScrollArea className="h-[200px] border rounded-md p-1 bg-white">
+                <div className="space-y-1">
+                  {filteredTrelloProjects.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-muted-foreground italic">No se encontraron proyectos.</div>
                   ) : (
-                    trelloProjects.map((projectName) => (
-                      <SelectItem key={projectName} value={projectName} className="text-xs">{projectName}</SelectItem>
+                    filteredTrelloProjects.map((projectName) => (
+                      <button
+                        key={projectName}
+                        onClick={() => {
+                          setSelectedProject(projectName);
+                          setProjectSearch(projectName);
+                        }}
+                        className={cn(
+                          "w-full text-left px-3 py-2.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-between",
+                          selectedProject === projectName 
+                            ? "bg-primary text-white" 
+                            : "hover:bg-primary/5 text-foreground border border-transparent"
+                        )}
+                      >
+                        <span className="truncate">{projectName}</span>
+                        {selectedProject === projectName && <Check className="h-3 w-3 shrink-0 ml-2" />}
+                      </button>
                     ))
                   )}
-                </SelectContent>
-              </Select>
+                </div>
+              </ScrollArea>
             </div>
             <Button 
               className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md" 
