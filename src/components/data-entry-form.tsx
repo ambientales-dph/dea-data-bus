@@ -92,7 +92,12 @@ export function DataEntryForm({
             setViewingReportId(parsed.viewingReportId || null);
             setSelectedProject(parsed.selectedProject || '');
             setSelectedTemplate(parsed.selectedTemplate || 'manual');
-            if (parsed.selectedProject) setProjectSearch(parsed.selectedProject);
+            if (parsed.selectedProject) {
+              // Si tenemos el original guardado, mostramos su versión transformada para ser consistentes
+              const match = parsed.selectedProject.match(/\((.*?)\)$/);
+              const display = match ? `${match[0]} ${parsed.selectedProject.replace(match[0], '').trim()}` : parsed.selectedProject;
+              setProjectSearch(display);
+            }
           } else {
             setActiveView(selectedPoint.stationId ? 'summary' : 'create-station');
           }
@@ -151,10 +156,28 @@ export function DataEntryForm({
   }, []);
 
   const filteredTrelloProjects = useMemo(() => {
-    if (!projectSearch) return trelloProjects;
-    return trelloProjects.filter(p => 
-      p.toLowerCase().includes(projectSearch.toLowerCase())
-    );
+    // 1. Excluir XXX000
+    const listWithoutExcluded = trelloProjects.filter(p => !p.includes('(XXX000)'));
+
+    // 2. Transformar a objetos con etiqueta de visualización (Código Adelante)
+    const transformed = listWithoutExcluded.map(p => {
+      const match = p.match(/\((.*?)\)$/);
+      const display = match ? `${match[0]} ${p.replace(match[0], '').trim()}` : p;
+      return { original: p, display };
+    });
+
+    // 3. Filtrar por búsqueda
+    let filtered = transformed;
+    if (projectSearch) {
+      const searchLower = projectSearch.toLowerCase();
+      filtered = transformed.filter(item => 
+        item.display.toLowerCase().includes(searchLower) ||
+        item.original.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // 4. Ordenar alfabéticamente por la etiqueta de visualización
+    return filtered.sort((a, b) => a.display.localeCompare(b.display));
   }, [trelloProjects, projectSearch]);
 
   const stationRef = useMemo(() => {
@@ -341,7 +364,7 @@ export function DataEntryForm({
 
   const handleOpenExistingReport = (reportId: string) => {
     setCurrentReportId(reportId);
-    setActiveView('select-template'); // Cambiamos a selección de planilla
+    setActiveView('select-template'); 
     toast({
       title: "Continuar reporte",
       description: "Elegí qué planilla querés cargar a continuación.",
@@ -450,7 +473,7 @@ export function DataEntryForm({
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Buscá el proyecto..." 
+                  placeholder="Buscá el proyecto o código..." 
                   className="pl-9 h-11 text-xs font-medium border-primary/20 focus-visible:ring-primary/50"
                   value={projectSearch}
                   onChange={(e) => setProjectSearch(e.target.value)}
@@ -462,22 +485,22 @@ export function DataEntryForm({
                   {filteredTrelloProjects.length === 0 ? (
                     <div className="p-4 text-center text-xs text-muted-foreground italic">No se encontraron proyectos.</div>
                   ) : (
-                    filteredTrelloProjects.map((projectName) => (
+                    filteredTrelloProjects.map((item) => (
                       <button
-                        key={projectName}
+                        key={item.original}
                         onClick={() => {
-                          setSelectedProject(projectName);
-                          setProjectSearch(projectName);
+                          setSelectedProject(item.original);
+                          setProjectSearch(item.display);
                         }}
                         className={cn(
                           "w-full text-left px-3 py-2.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-between",
-                          selectedProject === projectName 
+                          selectedProject === item.original 
                             ? "bg-primary text-white" 
                             : "hover:bg-primary/5 text-foreground border border-transparent"
                         )}
                       >
-                        <span className="truncate">{projectName}</span>
-                        {selectedProject === projectName && <Check className="h-3 w-3 shrink-0 ml-2" />}
+                        <span className="truncate">{item.display}</span>
+                        {selectedProject === item.original && <Check className="h-3.5 w-3.5 shrink-0 ml-2" />}
                       </button>
                     ))
                   )}
@@ -515,7 +538,7 @@ export function DataEntryForm({
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Medio / Protocolo</Label>
               <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                <SelectTrigger className="w-full h-11 text-xs font-medium border-accent/20 bg-accent/5">
+                <SelectTrigger className="h-11 text-xs font-medium border-accent/20 bg-accent/5">
                   <SelectValue placeholder="Elegí un protocolo..." />
                 </SelectTrigger>
                 <SelectContent>
