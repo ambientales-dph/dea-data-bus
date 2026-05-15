@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AuthGuard } from '@/components/auth-guard';
 import { MapView } from '@/components/map-view';
 import { DataEntryForm } from '@/components/data-entry-form';
@@ -9,9 +9,10 @@ import { PresenceManager } from '@/components/presence-manager';
 import { Button } from '@/components/ui/button';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { LogOut, Leaf } from 'lucide-react';
+import { LogOut, Leaf, GripVertical } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 export interface SelectedPoint {
   lat: number;
@@ -21,8 +22,15 @@ export interface SelectedPoint {
   basinCode?: string;
 }
 
+const DEFAULT_SIDEBAR_WIDTH = 420;
+const MIN_SIDEBAR_WIDTH = 320;
+const MAX_SIDEBAR_WIDTH = 800;
+
 export default function Home() {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizerRef = useRef<HTMLDivElement>(null);
   const auth = useAuth();
   const { user } = useUser();
 
@@ -66,12 +74,41 @@ export default function Home() {
     signOut(auth);
   };
 
+  const startResizing = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback((mouseMoveEvent: MouseEvent) => {
+    if (isResizing) {
+      const newWidth = window.innerWidth - mouseMoveEvent.clientX;
+      if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= MAX_SIDEBAR_WIDTH) {
+        setSidebarWidth(newWidth);
+      }
+    }
+  }, [isResizing]);
+
+  useEffect(() => {
+    window.addEventListener("mousemove", resize);
+    window.addEventListener("mouseup", stopResizing);
+    return () => {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+    };
+  }, [resize, stopResizing]);
+
   return (
     <AuthGuard>
       <PresenceManager selectedPoint={selectedPoint} />
-      <div className="flex h-screen w-full flex-col bg-background overflow-hidden">
+      <div className={cn(
+        "flex h-screen w-full flex-col bg-background overflow-hidden",
+        isResizing && "cursor-col-resize select-none"
+      )}>
         {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b bg-white px-4 md:px-6 shadow-sm z-20 shrink-0">
+        <header className="flex h-16 items-center justify-between border-b bg-white px-4 md:px-6 shadow-sm z-30 shrink-0">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-lg bg-primary text-white">
               <Leaf className="h-5 w-5 md:h-6 md:w-6" />
@@ -103,15 +140,42 @@ export default function Home() {
         </header>
 
         {/* Main Content */}
-        <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
-          <div className="w-full h-[40vh] md:h-auto md:flex-[6] p-2 md:p-4 shrink-0 md:shrink">
-            <MapView 
-              onPointSelect={handlePointSelect} 
-              selectedPoint={selectedPoint} 
-            />
+        <div className="flex flex-1 flex-col md:flex-row overflow-hidden relative">
+          {/* Map Clipping Parent */}
+          <div className="w-full h-[40vh] md:h-auto md:flex-1 relative overflow-hidden bg-muted/20">
+            {/* fixed-width Map Container to prevent zoom change on resize */}
+            <div className="absolute inset-0 md:w-[100vw]">
+              <div className="h-full w-full p-2 md:p-4">
+                <MapView 
+                  onPointSelect={handlePointSelect} 
+                  selectedPoint={selectedPoint} 
+                />
+              </div>
+            </div>
+            {/* Overlay during resize to prevent losing events */}
+            {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
           </div>
 
-          <div className="flex-1 md:flex-[4] border-t md:border-t-0 md:border-l bg-white shadow-xl flex flex-col w-full md:min-w-[420px] overflow-hidden">
+          {/* Draggable Resizer Handle */}
+          <div 
+            ref={resizerRef}
+            onMouseDown={startResizing}
+            className={cn(
+              "hidden md:flex w-2 items-center justify-center cursor-col-resize hover:bg-primary/20 transition-colors z-40 relative group",
+              isResizing && "bg-primary/30"
+            )}
+          >
+            <div className="w-[1px] h-full bg-border group-hover:bg-primary/50" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-border rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              <GripVertical className="h-3 w-3 text-muted-foreground" />
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div 
+            style={{ width: typeof window !== 'undefined' && window.innerWidth >= 768 ? `${sidebarWidth}px` : '100%' }}
+            className="flex-1 md:flex-none border-t md:border-t-0 md:border-l bg-white shadow-xl flex flex-col overflow-hidden z-20"
+          >
             <ScrollArea className="flex-1">
               <div className="p-4 md:p-6 pb-12">
                 <DataEntryForm 
