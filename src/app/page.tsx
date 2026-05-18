@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -41,6 +40,7 @@ export default function Home() {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(420);
   const [isResizing, setIsResizing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const auth = useAuth();
   const db = useFirestore();
   const { user } = useUser();
@@ -55,11 +55,20 @@ export default function Home() {
   const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
   const { data: stations } = useCollection(stationsQuery);
 
+  // Detectar mobile y setear ancho inicial
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setSidebarWidth(window.innerWidth / 2);
-    }
-  }, []);
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile && sidebarWidth === 420) {
+        setSidebarWidth(window.innerWidth / 2);
+      }
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [sidebarWidth]);
 
   useEffect(() => {
     const saved = localStorage.getItem('dea_selected_point');
@@ -101,23 +110,23 @@ export default function Home() {
   };
 
   const startResizing = useCallback(() => {
-    setIsResizing(true);
-  }, []);
+    if (!isMobile) setIsResizing(true);
+  }, [isMobile]);
 
   const stopResizing = useCallback(() => {
     setIsResizing(false);
   }, []);
 
   const resize = useCallback((mouseMoveEvent: MouseEvent) => {
-    if (isResizing) {
+    if (isResizing && !isMobile) {
       const newWidth = window.innerWidth - mouseMoveEvent.clientX;
-      const maxWidth = window.innerWidth * 0.95; // El mapa mantiene al menos un 5% de ancho
+      const maxWidth = window.innerWidth * 0.95;
       
       if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= maxWidth) {
         setSidebarWidth(newWidth);
       }
     }
-  }, [isResizing]);
+  }, [isResizing, isMobile]);
 
   useEffect(() => {
     window.addEventListener("mousemove", resize);
@@ -138,6 +147,7 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Lógica de búsqueda mejorada
   useEffect(() => {
     const q = searchQuery.trim().toLowerCase();
     
@@ -146,6 +156,7 @@ export default function Home() {
       return;
     }
     
+    // Búsqueda instantánea en estaciones locales
     const localResults: SearchResult[] = (stations || [])
       .filter(s => {
         const stationName = String(s.name || '').toLowerCase();
@@ -163,6 +174,7 @@ export default function Home() {
 
     setSearchResults(localResults);
 
+    // Búsqueda en OSM con Debounce
     if (q.length < 3) return;
 
     const timer = setTimeout(async () => {
@@ -185,6 +197,7 @@ export default function Home() {
           }));
 
           setSearchResults(prev => {
+            // Mantener las estaciones y agregar lugares sin duplicar
             const currentStations = prev.filter(r => r.type === 'station');
             return [...currentStations, ...placeResults];
           });
@@ -218,26 +231,26 @@ export default function Home() {
         "flex h-screen w-full flex-col bg-background overflow-hidden",
         isResizing && "cursor-col-resize select-none"
       )}>
-        <header className="flex h-16 items-center justify-between border-b bg-white px-4 md:px-6 shadow-sm z-[60] shrink-0">
-          <div className="flex items-center gap-4 flex-1">
+        <header className="flex h-16 items-center justify-between border-b bg-white px-3 md:px-6 shadow-sm z-[60] shrink-0">
+          <div className="flex items-center gap-2 md:gap-4 flex-1">
             <div className="flex items-center gap-2 shrink-0">
               <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-lg bg-primary text-white shadow-sm">
                 <Leaf className="h-5 w-5 md:h-6 md:w-6" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-lg md:text-xl font-bold font-headline text-primary tracking-tight leading-none">DEA Data Bus</h1>
-                <p className="text-[9px] md:text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Plataforma de Monitoreo</p>
+                <h1 className="text-sm md:text-xl font-bold font-headline text-primary tracking-tight leading-none">DEA Data Bus</h1>
+                <p className="hidden md:block text-[9px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Plataforma de Monitoreo</p>
               </div>
             </div>
 
-            <div ref={searchContainerRef} className="relative flex-1 max-w-xl ml-4">
+            <div ref={searchContainerRef} className="relative flex-1 max-w-xl ml-2 md:ml-4">
               <div className="flex items-center bg-muted/30 hover:bg-muted/50 border border-transparent focus-within:border-primary/30 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/10 rounded-full overflow-hidden transition-all h-9">
                 <div className="pl-3 text-muted-foreground">
                   {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Search className="h-4 w-4" />}
                 </div>
                 <Input 
-                  placeholder="Buscar estación, cuenca o lugar..." 
-                  className="border-0 focus-visible:ring-0 h-full text-xs bg-transparent"
+                  placeholder={isMobile ? "Buscar..." : "Buscar estación, cuenca o lugar..."} 
+                  className="border-0 focus-visible:ring-0 h-full text-xs bg-transparent placeholder:text-[10px] md:placeholder:text-xs"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setShowResults(true)}
@@ -256,7 +269,7 @@ export default function Home() {
                       {isSearching && searchResults.length === 0 ? (
                         <div className="p-6 text-center text-xs text-muted-foreground">
                           <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-primary/50" />
-                          <p className="font-medium">Buscando en estaciones y mapas...</p>
+                          <p className="font-medium">Buscando...</p>
                         </div>
                       ) : searchResults.length > 0 ? (
                         searchResults.map((result, idx) => (
@@ -281,7 +294,7 @@ export default function Home() {
                         ))
                       ) : (
                         <div className="p-6 text-center text-xs text-muted-foreground italic">
-                          No se encontraron resultados para "{searchQuery}"
+                          No se hallaron resultados.
                         </div>
                       )}
                     </div>
@@ -291,10 +304,10 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="flex items-center gap-2 md:gap-4 ml-4">
+          <div className="flex items-center gap-1 md:gap-4 ml-2 md:ml-4">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-9 gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 px-3">
+                <Button variant="ghost" size="sm" className="h-9 gap-1 md:gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 px-2 md:px-3">
                   <Layers className="h-4 w-4" />
                   <span className="text-xs font-semibold hidden md:inline">Capas</span>
                 </Button>
@@ -339,8 +352,13 @@ export default function Home() {
         </header>
 
         <div className="flex flex-1 flex-col md:flex-row overflow-hidden relative">
+          {/* Contenedor del Mapa */}
           <div className="w-full h-[40vh] md:h-auto md:flex-1 relative overflow-hidden bg-muted/20">
-            <div className="absolute inset-0 md:w-[100vw] md:-left-[25vw]">
+            {/* El efecto persiana solo se aplica en desktop (md:) */}
+            <div className={cn(
+              "absolute inset-0",
+              "md:w-[100vw] md:-left-[25vw]" 
+            )}>
               <div className="h-full w-full p-2 md:p-4">
                 <MapView 
                   onPointSelect={handlePointSelect} 
@@ -352,17 +370,35 @@ export default function Home() {
             {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
           </div>
 
-          <div onMouseDown={startResizing} className={cn("hidden md:flex w-2 items-center justify-center cursor-col-resize hover:bg-primary/20 transition-colors z-40 relative group", isResizing && "bg-primary/30")}>
+          {/* Resizer - Solo visible en desktop */}
+          <div 
+            onMouseDown={startResizing} 
+            className={cn(
+              "hidden md:flex w-2 items-center justify-center cursor-col-resize hover:bg-primary/20 transition-colors z-40 relative group", 
+              isResizing && "bg-primary/30"
+            )}
+          >
             <div className="w-[1px] h-full bg-border group-hover:bg-primary/50" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-border rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
               <GripVertical className="h-3 w-3 text-muted-foreground" />
             </div>
           </div>
 
-          <div style={{ width: typeof window !== 'undefined' && window.innerWidth >= 768 ? `${sidebarWidth}px` : '100%' }} className="flex-1 md:flex-none border-t md:border-t-0 md:border-l bg-white shadow-xl flex flex-col overflow-hidden z-20">
+          {/* Panel de Datos - Sidebar */}
+          <div 
+            style={{ 
+              width: !isMobile ? `${sidebarWidth}px` : '100%' 
+            }} 
+            className="flex-1 md:flex-none border-t md:border-t-0 md:border-l bg-white shadow-xl flex flex-col overflow-hidden z-20"
+          >
             <ScrollArea className="flex-1">
               <div className="p-4 md:p-6 pb-12">
-                <DataEntryForm selectedPoint={selectedPoint} onStationCreated={handleStationCreated} onPointUpdate={handlePointUpdate} onDeselect={handleDeselect} />
+                <DataEntryForm 
+                  selectedPoint={selectedPoint} 
+                  onStationCreated={handleStationCreated} 
+                  onPointUpdate={handlePointUpdate} 
+                  onDeselect={handleDeselect} 
+                />
               </div>
             </ScrollArea>
             <footer className="p-3 md:p-4 border-t bg-muted/10 text-center shrink-0">
