@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, Search, Loader2, Layers, Map as MapIcon, Satellite, MapPin, Database, X } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, Search, Loader2, Layers, Map as MapIcon, Satellite, MapPin, Database, X, FileText } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -24,14 +24,17 @@ export interface SelectedPoint {
   stationId?: string;
   name?: string;
   basinCode?: string;
+  reportId?: string;
 }
 
 interface SearchResult {
-  type: 'station' | 'place';
+  type: 'station' | 'place' | 'report';
   display_name: string;
   lat: string;
   lon: string;
   stationId?: string;
+  reportId?: string;
+  trelloCode?: string;
 }
 
 const MIN_SIDEBAR_WIDTH = 320;
@@ -54,6 +57,9 @@ export default function Home() {
 
   const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
   const { data: stations } = useCollection(stationsQuery);
+
+  const reportsQuery = useMemo(() => query(collection(db, 'reports')), [db]);
+  const { data: reports } = useCollection(reportsQuery);
 
   // Detectar mobile y setear ancho inicial
   useEffect(() => {
@@ -147,6 +153,12 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const getProjectCode = (fullName: string) => {
+    if (!fullName) return 'S/P';
+    const match = fullName.match(/\((.*?)\)/);
+    return match ? match[0] : fullName.substring(0, 8);
+  };
+
   // Lógica de búsqueda mejorada
   useEffect(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -156,8 +168,8 @@ export default function Home() {
       return;
     }
     
-    // Búsqueda instantánea en estaciones locales
-    const localResults: SearchResult[] = (stations || [])
+    // 1. Búsqueda instantánea en ESTACIONES
+    const stationResults: SearchResult[] = (stations || [])
       .filter(s => {
         const stationName = String(s.name || '').toLowerCase();
         const basinCode = String(s.basinCode || '').toLowerCase();
@@ -169,12 +181,34 @@ export default function Home() {
         lat: String(s.latitude),
         lon: String(s.longitude),
         stationId: s.id
-      }))
-      .sort((a, b) => a.display_name.localeCompare(b.display_name));
+      }));
 
+    // 2. Búsqueda instantánea en REPORTES
+    const reportResults: SearchResult[] = (reports || [])
+      .filter(r => {
+        const oid = String(r.oid || '').toLowerCase();
+        const trello = String(r.trelloCardName || '').toLowerCase();
+        return oid.includes(q) || trello.includes(q);
+      })
+      .map(r => {
+        const station = (stations || []).find(s => s.id === r.stationId);
+        if (!station) return null;
+        return {
+          type: 'report',
+          display_name: String(r.oid),
+          lat: String(station.latitude),
+          lon: String(station.longitude),
+          stationId: station.id,
+          reportId: r.id,
+          trelloCode: getProjectCode(r.trelloCardName || '')
+        };
+      })
+      .filter((r): r is SearchResult => r !== null);
+
+    const localResults = [...stationResults, ...reportResults].sort((a, b) => a.display_name.localeCompare(b.display_name));
     setSearchResults(localResults);
 
-    // Búsqueda en OSM con Debounce
+    // 3. Búsqueda en OSM con Debounce
     if (q.length < 3) return;
 
     const timer = setTimeout(async () => {
@@ -197,9 +231,9 @@ export default function Home() {
           }));
 
           setSearchResults(prev => {
-            // Mantener las estaciones y agregar lugares sin duplicar
-            const currentStations = prev.filter(r => r.type === 'station');
-            return [...currentStations, ...placeResults];
+            // Mantener locales y agregar lugares sin duplicar
+            const locals = prev.filter(r => r.type !== 'place');
+            return [...locals, ...placeResults];
           });
         }
       } catch (error) {
@@ -210,14 +244,16 @@ export default function Home() {
     }, 600);
     
     return () => clearTimeout(timer);
-  }, [searchQuery, stations]);
+  }, [searchQuery, stations, reports]);
 
   const handleSelectResult = (result: SearchResult) => {
     handlePointSelect({
       lat: parseFloat(result.lat),
       lon: parseFloat(result.lon),
       stationId: result.stationId,
-      name: result.type === 'station' ? result.display_name : undefined
+      name: result.type === 'station' ? result.display_name : 
+            result.type === 'report' ? (stations?.find(s => s.id === result.stationId)?.name || 'Estación') : undefined,
+      reportId: result.reportId
     });
     setSearchQuery('');
     setSearchResults([]);
@@ -249,7 +285,7 @@ export default function Home() {
                   {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Search className="h-4 w-4" />}
                 </div>
                 <Input 
-                  placeholder={isMobile ? "Buscar..." : "Buscar estación, cuenca o lugar..."} 
+                  placeholder={isMobile ? "Buscar..." : "Buscar estación, reporte, cuenca o lugar..."} 
                   className="border-0 focus-visible:ring-0 h-full text-xs bg-transparent placeholder:text-[10px] md:placeholder:text-xs"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -280,14 +316,20 @@ export default function Home() {
                           >
                             <div className={cn(
                               "mt-0.5 p-1.5 rounded",
-                              result.type === 'station' ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                              result.type === 'station' ? "bg-primary/10 text-primary" : 
+                              result.type === 'report' ? "bg-accent/10 text-accent" :
+                              "bg-muted text-muted-foreground"
                             )}>
-                              {result.type === 'station' ? <Database className="h-3.5 w-3.5" /> : <MapPin className="h-3.5 w-3.5" />}
+                              {result.type === 'station' ? <Database className="h-3.5 w-3.5" /> : 
+                               result.type === 'report' ? <FileText className="h-3.5 w-3.5" /> :
+                               <MapPin className="h-3.5 w-3.5" />}
                             </div>
                             <div className="flex-1 overflow-hidden">
                               <p className="text-[11px] font-bold leading-tight truncate">{result.display_name}</p>
                               <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">
-                                {result.type === 'station' ? 'Estación de Monitoreo' : 'Lugar / Ubicación'}
+                                {result.type === 'station' ? 'Estación de Monitoreo' : 
+                                 result.type === 'report' ? `Reporte • ${result.trelloCode}` : 
+                                 'Lugar / Ubicación'}
                               </p>
                             </div>
                           </button>
@@ -352,9 +394,7 @@ export default function Home() {
         </header>
 
         <div className="flex flex-1 flex-col md:flex-row overflow-hidden relative">
-          {/* Contenedor del Mapa */}
           <div className="w-full h-[40vh] md:h-auto md:flex-1 relative overflow-hidden bg-muted/20">
-            {/* El efecto persiana solo se aplica en desktop (md:) */}
             <div className={cn(
               "absolute inset-0",
               "md:w-[100vw] md:-left-[25vw]" 
@@ -370,7 +410,6 @@ export default function Home() {
             {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
           </div>
 
-          {/* Resizer - Solo visible en desktop */}
           <div 
             onMouseDown={startResizing} 
             className={cn(
@@ -384,7 +423,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Panel de Datos - Sidebar */}
           <div 
             style={{ 
               width: !isMobile ? `${sidebarWidth}px` : '100%' 
