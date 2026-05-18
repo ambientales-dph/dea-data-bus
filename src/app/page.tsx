@@ -36,7 +36,6 @@ interface SearchResult {
 }
 
 const MIN_SIDEBAR_WIDTH = 320;
-const MAX_SIDEBAR_WIDTH = 800;
 
 export default function Home() {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
@@ -46,7 +45,6 @@ export default function Home() {
   const db = useFirestore();
   const { user } = useUser();
 
-  // Estados para el Buscador y Capas
   const [activeLayer, setActiveLayer] = useState<'osm' | 'grayscale' | 'satellite'>('osm');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -54,7 +52,6 @@ export default function Home() {
   const [showResults, setShowResults] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Obtener estaciones para la búsqueda local
   const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
   const { data: stations } = useCollection(stationsQuery);
 
@@ -114,7 +111,9 @@ export default function Home() {
   const resize = useCallback((mouseMoveEvent: MouseEvent) => {
     if (isResizing) {
       const newWidth = window.innerWidth - mouseMoveEvent.clientX;
-      if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= MAX_SIDEBAR_WIDTH) {
+      const maxWidth = window.innerWidth * 0.95; // El mapa mantiene al menos un 5% de ancho
+      
+      if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= maxWidth) {
         setSidebarWidth(newWidth);
       }
     }
@@ -129,7 +128,6 @@ export default function Home() {
     };
   }, [resize, stopResizing]);
 
-  // Cerrar resultados al hacer clic afuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -140,18 +138,14 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Lógica de búsqueda combinada (Nominatim + Stations)
   useEffect(() => {
     const q = searchQuery.trim().toLowerCase();
     
-    // Si la búsqueda es muy corta, limpiar y salir
     if (q.length < 2) {
       setSearchResults([]);
       return;
     }
     
-    // 1. Búsqueda Local (Inmediata y Prioritaria)
-    // Buscamos en la lista de estaciones que ya tenemos en memoria gracias al hook useCollection
     const localResults: SearchResult[] = (stations || [])
       .filter(s => {
         const stationName = String(s.name || '').toLowerCase();
@@ -167,13 +161,10 @@ export default function Home() {
       }))
       .sort((a, b) => a.display_name.localeCompare(b.display_name));
 
-    // Actualizar con resultados locales inmediatamente
     setSearchResults(localResults);
 
-    // Si la búsqueda es corta (2 caracteres), no llamar a OSM para no saturar
     if (q.length < 3) return;
 
-    // 2. Búsqueda en OSM Nominatim (Con Debounce para no saturar la API)
     const timer = setTimeout(async () => {
       setIsSearching(true);
       setShowResults(true);
@@ -193,7 +184,6 @@ export default function Home() {
             lon: place.lon
           }));
 
-          // Mezclamos con los resultados locales que ya existen, sin perderlos
           setSearchResults(prev => {
             const currentStations = prev.filter(r => r.type === 'station');
             return [...currentStations, ...placeResults];
@@ -240,7 +230,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* BUSCADOR UNIFICADO EN HEADER */}
             <div ref={searchContainerRef} className="relative flex-1 max-w-xl ml-4">
               <div className="flex items-center bg-muted/30 hover:bg-muted/50 border border-transparent focus-within:border-primary/30 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/10 rounded-full overflow-hidden transition-all h-9">
                 <div className="pl-3 text-muted-foreground">
@@ -303,7 +292,6 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-2 md:gap-4 ml-4">
-            {/* SELECTOR DE CAPAS EN HEADER */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-9 gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 px-3">
@@ -351,9 +339,7 @@ export default function Home() {
         </header>
 
         <div className="flex flex-1 flex-col md:flex-row overflow-hidden relative">
-          {/* Map Clipping Parent */}
           <div className="w-full h-[40vh] md:h-auto md:flex-1 relative overflow-hidden bg-muted/20">
-            {/* fixed-width Map Container */}
             <div className="absolute inset-0 md:w-[100vw] md:-left-[25vw]">
               <div className="h-full w-full p-2 md:p-4">
                 <MapView 
@@ -366,7 +352,6 @@ export default function Home() {
             {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
           </div>
 
-          {/* Draggable Resizer */}
           <div onMouseDown={startResizing} className={cn("hidden md:flex w-2 items-center justify-center cursor-col-resize hover:bg-primary/20 transition-colors z-40 relative group", isResizing && "bg-primary/30")}>
             <div className="w-[1px] h-full bg-border group-hover:bg-primary/50" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-border rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
@@ -374,7 +359,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Sidebar / Data Panel */}
           <div style={{ width: typeof window !== 'undefined' && window.innerWidth >= 768 ? `${sidebarWidth}px` : '100%' }} className="flex-1 md:flex-none border-t md:border-t-0 md:border-l bg-white shadow-xl flex flex-col overflow-hidden z-20">
             <ScrollArea className="flex-1">
               <div className="p-4 md:p-6 pb-12">
