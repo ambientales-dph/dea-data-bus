@@ -183,7 +183,7 @@ export default function Home() {
       
       try {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=10&countrycodes=ar`,
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=20&countrycodes=ar`,
           { headers: { 'Accept-Language': 'es' } }
         );
         
@@ -264,7 +264,7 @@ export default function Home() {
               
               {showResults && searchQuery.trim().length >= 2 && (
                 <Card className="absolute top-full left-0 right-0 mt-1 shadow-2xl border-primary/10 overflow-hidden z-[70] animate-in fade-in slide-in-from-top-2 duration-200">
-                  <ScrollArea className="max-h-[400px] w-full">
+                  <ScrollArea className="h-[400px] w-full bg-white">
                     <div className="p-1">
                       {isSearching && searchResults.length === 0 ? (
                         <div className="p-6 text-center text-xs text-muted-foreground">
