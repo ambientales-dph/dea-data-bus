@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, Search, Loader2, Layers, Map as MapIcon, Satellite, MapPin, Database } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, Search, Loader2, Layers, Map as MapIcon, Satellite, MapPin, Database, X } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -52,6 +52,7 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Obtener estaciones para la búsqueda local
   const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
@@ -128,21 +129,36 @@ export default function Home() {
     };
   }, [resize, stopResizing]);
 
+  // Cerrar resultados al hacer clic afuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // Lógica de búsqueda combinada (Nominatim + Stations)
   useEffect(() => {
+    if (searchQuery.trim().length < 3) {
+      setSearchResults([]);
+      return;
+    }
+    
     const timer = setTimeout(async () => {
-      if (searchQuery.trim().length < 3) {
-        setSearchResults([]);
-        return;
-      }
-      
       setIsSearching(true);
+      setShowResults(true);
       const queryLower = searchQuery.toLowerCase();
       
       try {
-        // 1. Buscar en estaciones locales
+        // 1. Buscar en estaciones locales (Nombre o Cuenca)
         const localResults: SearchResult[] = (stations || [])
-          .filter(s => s.name?.toLowerCase().includes(queryLower))
+          .filter(s => 
+            s.name?.toLowerCase().includes(queryLower) || 
+            s.basinCode?.toLowerCase().includes(queryLower)
+          )
           .map(s => ({
             type: 'station',
             display_name: s.name,
@@ -153,24 +169,28 @@ export default function Home() {
 
         // 2. Buscar en OSM Nominatim
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5&countrycodes=ar`
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5&countrycodes=ar`,
+          { headers: { 'Accept-Language': 'es' } }
         );
-        const osmData = await response.json();
-        const placeResults: SearchResult[] = osmData.map((place: any) => ({
-          type: 'place',
-          display_name: place.display_name,
-          lat: place.lat,
-          lon: place.lon
-        }));
+        
+        let placeResults: SearchResult[] = [];
+        if (response.ok) {
+          const osmData = await response.json();
+          placeResults = osmData.map((place: any) => ({
+            type: 'place',
+            display_name: place.display_name,
+            lat: place.lat,
+            lon: place.lon
+          }));
+        }
 
         setSearchResults([...localResults, ...placeResults]);
-        setShowResults(true);
       } catch (error) {
         console.error("Search failed", error);
       } finally {
         setIsSearching(false);
       }
-    }, 500);
+    }, 600);
     
     return () => clearTimeout(timer);
   }, [searchQuery, stations]);
@@ -207,44 +227,60 @@ export default function Home() {
             </div>
 
             {/* BUSCADOR UNIFICADO EN HEADER */}
-            <div className="relative flex-1 max-w-xl ml-4">
+            <div ref={searchContainerRef} className="relative flex-1 max-w-xl ml-4">
               <div className="flex items-center bg-muted/30 hover:bg-muted/50 border border-transparent focus-within:border-primary/30 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/10 rounded-full overflow-hidden transition-all h-9">
                 <div className="pl-3 text-muted-foreground">
                   {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Search className="h-4 w-4" />}
                 </div>
                 <Input 
-                  placeholder="Buscar estación o lugar..." 
+                  placeholder="Buscar estación, cuenca o lugar..." 
                   className="border-0 focus-visible:ring-0 h-full text-xs bg-transparent"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setShowResults(true)}
                 />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="pr-3 text-muted-foreground hover:text-primary">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
               
-              {showResults && searchResults.length > 0 && (
+              {showResults && searchQuery.trim().length >= 3 && (
                 <Card className="absolute top-full left-0 right-0 mt-1 shadow-2xl border-primary/10 overflow-hidden z-[70] animate-in fade-in slide-in-from-top-2 duration-200">
                   <ScrollArea className="max-h-[350px]">
                     <div className="p-1">
-                      {searchResults.map((result, idx) => (
-                        <button 
-                          key={idx} 
-                          onClick={() => handleSelectResult(result)} 
-                          className="w-full text-left p-2 hover:bg-primary/5 rounded-md transition-colors flex items-start gap-3 border-b last:border-0"
-                        >
-                          <div className={cn(
-                            "mt-0.5 p-1 rounded",
-                            result.type === 'station' ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                          )}>
-                            {result.type === 'station' ? <Database className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
-                          </div>
-                          <div className="flex-1 overflow-hidden">
-                            <p className="text-[11px] font-bold leading-tight truncate">{result.display_name}</p>
-                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">
-                              {result.type === 'station' ? 'Estación de Monitoreo' : 'Lugar / Ubicación'}
-                            </p>
-                          </div>
-                        </button>
-                      ))}
+                      {isSearching ? (
+                        <div className="p-6 text-center text-xs text-muted-foreground">
+                          <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-primary/50" />
+                          <p className="font-medium">Buscando en estaciones y mapas...</p>
+                        </div>
+                      ) : searchResults.length > 0 ? (
+                        searchResults.map((result, idx) => (
+                          <button 
+                            key={idx} 
+                            onClick={() => handleSelectResult(result)} 
+                            className="w-full text-left p-2 hover:bg-primary/5 rounded-md transition-colors flex items-start gap-3 border-b last:border-0"
+                          >
+                            <div className={cn(
+                              "mt-0.5 p-1.5 rounded",
+                              result.type === 'station' ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                            )}>
+                              {result.type === 'station' ? <Database className="h-3.5 w-3.5" /> : <MapPin className="h-3.5 w-3.5" />}
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                              <p className="text-[11px] font-bold leading-tight truncate">{result.display_name}</p>
+                              <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">
+                                {result.type === 'station' ? 'Estación de Monitoreo' : 'Lugar / Ubicación'}
+                              </p>
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="p-6 text-center text-xs text-muted-foreground italic">
+                          No se encontraron resultados para "{searchQuery}"
+                        </div>
+                      )}
                     </div>
                   </ScrollArea>
                 </Card>
@@ -343,4 +379,3 @@ export default function Home() {
     </AuthGuard>
   );
 }
-
