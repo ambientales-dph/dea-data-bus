@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -194,13 +193,26 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
     return labels[m] || m;
   };
 
-  // Determinar si debemos mostrar el formulario especializado de freatímetro
-  const isFreatimetro = templateId === 'agua_subterranea';
+  // Lógica de detección mejorada para mostrar el formulario técnico
+  const isFreatimetro = useMemo(() => {
+    if (!templateId) return false;
+    const lowerId = templateId.toLowerCase();
+    const lowerName = template?.nombre?.toLowerCase() || '';
+    return (
+      lowerId.includes('subterranea') || 
+      lowerId.includes('freatimetro') || 
+      lowerName.includes('subterránea') || 
+      lowerName.includes('freatímetro')
+    );
+  }, [templateId, template?.nombre]);
 
   return (
     <div className="space-y-4">
       {isFreatimetro ? (
-        <FreatimetroFormIntegrated reportId={reportId} stationId={stationId} />
+        <FreatimetroFormIntegrated 
+          reportId={reportId} 
+          stationId={stationId} 
+        />
       ) : (
         <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
           <CardHeader className="p-3 pb-2">
