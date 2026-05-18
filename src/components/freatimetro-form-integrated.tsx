@@ -139,7 +139,8 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
   };
 
   const inputClass = "h-9 border-neutral-400 bg-white px-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-body transition-all text-black font-bold";
-  const labelClass = "text-[11px] font-black text-black uppercase tracking-wider font-headline mb-1 block";
+  // IMPORTANTE: Eliminado 'uppercase' para respetar notación científica (pH, Pb, etc)
+  const labelClass = "text-[11px] font-black text-black tracking-wider font-headline mb-1 block";
   const sectionHeaderClass = "flex items-center border-b border-neutral-400 bg-neutral-200 px-3 py-2";
   const sectionNumberClass = "mr-2 flex h-6 w-6 items-center justify-center bg-black text-[12px] font-black text-white rounded-full";
 

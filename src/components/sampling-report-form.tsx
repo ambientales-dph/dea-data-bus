@@ -193,7 +193,6 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
     return labels[m] || m;
   };
 
-  // Lógica de detección mejorada para mostrar el formulario técnico
   const isFreatimetro = useMemo(() => {
     if (!templateId) return false;
     const lowerId = templateId.toLowerCase();
@@ -230,11 +229,11 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
             {templateId === 'personalizada' && template?.parametros?.length === 0 ? (
               <div className="space-y-3 animate-in fade-in duration-300">
                 <div className="space-y-2 bg-primary/5 p-3 rounded-md border border-primary/10">
-                  <Label className="text-[10px] uppercase font-bold text-primary">Nombre de tu Planilla</Label>
+                  <Label className="text-[10px] font-bold text-primary uppercase">Nombre de tu Planilla</Label>
                   <Input value={customTemplateName} onChange={(e) => setCustomTemplateName(e.target.value)} placeholder="Ej: Mi Monitoreo de Ríos" className="h-8 text-xs" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center justify-between">
+                  <Label className="text-[10px] font-bold text-muted-foreground flex items-center justify-between">
                     Elegí Parámetros ({selectedParams.length})
                     <span className="text-[8px] font-normal italic">Buscá entre {allParams.length} parámetros</span>
                   </Label>
@@ -306,7 +305,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
                   form.reset({ medium: d.medium, parameterType: d.parameterType, analyte: '', value: '' });
                 });
               })} className="grid grid-cols-2 gap-2">
-                <div className="space-y-1"><Label className="text-[10px] uppercase font-bold">Medio</Label>
+                <div className="space-y-1"><Label className="text-[10px] font-bold uppercase">Medio</Label>
                   <Select onValueChange={(v) => form.setValue('medium', v as any)} value={form.watch('medium')}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -317,9 +316,9 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1"><Label className="text-[10px] uppercase font-bold">Categoría</Label><Input placeholder="Fisicoquímico" {...form.register('parameterType')} className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-[10px] uppercase font-bold">Analito</Label><Input placeholder="pH" {...form.register('analyte')} className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-[10px] uppercase font-bold">Valor</Label><Input placeholder="7.5" {...form.register('value')} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-[10px] font-bold uppercase">Categoría</Label><Input placeholder="Fisicoquímico" {...form.register('parameterType')} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-[10px] font-bold uppercase">Analito</Label><Input placeholder="pH" {...form.register('analyte')} className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-[10px] font-bold uppercase">Valor</Label><Input placeholder="7.5" {...form.register('value')} className="h-8 text-xs" /></div>
                 <Button type="submit" className="col-span-2 h-8 text-xs mt-1"><Plus className="h-3.5 w-3.5 mr-1" /> Agregar</Button>
               </form>
             ) : (
