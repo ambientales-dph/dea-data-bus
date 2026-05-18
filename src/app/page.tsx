@@ -144,17 +144,19 @@ export default function Home() {
   useEffect(() => {
     const q = searchQuery.trim().toLowerCase();
     
-    if (q.length < 3) {
+    // Si la búsqueda es muy corta, limpiar y salir
+    if (q.length < 2) {
       setSearchResults([]);
       return;
     }
     
-    // 1. Búsqueda Local (Inmediata)
+    // 1. Búsqueda Local (Inmediata y Prioritaria)
+    // Buscamos en la lista de estaciones que ya tenemos en memoria gracias al hook useCollection
     const localResults: SearchResult[] = (stations || [])
       .filter(s => {
-        const nameMatch = s.name && String(s.name).toLowerCase().includes(q);
-        const basinMatch = s.basinCode && String(s.basinCode).toLowerCase().includes(q);
-        return nameMatch || basinMatch;
+        const stationName = String(s.name || '').toLowerCase();
+        const basinCode = String(s.basinCode || '').toLowerCase();
+        return stationName.includes(q) || basinCode.includes(q);
       })
       .map(s => ({
         type: 'station',
@@ -162,12 +164,16 @@ export default function Home() {
         lat: String(s.latitude),
         lon: String(s.longitude),
         stationId: s.id
-      }));
+      }))
+      .sort((a, b) => a.display_name.localeCompare(b.display_name));
 
-    // Seteamos los locales primero para que la respuesta sea instantánea
+    // Actualizar con resultados locales inmediatamente
     setSearchResults(localResults);
 
-    // 2. Búsqueda en OSM Nominatim (Con Debounce)
+    // Si la búsqueda es corta (2 caracteres), no llamar a OSM para no saturar
+    if (q.length < 3) return;
+
+    // 2. Búsqueda en OSM Nominatim (Con Debounce para no saturar la API)
     const timer = setTimeout(async () => {
       setIsSearching(true);
       setShowResults(true);
@@ -187,15 +193,14 @@ export default function Home() {
             lon: place.lon
           }));
 
-          // Mezclamos locales y remotos, evitando duplicados si fuera necesario
+          // Mezclamos con los resultados locales que ya existen, sin perderlos
           setSearchResults(prev => {
-            // Mantenemos los locales (stations) y agregamos los lugares (places)
             const currentStations = prev.filter(r => r.type === 'station');
             return [...currentStations, ...placeResults];
           });
         }
       } catch (error) {
-        console.error("Search failed", error);
+        console.error("OSM Search failed", error);
       } finally {
         setIsSearching(false);
       }
@@ -255,7 +260,7 @@ export default function Home() {
                 )}
               </div>
               
-              {showResults && searchQuery.trim().length >= 3 && (
+              {showResults && searchQuery.trim().length >= 2 && (
                 <Card className="absolute top-full left-0 right-0 mt-1 shadow-2xl border-primary/10 overflow-hidden z-[70] animate-in fade-in slide-in-from-top-2 duration-200">
                   <ScrollArea className="max-h-[350px]">
                     <div className="p-1">
@@ -285,7 +290,7 @@ export default function Home() {
                             </div>
                           </button>
                         ))
-                      ) : !isSearching && (
+                      ) : (
                         <div className="p-6 text-center text-xs text-muted-foreground italic">
                           No se encontraron resultados para "{searchQuery}"
                         </div>
