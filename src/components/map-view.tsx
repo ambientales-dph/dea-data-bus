@@ -19,31 +19,17 @@ import { Style, Text, Fill, Circle as CircleStyle, Stroke } from 'ol/style';
 import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
-import { Input } from '@/components/ui/input';
-import { Search, MapPin, Loader2, Layers, Map as MapIcon, Satellite } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card } from '@/components/ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 interface MapViewProps {
   onPointSelect: (point: SelectedPoint) => void;
   selectedPoint: SelectedPoint | null;
+  activeLayer: 'osm' | 'grayscale' | 'satellite';
 }
-
-interface SearchResult {
-  display_name: string;
-  lat: string;
-  lon: string;
-}
-
-type BaseLayerType = 'osm' | 'grayscale' | 'satellite';
 
 // Umbral de caducidad para presencia (2 minutos)
 const PRESENCE_EXPIRATION_MS = 2 * 60 * 1000;
 
-export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
+export function MapView({ onPointSelect, selectedPoint, activeLayer }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<Map | null>(null);
   const stationsSource = useRef<VectorSource>(new VectorSource());
@@ -68,11 +54,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   const db = useFirestore();
   const { user } = useUser();
 
-  const [activeLayer, setActiveLayer] = useState<BaseLayerType>('osm');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
   const [hoveredText, setHoveredText] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number, y: number } | null>(null);
 
@@ -174,7 +155,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           basinCode: basinCode
         });
       }
-      setShowResults(false);
     });
 
     map.on('pointermove', (evt) => {
@@ -185,14 +165,12 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       if (feature) {
         let text = '';
-        const features = feature.get('features'); // Clusters de estaciones
+        const features = feature.get('features');
 
         if (features) {
-          // Es un clúster de estaciones
           const names = features.map((f: any) => f.get('name')).filter(Boolean);
           text = names.join('\n');
         } else {
-          // Es una selección local, presencia remota o una estación individual (si no estuviera en clúster)
           const email = feature.get('userEmail');
           const name = feature.get('name');
 
@@ -245,7 +223,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     });
   }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.name, user?.email]);
 
-  // Sincronización de presencia remota con filtrado de caducidad
   useEffect(() => {
     if (!presenceSource.current) return;
 
@@ -255,8 +232,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
 
       presences?.forEach((presence: any) => {
         if (presence.userId === user?.uid) return;
-
-        // Verificar si el punto ha caducado
         const updatedAt = presence.updatedAt?.toMillis?.() || (presence.updatedAt instanceof Date ? presence.updatedAt.getTime() : now);
         if (now - updatedAt > PRESENCE_EXPIRATION_MS) return;
 
@@ -270,14 +245,12 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     };
 
     renderPresence();
-
     const pruneInterval = setInterval(renderPresence, 60000);
     return () => clearInterval(pruneInterval);
   }, [presences, user?.uid]);
 
   useEffect(() => {
     if (!basinsLayerRef.current || !codesLayerRef.current) return;
-    
     const strokeColor = 'rgba(13, 145, 102, 0.7)';
 
     basinsLayerRef.current.setStyle((feature, resolution) => {
@@ -389,7 +362,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     const listener = (evt: any) => {
       const ctx = evt.context as CanvasRenderingContext2D;
       if (!ctx) return;
-      
       if (activeLayer === 'grayscale') {
         ctx.filter = 'grayscale(100%) brightness(0.9) contrast(1.2)';
       }
@@ -398,7 +370,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
     const postListener = (evt: any) => {
       const ctx = evt.context as CanvasRenderingContext2D;
       if (!ctx) return;
-
       if (activeLayer === 'satellite') {
         ctx.save();
         ctx.globalCompositeOperation = 'multiply';
@@ -430,7 +401,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
   useEffect(() => {
     if (!stationsSource.current) return;
     stationsSource.current.clear();
-
     stations?.forEach((station: any) => {
       const feature = new Feature({
         geometry: new Point(fromLonLat([station.longitude, station.latitude])),
@@ -439,101 +409,14 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
         lat: station.latitude,
         lon: station.longitude,
       });
-
       stationsSource.current.addFeature(feature);
     });
   }, [stations]);
 
-  const handleSelectResult = (result: SearchResult) => {
-    const lat = parseFloat(result.lat);
-    const lon = parseFloat(result.lon);
-    
-    if (mapInstance.current) {
-      mapInstance.current.getView().animate({
-        center: fromLonLat([lon, lat]),
-        zoom: 14,
-        duration: 1000
-      });
-    }
-    
-    setSearchQuery('');
-    setSearchResults([]);
-    setShowResults(false);
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (searchQuery.length < 3) return;
-      setIsSearching(true);
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5&countrycodes=ar`
-        );
-        const data = await response.json();
-        setSearchResults(data);
-        setShowResults(true);
-      } catch (error) {} finally {
-        setIsSearching(false);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
   return (
     <div className="relative h-full w-full overflow-hidden rounded-lg shadow-inner bg-muted/20 border-2 border-primary/10 flex flex-col">
-      <div className="absolute top-0 left-0 right-0 z-[30] p-2 flex gap-2">
-        <div className="relative flex-1">
-          <div className="flex items-center bg-white/95 backdrop-blur shadow-sm border border-primary/20 rounded-md overflow-hidden transition-all focus-within:ring-2 focus-within:ring-primary/50">
-            <div className="pl-3 text-primary">
-              {isSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-            </div>
-            <Input 
-              placeholder="Buscá una ubicación..." 
-              className="border-0 focus-visible:ring-0 h-8 text-[11px] bg-transparent w-full"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          {showResults && searchResults.length > 0 && (
-            <Card className="absolute top-full left-0 right-0 mt-1 shadow-2xl border-primary/10 overflow-hidden z-[40]">
-              <ScrollArea className="max-h-[200px]">
-                <div className="p-1">
-                  {searchResults.map((result, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleSelectResult(result)}
-                      className="w-full text-left p-2 hover:bg-primary/5 rounded-md transition-colors flex items-start gap-2 border-b last:border-0"
-                    >
-                      <MapPin className="h-3 w-3 mt-0.5 text-primary shrink-0" />
-                      <span className="text-[10px] font-medium leading-tight">{result.display_name}</span>
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
-            </Card>
-          )}
-        </div>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="h-8 w-8 bg-white/95 border-primary/20 shadow-sm text-primary">
-              <Layers className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-48 p-2" align="end">
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1">Capas Base</p>
-              <button onClick={() => setActiveLayer('osm')} className={cn("w-full flex items-center gap-2 p-2 rounded-md text-[11px]", activeLayer === 'osm' ? "bg-primary text-white" : "hover:bg-muted")}><MapIcon className="h-3.5 w-3.5" /> OSM</button>
-              <button onClick={() => setActiveLayer('grayscale')} className={cn("w-full flex items-center gap-2 p-2 rounded-md text-[11px]", activeLayer === 'grayscale' ? "bg-primary text-white" : "hover:bg-muted")}><MapIcon className="h-3.5 w-3.5 opacity-50" /> Gris</button>
-              <button onClick={() => setActiveLayer('satellite')} className={cn("w-full flex items-center gap-2 p-2 rounded-md text-[11px]", activeLayer === 'satellite' ? "bg-primary text-white" : "hover:bg-muted")}><Satellite className="h-3.5 w-3.5" /> Satélite</button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-
       <div ref={mapRef} className="absolute inset-0 z-10" />
 
-      {/* Tooltip Dinámico (Hover) */}
       {hoveredText && tooltipPos && (
         <div 
           className="fixed z-[100] pointer-events-none bg-gray-200/30 text-black px-2 py-1 rounded-none text-[9px] font-code shadow-none transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200 whitespace-pre-line"
@@ -542,19 +425,6 @@ export function MapView({ onPointSelect, selectedPoint }: MapViewProps) {
           {hoveredText}
         </div>
       )}
-      
-      <div className="absolute bottom-2 right-2 z-20 rounded-xl bg-white/95 p-3 shadow-xl border border-primary/10">
-        <div className="space-y-1">
-          <div className="flex items-center justify-end gap-2">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Técnicos Activos</span>
-            <div className="w-2 h-2 rounded-full bg-[#ef4444] border border-white"></div> 
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Mi Selección</span>
-            <div className="w-2 h-2 rounded-full bg-[#22c55e] border border-white"></div> 
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
