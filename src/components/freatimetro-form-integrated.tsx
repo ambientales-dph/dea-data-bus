@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, Info } from 'lucide-react';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface FreatimetroData {
@@ -138,37 +138,35 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
     }
   };
 
-  const rowClass = "flex items-center justify-between py-1.5 border-b border-neutral-200 hover:bg-neutral-50 transition-colors";
+  const rowClass = "flex items-center justify-between py-1 border-b border-neutral-300 hover:bg-neutral-50 transition-colors";
   const labelClass = "text-[11px] font-bold text-black tracking-tight font-headline flex-1 pr-4";
-  const inputContainerClass = "w-36 flex items-center gap-1.5 justify-end";
-  const inputClass = "h-8 border-2 border-neutral-300 bg-white px-2 text-[12px] focus:ring-2 focus:ring-primary focus:border-primary font-code transition-all text-black font-bold text-right rounded";
-  const sectionHeaderClass = "flex items-center bg-neutral-100 px-3 py-1.5 border-y-2 border-neutral-300 mt-4 first:mt-0";
-  const sectionNumberClass = "mr-2 flex h-5 w-5 items-center justify-center bg-black text-[10px] font-black text-white rounded-full";
+  const inputContainerClass = "w-40 flex items-center gap-1.5 justify-end";
+  const inputClass = "h-7 border border-neutral-400 bg-white px-2 text-[12px] focus:ring-1 focus:ring-black focus:border-black font-code text-black font-bold text-right rounded-none";
+  const sectionHeaderClass = "flex items-center bg-neutral-200 px-3 py-1 border-y border-neutral-400 mt-2 first:mt-0";
 
   return (
-    <div className="mx-auto w-full border-2 border-neutral-400 bg-white font-body shadow-xl rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* Header Compacto */}
-      <div className="border-b-2 border-neutral-300 bg-neutral-50 px-4 py-3 flex justify-between items-end">
+      <div className="border-b border-neutral-400 bg-neutral-50 px-4 py-2 flex justify-between items-center">
         <div>
-          <h1 className="text-md font-black uppercase tracking-tight text-black font-headline leading-none">
+          <h1 className="text-xs font-black uppercase tracking-tight text-black font-headline">
             Planilla Técnica Ambiental
           </h1>
-          <p className="text-[10px] text-neutral-600 font-bold uppercase mt-1">
-            Muestreo de Freatímetros • Formulario FTA-001
+          <p className="text-[9px] text-neutral-600 font-bold uppercase leading-none">
+            Monitoreo de Freatímetros • Formulario FTA-001
           </p>
         </div>
-        <div className="text-right text-[9px] text-neutral-500 font-black uppercase leading-tight">
+        <div className="text-right text-[8px] text-neutral-500 font-black uppercase">
           <p>VERSIÓN 2024.1</p>
         </div>
       </div>
 
-      <div className="p-4 space-y-2">
+      <div className="p-0">
         {/* Sección 1 */}
         <div className={sectionHeaderClass}>
-          <span className={sectionNumberClass}>1</span>
-          <span className="text-[11px] font-black uppercase tracking-wider text-black">Datos de Identificación</span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-black">1. Datos de Identificación</span>
         </div>
-        <div className="space-y-0.5">
+        <div className="px-3">
           <div className={rowClass}>
             <label className={labelClass}>ID Pozo</label>
             <div className={inputContainerClass}>
@@ -194,7 +192,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>Fecha y Hora de Muestreo</label>
+            <label className={labelClass}>Fecha y Hora</label>
             <div className="w-48 flex items-center justify-end">
               <input type="datetime-local" className={cn(inputClass, "w-full")} value={formData.fechaHora} onChange={(e) => handleInputChange("fechaHora", e.target.value)} />
             </div>
@@ -203,10 +201,9 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
 
         {/* Sección 2 */}
         <div className={sectionHeaderClass}>
-          <span className={sectionNumberClass}>2</span>
-          <span className="text-[11px] font-black uppercase tracking-wider text-black">Mediciones In Situ</span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-black">2. Mediciones In Situ</span>
         </div>
-        <div className="space-y-0.5">
+        <div className="px-3">
           <div className={rowClass}>
             <label className={labelClass}>Nivel Estático (m)</label>
             <div className={inputContainerClass}>
@@ -241,10 +238,9 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
 
         {/* Sección 3 */}
         <div className={sectionHeaderClass}>
-          <span className={sectionNumberClass}>3</span>
-          <span className="text-[11px] font-black uppercase tracking-wider text-black">Análisis de Laboratorio</span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-black">3. Laboratorio</span>
         </div>
-        <div className="space-y-0.5">
+        <div className="px-3">
           <div className={rowClass}>
             <label className={labelClass}>Plomo (Pb) - mg/L</label>
             <div className={inputContainerClass}>
@@ -271,33 +267,27 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
           </div>
         </div>
 
-        {/* Sección 4 - Resultados Críticos */}
-        <div className={cn(sectionHeaderClass, "bg-accent/10 border-accent/20")}>
-          <span className={cn(sectionNumberClass, "bg-accent")}>4</span>
-          <span className="text-[11px] font-black uppercase tracking-wider text-accent">Resultado de Cota</span>
-        </div>
-        <div className="py-2 px-1">
-          <div className="flex items-center justify-between p-3 border-2 border-accent bg-accent/5 rounded-md shadow-inner">
-            <div className="space-y-0.5">
-              <p className="text-[10px] font-black text-accent uppercase leading-none">Cota de Agua Calculada</p>
-              <p className="text-[9px] text-accent/70 italic font-bold">Fórmula: CB - NE</p>
-            </div>
-            <div className="text-xl font-black text-accent font-code">
-              {cotaAgua !== null ? `${cotaAgua} m` : "—"}
-            </div>
+        {/* Sección 4 - Resultado */}
+        <div className="bg-neutral-800 px-3 py-2 flex items-center justify-between mt-2">
+          <div className="flex flex-col">
+            <span className="text-[9px] font-black uppercase text-white leading-none">Cota de Agua</span>
+            <span className="text-[8px] text-neutral-400 font-bold uppercase italic">Cálculo: CB - NE</span>
+          </div>
+          <div className="text-lg font-black text-white font-code">
+            {cotaAgua !== null ? `${cotaAgua} m` : "—"}
           </div>
         </div>
       </div>
 
-      {/* Footer de Acción */}
-      <div className="bg-neutral-100 px-4 py-4 border-t-2 border-neutral-300">
+      {/* Acción */}
+      <div className="bg-white px-4 py-4">
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="w-full bg-black hover:bg-neutral-800 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-3 rounded-md"
+          className="w-full bg-black hover:bg-neutral-800 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all flex items-center justify-center gap-3 rounded-none"
         >
           {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-          Finalizar y Guardar Planilla
+          Finalizar y Registrar Planilla
         </button>
       </div>
     </div>
