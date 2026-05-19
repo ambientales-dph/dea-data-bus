@@ -66,10 +66,16 @@ export default function Home() {
   const [showResults, setShowResults] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  const stationsQuery = useMemo(() => query(collection(db, 'stations')), [db]);
+  const stationsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'stations'));
+  }, [db, user]);
   const { data: stations } = useCollection(stationsQuery);
 
-  const reportsQuery = useMemo(() => query(collection(db, 'reports')), [db]);
+  const reportsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'reports'));
+  }, [db, user]);
   const { data: reports } = useCollection(reportsQuery);
 
   // Detectar mobile y setear ancho inicial

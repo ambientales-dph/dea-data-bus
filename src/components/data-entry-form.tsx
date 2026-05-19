@@ -64,14 +64,17 @@ export function DataEntryForm({
   const isInitialLoadRef = useRef(true);
 
   // Cargar plantillas del sistema y personalizadas
-  const customTemplatesQuery = useMemo(() => query(collection(db, 'custom_templates')), [db]);
+  const customTemplatesQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'custom_templates'));
+  }, [db, user]);
   const { data: customTemplates } = useCollection(customTemplatesQuery);
 
   // Consulta de analitos del reporte actual para mostrar planillas ya registradas
   const currentReportSamplesQuery = useMemo(() => {
-    if (!currentReportId) return null;
+    if (!db || !user || !currentReportId) return null;
     return query(collection(db, 'samples'), where('reportId', '==', currentReportId));
-  }, [db, currentReportId]);
+  }, [db, user, currentReportId]);
   const { data: currentReportSamples } = useCollection(currentReportSamplesQuery);
 
   const existingPlanillas = useMemo(() => {
