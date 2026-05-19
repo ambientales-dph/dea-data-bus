@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, Info, Check, Send } from 'lucide-react';
@@ -55,17 +55,80 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
   const [isSaving, setIsSaving] = useState(false);
   const [savingFields, setSavingFields] = useState<Record<string, boolean>>({});
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
+  const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const hasSetInitialId = useRef(false);
 
   const stationRef = useMemo(() => doc(db, 'stations', stationId), [db, stationId]);
   const { data: stationData } = useDoc(stationRef);
 
+  // Cargar datos existentes del reporte para pre-poblar el formulario
   useEffect(() => {
-    if (stationData?.name && !hasSetInitialId.current) {
+    const fetchExistingData = async () => {
+      try {
+        const q = query(
+          collection(db, 'samples'),
+          where('reportId', '==', reportId),
+          where('medium', '==', 'agua_subterranea')
+        );
+        const snapshot = await getDocs(q);
+        
+        const newFormData = { ...initialFormData };
+        const newSavedFields: Record<string, boolean> = {};
+
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          const analyte = data.analyte;
+          const value = parseFloat(data.value);
+
+          // Mapeo manual basado en los nombres técnicos mostrados en la planilla
+          if (analyte === 'Cota Brocal') newFormData.cotaBrocal = value;
+          if (analyte === 'Nivel Estático') newFormData.nivelEstatico = value;
+          if (analyte === 'Profundidad Total') newFormData.profundidadTotal = value;
+          if (analyte === 'pH') newFormData.ph = value;
+          if (analyte === 'Conductividad') newFormData.conductividad = value;
+          if (analyte === 'Temperatura') newFormData.temperatura = value;
+          if (analyte === 'Plomo (Pb)') newFormData.plomo = value;
+          if (analyte === 'Cadmio (Cd)') newFormData.cadmio = value;
+          if (analyte === 'Arsénico (As)') newFormData.arsenico = value;
+          if (analyte === 'TPH (Hidrocarburos)') newFormData.tph = value;
+          
+          // Marcar como guardado si existe en la BD
+          const fieldKey = Object.keys(newFormData).find(k => {
+             const labels: any = {
+               cotaBrocal: 'Cota Brocal',
+               nivelEstatico: 'Nivel Estático',
+               profundidadTotal: 'Profundidad Total',
+               ph: 'pH',
+               conductividad: 'Conductividad',
+               temperatura: 'Temperatura',
+               plomo: 'Plomo (Pb)',
+               cadmio: 'Cadmio (Cd)',
+               arsenico: 'Arsénico (As)',
+               tph: 'TPH (Hidrocarburos)'
+             };
+             return labels[k] === analyte;
+          });
+          if (fieldKey) newSavedFields[fieldKey] = true;
+        });
+
+        setFormData(prev => ({ ...prev, ...newFormData }));
+        setSavedFields(newSavedFields);
+      } catch (e) {
+        console.error("Error fetching existing samples", e);
+      } finally {
+        setIsLoadingExisting(false);
+      }
+    };
+
+    fetchExistingData();
+  }, [db, reportId]);
+
+  useEffect(() => {
+    if (stationData?.name && !hasSetInitialId.current && !formData.idPozo) {
       setFormData(prev => ({ ...prev, idPozo: stationData.name }));
       hasSetInitialId.current = true;
     }
-  }, [stationData?.name]);
+  }, [stationData?.name, formData.idPozo]);
 
   const cotaAgua = useMemo(() => {
     if (formData.cotaBrocal !== null && formData.nivelEstatico !== null) {
@@ -81,6 +144,14 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         ? value 
         : value === "" ? null : parseFloat(value),
     }));
+    // Al editar, quitamos la marca de "guardado" para forzar re-sincronización
+    if (savedFields[field]) {
+      setSavedFields(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
   };
 
   const saveIndividualParam = async (key: keyof FreatimetroData | 'cotaAgua', label: string, type: string, unit: string) => {
@@ -107,6 +178,8 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
     };
 
     try {
+      // Usar setDoc o un identificador consistente para evitar duplicados en la misma planilla?
+      // Por ahora mantenemos addDoc para historial, pero marcamos la UI
       await addDoc(collection(db, 'samples'), sampleData);
       await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       
@@ -145,6 +218,15 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
       setIsSaving(false);
     }
   };
+
+  if (isLoadingExisting) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-muted-foreground bg-white border border-neutral-400">
+        <Loader2 className="h-8 w-8 animate-spin mb-2" />
+        <p className="text-xs font-bold uppercase tracking-widest">Recuperando datos previos...</p>
+      </div>
+    );
+  }
 
   const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group";
   const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none";

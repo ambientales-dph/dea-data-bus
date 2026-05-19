@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList, Star } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList, Star, ChevronRight } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -66,6 +66,21 @@ export function DataEntryForm({
   const customTemplatesQuery = useMemo(() => query(collection(db, 'custom_templates')), [db]);
   const { data: customTemplates } = useCollection(customTemplatesQuery);
 
+  // Consulta de analitos del reporte actual para mostrar planillas ya registradas
+  const currentReportSamplesQuery = useMemo(() => {
+    if (!currentReportId) return null;
+    return query(collection(db, 'samples'), where('reportId', '==', currentReportId));
+  }, [db, currentReportId]);
+  const { data: currentReportSamples } = useCollection(currentReportSamplesQuery);
+
+  const existingMediums = useMemo(() => {
+    const mediums = new Set<string>();
+    currentReportSamples.forEach((s: any) => {
+      if (s.medium) mediums.add(s.medium);
+    });
+    return Array.from(mediums);
+  }, [currentReportSamples]);
+
   useEffect(() => {
     fetch('/data/parametros_monitoreo.json')
       .then(res => res.json())
@@ -93,7 +108,6 @@ export function DataEntryForm({
             setSelectedProject(parsed.selectedProject || '');
             setSelectedTemplate(parsed.selectedTemplate || 'manual');
             if (parsed.selectedProject) {
-              // Si tenemos el original guardado, mostramos su versión transformada para ser consistentes
               const match = parsed.selectedProject.match(/\((.*?)\)$/);
               const display = match ? `${match[0]} ${parsed.selectedProject.replace(match[0], '').trim()}` : parsed.selectedProject;
               setProjectSearch(display);
@@ -156,17 +170,13 @@ export function DataEntryForm({
   }, []);
 
   const filteredTrelloProjects = useMemo(() => {
-    // 1. Excluir XXX000
     const listWithoutExcluded = trelloProjects.filter(p => !p.includes('(XXX000)'));
-
-    // 2. Transformar a objetos con etiqueta de visualización (Código Adelante)
     const transformed = listWithoutExcluded.map(p => {
       const match = p.match(/\((.*?)\)$/);
       const display = match ? `${match[0]} ${p.replace(match[0], '').trim()}` : p;
       return { original: p, display };
     });
 
-    // 3. Filtrar por búsqueda
     let filtered = transformed;
     if (projectSearch) {
       const searchLower = projectSearch.toLowerCase();
@@ -176,7 +186,6 @@ export function DataEntryForm({
       );
     }
 
-    // 4. Ordenar alfabéticamente por la etiqueta de visualización
     return filtered.sort((a, b) => a.display.localeCompare(b.display));
   }, [trelloProjects, projectSearch]);
 
@@ -399,6 +408,17 @@ export function DataEntryForm({
     }
   };
 
+  const handleReopenTemplate = (medium: string) => {
+    // Buscar si hay una planilla del sistema que coincida con el medium
+    const foundTemplate = templates.find(t => t.medium === medium);
+    if (foundTemplate) {
+      setSelectedTemplate(foundTemplate.id);
+    } else {
+      setSelectedTemplate('manual');
+    }
+    setActiveView('report-entry');
+  };
+
   if (!selectedPoint) {
     return (
       <div className="flex flex-col items-center pt-8 md:pt-16 min-h-[60vh] text-center space-y-6 px-4">
@@ -418,8 +438,8 @@ export function DataEntryForm({
   if (activeView === 'report-entry' && currentReportId) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('select-template')} className="mb-2">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver a planillas
         </Button>
         <SamplingReportForm 
           reportId={currentReportId} 
@@ -523,62 +543,85 @@ export function DataEntryForm({
   if (activeView === 'select-template' && selectedPoint.stationId) {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-        <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('consult') : setActiveView('select-project')} className="mb-2">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+        <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
         </Button>
         <Card className="border-t-4 border-t-accent shadow-lg overflow-hidden">
           <CardHeader className="pb-4">
             <CardTitle className="text-md flex items-center gap-2">
               <LayoutList className="h-5 w-5 text-accent" />
-              {currentReportId ? 'Agregar Planilla al Reporte' : '2. Elegir Planilla de Carga'}
+              {currentReportId ? 'Gestión de Planillas' : '2. Elegir Planilla de Carga'}
             </CardTitle>
-            <CardDescription className="text-xs">Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.</CardDescription>
+            <CardDescription className="text-xs">
+              {currentReportId ? 'Agregá un nuevo protocolo o editá los ya registrados.' : 'Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.'}
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Medio / Protocolo</Label>
-              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                <SelectTrigger className="h-11 text-xs font-medium border-accent/20 bg-accent/5">
-                  <SelectValue placeholder="Elegí un protocolo..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual" className="text-xs font-bold">Carga Manual (uno por uno)</SelectItem>
-                  <SelectItem value="personalizada" className="text-xs font-bold text-primary flex items-center gap-1">
-                    <Star className="h-3 w-3 inline mr-1 fill-primary" /> Crear Planilla Personalizada
-                  </SelectItem>
-                  {customTemplates && customTemplates.length > 0 && (
-                    <>
-                      <Separator className="my-1" />
-                      <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase">Tus Planillas</div>
-                      {customTemplates.map((ct: any) => (
-                        <SelectItem key={ct.id} value={`custom_${ct.id}`} className="text-xs">
-                          {ct.name}
-                        </SelectItem>
-                      ))}
-                    </>
-                  )}
-                  <Separator className="my-1" />
-                  <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase">Plantillas del Sistema</div>
-                  {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Nueva Planilla / Protocolo</Label>
+              <div className="flex gap-2">
+                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                  <SelectTrigger className="h-11 flex-1 text-xs font-medium border-accent/20 bg-accent/5">
+                    <SelectValue placeholder="Elegí un protocolo..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual" className="text-xs font-bold">Carga Manual (uno por uno)</SelectItem>
+                    <SelectItem value="personalizada" className="text-xs font-bold text-primary flex items-center gap-1">
+                      <Star className="h-3 w-3 inline mr-1 fill-primary" /> Crear Planilla Personalizada
+                    </SelectItem>
+                    {customTemplates && customTemplates.length > 0 && (
+                      <>
+                        <Separator className="my-1" />
+                        <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase">Tus Planillas</div>
+                        {customTemplates.map((ct: any) => (
+                          <SelectItem key={ct.id} value={`custom_${ct.id}`} className="text-xs">
+                            {ct.name}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                    <Separator className="my-1" />
+                    <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase">Plantillas del Sistema</div>
+                    {templates.map((t) => (
+                      <SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  className="h-11 px-4 bg-primary hover:bg-primary/90 font-bold" 
+                  disabled={isStartingReport} 
+                  onClick={handleConfirmTemplate}
+                >
+                  {isStartingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : "Iniciar Carga"}
+                </Button>
+              </div>
             </div>
-            <Button 
-              className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md" 
-              disabled={isStartingReport} 
-              onClick={handleConfirmTemplate}
-            >
-              {isStartingReport ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generando Reporte...
-                </>
-              ) : (
-                currentReportId ? "Iniciar Carga" : "Confirmar e Iniciar Reporte"
-              )}
-            </Button>
+
+            {currentReportId && existingMediums.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Planillas en este reporte</Label>
+                <div className="grid grid-cols-1 gap-2">
+                  {existingMediums.map((medium) => (
+                    <button
+                      key={medium}
+                      onClick={() => handleReopenTemplate(medium)}
+                      className="w-full flex items-center justify-between p-3 rounded-md bg-muted/30 border border-muted/50 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 rounded bg-white shadow-sm border">
+                          <FileText className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold capitalize">{medium.replace('_', ' ')}</p>
+                          <p className="text-[9px] text-muted-foreground uppercase font-semibold">Editar / Completar datos</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
