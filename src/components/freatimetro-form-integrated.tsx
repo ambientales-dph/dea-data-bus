@@ -140,7 +140,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
 
   const rowClass = "flex items-start justify-between py-2 border-b border-neutral-300 hover:bg-neutral-50 transition-colors";
   const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none";
-  const subLabelClass = "text-[9px] text-neutral-600 font-bold uppercase italic leading-tight mt-1";
+  const subLabelClass = "text-[9px] text-neutral-600 font-bold italic leading-tight mt-1";
   const inputContainerClass = "w-40 flex items-center gap-1.5 justify-end";
   const inputClass = "h-7 border-none bg-transparent px-2 text-[12px] focus:ring-0 focus:outline-none font-code text-black font-bold text-right rounded-none placeholder:text-neutral-300";
   const sectionHeaderClass = "flex items-center bg-neutral-200 px-3 py-1 border-y border-neutral-400 mt-2 first:mt-0";
@@ -314,7 +314,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         <div className="bg-neutral-800 px-3 py-3 flex items-center justify-between mt-2">
           <div className="flex flex-col">
             <span className="text-[10px] font-black uppercase text-white leading-none">Cota de Agua Estimada</span>
-            <span className="text-[8px] text-neutral-400 font-bold uppercase italic mt-1">Metodología de Cálculo: CB - NE</span>
+            <span className="text-[8px] text-neutral-400 font-bold italic mt-1">Metodología de Cálculo: CB - NE</span>
           </div>
           <div className="text-xl font-black text-white font-code">
             {cotaAgua !== null ? `${cotaAgua} m` : "—"}
