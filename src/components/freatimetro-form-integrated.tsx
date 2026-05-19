@@ -141,7 +141,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
   const rowClass = "flex items-center justify-between py-1 border-b border-neutral-300 hover:bg-neutral-50 transition-colors";
   const labelClass = "text-[11px] font-bold text-black tracking-tight font-headline flex-1 pr-4";
   const inputContainerClass = "w-40 flex items-center gap-1.5 justify-end";
-  const inputClass = "h-7 border border-neutral-400 bg-white px-2 text-[12px] focus:ring-1 focus:ring-black focus:border-black font-code text-black font-bold text-right rounded-none";
+  const inputClass = "h-7 border-none bg-transparent px-2 text-[12px] focus:ring-0 focus:outline-none font-code text-black font-bold text-right rounded-none placeholder:text-neutral-300";
   const sectionHeaderClass = "flex items-center bg-neutral-200 px-3 py-1 border-y border-neutral-400 mt-2 first:mt-0";
 
   return (
