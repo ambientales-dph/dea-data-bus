@@ -11,8 +11,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Timer } from 'lucide-react';
 
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000; 
-const WARNING_TIMEOUT = 9 * 60 * 1000; 
 const COUNTDOWN_TOTAL = 60;
 
 interface CircularProgressProps {
@@ -65,8 +63,20 @@ export function SessionTimeoutManager() {
   const { user } = useUser();
   const [showWarning, setShowWarning] = useState(false);
   const [remainingTime, setRemainingTime] = useState(COUNTDOWN_TOTAL);
+  const [settings, setSettings] = useState({ enabled: true, minutes: 10 });
+  
   const lastActivityRef = useRef<number>(Date.now());
   const wakeLockRef = useRef<any>(null);
+
+  const loadSettings = useCallback(() => {
+    const savedEnabled = localStorage.getItem('dea_timeout_enabled');
+    const savedMinutes = localStorage.getItem('dea_timeout_minutes');
+    
+    setSettings({
+      enabled: savedEnabled === null ? true : savedEnabled === 'true',
+      minutes: savedMinutes === null ? 10 : parseInt(savedMinutes, 10),
+    });
+  }, []);
 
   const requestWakeLock = async () => {
     if ('wakeLock' in navigator) {
@@ -100,9 +110,17 @@ export function SessionTimeoutManager() {
   }, [showWarning]);
 
   useEffect(() => {
-    if (!user) return;
+    loadSettings();
+    window.addEventListener('dea-settings-updated', loadSettings);
+    return () => window.removeEventListener('dea-settings-updated', loadSettings);
+  }, [loadSettings]);
 
-    // IMPORTANTE: Reiniciar el tiempo de actividad al detectar un nuevo usuario logueado
+  useEffect(() => {
+    if (!user || !settings.enabled) {
+      setShowWarning(false);
+      return;
+    }
+
     resetTimer();
 
     const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
@@ -115,10 +133,13 @@ export function SessionTimeoutManager() {
     const interval = setInterval(() => {
       const now = Date.now();
       const diff = now - lastActivityRef.current;
+      
+      const inactivityTimeout = settings.minutes * 60 * 1000;
+      const warningTimeout = inactivityTimeout - 60000; // 1 minuto antes avisar
 
-      if (diff >= INACTIVITY_TIMEOUT) {
+      if (diff >= inactivityTimeout) {
         handleSignOut();
-      } else if (diff >= WARNING_TIMEOUT && !showWarning) {
+      } else if (diff >= warningTimeout && !showWarning) {
         setShowWarning(true);
         requestWakeLock();
       }
@@ -131,7 +152,7 @@ export function SessionTimeoutManager() {
       clearInterval(interval);
       releaseWakeLock();
     };
-  }, [user, auth, resetTimer, showWarning, handleSignOut]);
+  }, [user, auth, resetTimer, showWarning, handleSignOut, settings]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
