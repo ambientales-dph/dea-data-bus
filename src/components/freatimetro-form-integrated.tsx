@@ -198,7 +198,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
 
   const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group";
   const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none";
-  const subLabelClass = "text-[9px] text-neutral-600 font-bold leading-tight mt-1";
+  const subLabelClass = "text-[9px] text-neutral-600 font-medium leading-tight mt-1";
   const inputClass = "h-7 w-28 border-none bg-transparent px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none";
   const sectionHeaderClass = "flex items-center bg-neutral-100 px-3 py-1.5 border-y border-neutral-400 mt-2 first:mt-0";
 
@@ -212,32 +212,62 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
       </div>
 
       <div className="p-0">
-        <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">1. Identificación</span></div>
+        <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">1. Identificación y Geometría</span></div>
         <div className="px-3">
           <div className={rowClass}>
-            <div className="flex flex-col flex-1"><label className={labelClass}>ID Pozo</label><span className={subLabelClass}>Identificación de Campo</span></div>
+            <div className="flex flex-col flex-1"><label className={labelClass}>ID Pozo</label><span className={subLabelClass}>Nombre o identificación técnica</span></div>
             <input type="text" className={inputClass} value={formData.idPozo} onChange={(e) => handleInputChange("idPozo", e.target.value)} />
           </div>
           <div className={rowClass}>
-            <div className="flex flex-col flex-1"><label className={labelClass}>Cota Brocal (m s.n.m.)</label><span className={subLabelClass}>Elevación terreno</span></div>
+            <div className="flex flex-col flex-1">
+              <label className={labelClass}>Cota Brocal (m s.n.m.)</label>
+              <span className={subLabelClass}>Elevación del terreno. Referencia: IGM/IGN.</span>
+            </div>
             <div className="flex items-center gap-2">
               <input type="number" step="any" className={inputClass} value={formData.cotaBrocal ?? ""} onChange={(e) => handleInputChange("cotaBrocal", e.target.value)} />
-              <button onClick={() => saveIndividualParam('cotaBrocal', 'Cota Brocal', 'Identificación')} className={cn("p-1", savedFields['cotaBrocal'] ? "text-green-600" : "text-neutral-300")}>
+              <button onClick={() => saveIndividualParam('cotaBrocal', 'Cota Brocal', 'Geometría')} className={cn("p-1", savedFields['cotaBrocal'] ? "text-green-600" : "text-neutral-300")}>
                 {savingFields['cotaBrocal'] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
               </button>
             </div>
           </div>
         </div>
 
-        <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">2. Mediciones de Campo</span></div>
+        <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">2. Mediciones de Campo (In Situ)</span></div>
         <div className="px-3">
           {[
-            { key: 'nivelEstatico', name: 'Nivel Estático', unit: 'm', type: 'Físico' },
-            { key: 'ph', name: 'pH', unit: 'pH', type: 'Fisicoquímico' },
-            { key: 'conductividad', name: 'Conductividad', unit: 'μS/cm', type: 'Fisicoquímico' }
+            { key: 'nivelEstatico', name: 'Nivel Estático', unit: 'm', type: 'Campo', desc: 'Profundidad desde brocal. Ley 24.051.' },
+            { key: 'ph', name: 'pH', unit: 'upH', type: 'Campo', desc: 'Acidez/Alcalinidad. Dec. 831/93.' },
+            { key: 'conductividad', name: 'Conductividad', unit: 'μS/cm', type: 'Campo', desc: 'Salinidad total. Dec. 831/93.' },
+            { key: 'temperatura', name: 'Temperatura', unit: '°C', type: 'Campo', desc: 'Temp. del fluido al momento de extracción.' }
           ].map((field) => (
             <div key={field.key} className={rowClass}>
-              <div className="flex flex-col flex-1"><label className={labelClass}>{field.name} ({field.unit})</label></div>
+              <div className="flex flex-col flex-1">
+                <label className={labelClass}>{field.name} ({field.unit})</label>
+                <span className={subLabelClass}>{field.desc}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="number" step="any" className={inputClass} value={(formData as any)[field.key] ?? ""} onChange={(e) => handleInputChange(field.key as any, e.target.value)} />
+                <button onClick={() => saveIndividualParam(field.key as any, field.name, field.type)} className={cn("p-1", savedFields[field.key] ? "text-green-600" : "text-neutral-300")}>
+                  {savingFields[field.key] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">3. Resultados de Laboratorio</span></div>
+        <div className="px-3">
+          {[
+            { key: 'plomo', name: 'Plomo (Pb)', unit: 'mg/L', type: 'Laboratorio', desc: 'Nivel Guía: 0.05 mg/L. Dec. 831/93.' },
+            { key: 'cadmio', name: 'Cadmio (Cd)', unit: 'mg/L', type: 'Laboratorio', desc: 'Nivel Guía: 0.005 mg/L. Dec. 831/93.' },
+            { key: 'arsenico', name: 'Arsénico (As)', unit: 'mg/L', type: 'Laboratorio', desc: 'Nivel Guía: 0.05 mg/L. Dec. 831/93.' },
+            { key: 'tph', name: 'TPH (Hidrocarburos)', unit: 'mg/L', type: 'Laboratorio', desc: 'Total Petroleum Hydrocarbons. Res. 405/19.' }
+          ].map((field) => (
+            <div key={field.key} className={rowClass}>
+              <div className="flex flex-col flex-1">
+                <label className={labelClass}>{field.name}</label>
+                <span className={subLabelClass}>{field.desc}</span>
+              </div>
               <div className="flex items-center gap-2">
                 <input type="number" step="any" className={inputClass} value={(formData as any)[field.key] ?? ""} onChange={(e) => handleInputChange(field.key as any, e.target.value)} />
                 <button onClick={() => saveIndividualParam(field.key as any, field.name, field.type)} className={cn("p-1", savedFields[field.key] ? "text-green-600" : "text-neutral-300")}>
@@ -249,7 +279,10 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         </div>
 
         <div className="bg-black px-4 py-4 flex items-center justify-between mt-2">
-          <span className="text-[10px] font-black uppercase text-white">Cota de Agua Estimada (CB - NE)</span>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase text-white">Cota de Agua Estimada</span>
+            <span className="text-[8px] font-bold text-neutral-400">Cálculo: CB - NE (m s.n.m.)</span>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-xl font-black text-white font-code">{cotaAgua !== null ? `${cotaAgua} m` : "—"}</span>
             <button onClick={() => saveIndividualParam('cotaAgua', 'Cota de Agua', 'Cálculo')} className={cn("p-1", savedFields['cotaAgua'] ? "text-green-400" : "text-neutral-600")}>
