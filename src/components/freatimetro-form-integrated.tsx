@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, Info, Check, Send, ArrowLeft } from 'lucide-react';
+import { Loader2, CheckCircle2, Info, Check, Send, ArrowLeft, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface FreatimetroData {
@@ -57,6 +57,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const [savingFields, setSavingFields] = useState<Record<string, boolean>>({});
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
+  const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
   const hasSetInitialId = useRef(false);
 
   const stationRef = useMemo(() => doc(db, 'stations', stationId), [db, stationId]);
@@ -89,12 +90,17 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         
         const newFormData = { ...initialFormData };
         const newSavedFields: Record<string, boolean> = {};
+        let foundMetadata = { user: user?.email || '', timestamp: null };
 
         snapshot.docs.forEach(doc => {
           const data = doc.data();
           const analyte = data.analyte;
           const value = parseFloat(data.value);
           
+          if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
+            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.timestamp };
+          }
+
           const fieldKey = analyteToKeyMap[analyte];
           if (fieldKey && !isNaN(value)) {
             (newFormData as any)[fieldKey] = value;
@@ -104,6 +110,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
 
         setFormData(prev => ({ ...prev, ...newFormData }));
         setSavedFields(newSavedFields);
+        setMetadata(foundMetadata);
       } catch (e) {
         console.error("Error fetching", e);
       } finally {
@@ -192,6 +199,18 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
     }
   };
 
+  const formatTimestamp = (ts: any) => {
+    if (!ts) return new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    return date.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   if (isLoadingExisting) {
     return <div className="p-8 text-center text-xs animate-pulse font-bold uppercase">Cargando datos de planilla...</div>;
   }
@@ -207,7 +226,13 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
       <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-2 flex justify-between items-center">
         <div>
           <h1 className="text-xs font-black uppercase tracking-tight text-black font-headline">Freatímetros • FTA-001</h1>
-          <p className="text-[9px] text-neutral-600 font-bold uppercase leading-none">Planilla: {formId.substring(0, 8)}</p>
+          <div className="flex flex-col gap-0.5 mt-0.5">
+            <p className="text-[9px] text-neutral-600 font-bold uppercase leading-none">ID: {formId.substring(0, 8)}</p>
+            <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter">
+              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
+              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> {metadata.user || user?.email}</span>
+            </div>
+          </div>
         </div>
       </div>
 

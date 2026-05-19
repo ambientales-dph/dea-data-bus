@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Save, FlaskConical, CheckCircle2, Loader2, Star, Search, Check, Info } from 'lucide-react';
+import { Plus, Save, FlaskConical, CheckCircle2, Loader2, Star, Search, Check, Info, Clock, User } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
@@ -44,6 +44,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   const [template, setTemplate] = useState<any>(null);
   const [planillaValues, setPlanillaValues] = useState<Record<string, string>>({});
   const [isSavingPlanilla, setIsSavingPlanilla] = useState(false);
+  const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
 
   const [allParams, setAllParams] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,14 +66,21 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   useEffect(() => {
     if (samplesData && samplesData.length > 0) {
       const existingValues: Record<string, string> = {};
+      let foundMetadata = { user: user?.email || '', timestamp: null };
+      
       samplesData.forEach((s: any) => {
         if (s.analyte && s.value) {
           existingValues[s.analyte] = s.value;
         }
+        if (!foundMetadata.timestamp || (s.timestamp && s.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
+          foundMetadata = { user: s.userEmail || user?.email || '', timestamp: s.timestamp };
+        }
       });
       setPlanillaValues(existingValues);
+      setMetadata(foundMetadata);
     } else {
       setPlanillaValues({});
+      setMetadata({ user: user?.email || '', timestamp: null });
     }
   }, [samplesData]);
 
@@ -170,6 +178,18 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     }
   };
 
+  const formatTimestamp = (ts: any) => {
+    if (!ts) return new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    return date.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const isFreatimetro = useMemo(() => {
     if (!templateId) return false;
     const lowerId = templateId.toLowerCase();
@@ -188,7 +208,13 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <CardTitle className="text-sm font-bold">{template?.nombre || template?.name || 'Carga de Analitos'}</CardTitle>
-              <CardDescription className="text-[10px]">ID Planilla: <span className="font-bold text-primary">{formId.substring(0, 8)}</span></CardDescription>
+              <div className="flex flex-col gap-0.5">
+                <CardDescription className="text-[10px]">ID: <span className="font-bold text-primary">{formId.substring(0, 8)}</span></CardDescription>
+                <div className="flex items-center gap-3 text-[9px] text-muted-foreground font-bold uppercase tracking-tight">
+                  <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
+                  <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> {metadata.user || user?.email}</span>
+                </div>
+              </div>
             </div>
           </div>
         </CardHeader>

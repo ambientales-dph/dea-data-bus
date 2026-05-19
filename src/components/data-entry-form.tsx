@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList, Star, ChevronRight } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -76,10 +76,19 @@ export function DataEntryForm({
   const { data: currentReportSamples } = useCollection(currentReportSamplesQuery);
 
   const existingPlanillas = useMemo(() => {
-    const planillasMap = new Map<string, { formId: string, medium: string }>();
+    const planillasMap = new Map<string, { formId: string, medium: string, userEmail?: string, timestamp?: any }>();
     currentReportSamples.forEach((s: any) => {
       if (s.formId && s.medium) {
-        planillasMap.set(s.formId, { formId: s.formId, medium: s.medium });
+        const existing = planillasMap.get(s.formId);
+        // Nos quedamos con el primer técnico y timestamp que encontremos para esa planilla
+        if (!existing || (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() < existing.timestamp.toMillis()))) {
+          planillasMap.set(s.formId, { 
+            formId: s.formId, 
+            medium: s.medium, 
+            userEmail: s.userEmail, 
+            timestamp: s.timestamp 
+          });
+        }
       }
     });
     return Array.from(planillasMap.values());
@@ -207,7 +216,9 @@ export function DataEntryForm({
     return date.toLocaleDateString('es-AR', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -609,7 +620,13 @@ export function DataEntryForm({
                         </div>
                         <div className="text-left">
                           <p className="text-xs font-bold capitalize">{p.medium.replace('_', ' ')}</p>
-                          <p className="text-[9px] text-muted-foreground uppercase font-semibold">ID: {p.formId.substring(0, 8)} • Editar datos</p>
+                          <div className="flex flex-col mt-0.5">
+                            <p className="text-[9px] text-muted-foreground uppercase font-semibold">ID: {p.formId.substring(0, 8)}</p>
+                            <div className="flex items-center gap-2 text-[9px] text-primary/80 font-bold uppercase tracking-tight">
+                              <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span>
+                              <span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
