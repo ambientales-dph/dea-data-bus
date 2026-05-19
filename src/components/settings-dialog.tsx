@@ -54,12 +54,18 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <div className="flex items-center justify-between mb-3 border-b pb-2">
             <div className="flex items-center gap-2">
               <Settings className="h-3.5 w-3.5 text-primary" />
-              <h2 className="text-[10px] font-black uppercase tracking-widest text-primary font-headline">Configuración</h2>
+              <DialogPrimitive.Title className="text-[10px] font-black uppercase tracking-widest text-primary font-headline">
+                Configuración
+              </DialogPrimitive.Title>
             </div>
             <DialogPrimitive.Close className="text-muted-foreground hover:text-primary transition-colors">
               <X className="h-3.5 w-3.5" />
             </DialogPrimitive.Close>
           </div>
+
+          <DialogPrimitive.Description className="sr-only">
+            Ajustes de la sesión y tiempo de inactividad para el trabajo en campo.
+          </DialogPrimitive.Description>
 
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
