@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface FreatimetroData {
@@ -53,6 +53,19 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
   const { user } = useUser();
   const [formData, setFormData] = useState<FreatimetroData>(initialFormData);
   const [isSaving, setIsSaving] = useState(false);
+  const hasSetInitialId = useRef(false);
+
+  // Obtener datos de la estación para el ID de Pozo sugerido
+  const stationRef = useMemo(() => doc(db, 'stations', stationId), [db, stationId]);
+  const { data: stationData } = useDoc(stationRef);
+
+  // Pre-completar ID Pozo con el nombre de la estación
+  useEffect(() => {
+    if (stationData?.name && !hasSetInitialId.current) {
+      setFormData(prev => ({ ...prev, idPozo: stationData.name }));
+      hasSetInitialId.current = true;
+    }
+  }, [stationData?.name]);
 
   const cotaAgua = useMemo(() => {
     if (formData.cotaBrocal !== null && formData.nivelEstatico !== null) {
@@ -94,7 +107,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
       for (const m of mappings) {
         const val = (formData as any)[m.key];
         if (val !== null && val !== undefined && val !== "") {
-          await addDoc(samplesCol, {
+          const sampleData = {
             medium: 'agua_subterranea',
             parameterType: m.type,
             analyte: m.name,
@@ -104,13 +117,22 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
             userId: user.uid,
             userEmail: user.email,
             timestamp: serverTimestamp(),
+          };
+          
+          addDoc(samplesCol, sampleData).catch(async (error) => {
+            const permissionError = new FirestorePermissionError({
+              path: 'samples',
+              operation: 'create',
+              requestResourceData: sampleData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
           });
           count++;
         }
       }
 
       if (cotaAgua !== null) {
-        await addDoc(samplesCol, {
+        const cotaData = {
           medium: 'agua_subterranea',
           parameterType: 'Cálculo',
           analyte: 'Cota de Agua',
@@ -120,6 +142,14 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
           userId: user.uid,
           userEmail: user.email,
           timestamp: serverTimestamp(),
+        };
+        addDoc(samplesCol, cotaData).catch(async (error) => {
+          const permissionError = new FirestorePermissionError({
+            path: 'samples',
+            operation: 'create',
+            requestResourceData: cotaData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
         });
         count++;
       }
@@ -127,7 +157,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
       if (count > 0) {
         await updateDoc(reportRef, { editors: arrayUnion(user.email) });
         toast({ title: "Datos registrados", description: `Se guardaron ${count} parámetros en el reporte.` });
-        setFormData(initialFormData);
+        setFormData({ ...initialFormData, idPozo: stationData?.name || "" });
         onSuccess?.();
       }
     } catch (e: any) {
@@ -138,17 +168,17 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
     }
   };
 
-  const rowClass = "flex items-start justify-between py-2 border-b border-neutral-300 hover:bg-neutral-50 transition-colors";
+  const rowClass = "flex items-start justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors";
   const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none";
-  const subLabelClass = "text-[9px] text-neutral-600 font-bold italic leading-tight mt-1";
+  const subLabelClass = "text-[9px] text-neutral-600 font-bold leading-tight mt-1 flex items-center gap-1";
   const inputContainerClass = "w-40 flex items-center gap-1.5 justify-end";
   const inputClass = "h-7 border-none bg-transparent px-2 text-[12px] focus:ring-0 focus:outline-none font-code text-black font-bold text-right rounded-none placeholder:text-neutral-300";
-  const sectionHeaderClass = "flex items-center bg-neutral-200 px-3 py-1 border-y border-neutral-400 mt-2 first:mt-0";
+  const sectionHeaderClass = "flex items-center bg-neutral-100 px-3 py-1.5 border-y border-neutral-400 mt-2 first:mt-0";
 
   return (
     <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Header Compacto */}
-      <div className="border-b border-neutral-400 bg-neutral-50 px-4 py-2 flex justify-between items-center">
+      {/* Header Compacto de Alto Contraste */}
+      <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-2 flex justify-between items-center">
         <div>
           <h1 className="text-xs font-black uppercase tracking-tight text-black font-headline">
             Planilla Técnica Ambiental
@@ -174,7 +204,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
               <span className={subLabelClass}>Identificación Técnica de Campo</span>
             </div>
             <div className={inputContainerClass}>
-              <input type="text" className={cn(inputClass, "w-full")} placeholder="PM-001" value={formData.idPozo} onChange={(e) => handleInputChange("idPozo", e.target.value)} />
+              <input type="text" className={cn(inputClass, "w-full")} placeholder="ID Sugerido" value={formData.idPozo} onChange={(e) => handleInputChange("idPozo", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
@@ -241,7 +271,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
           <div className={rowClass}>
             <div className="flex flex-col flex-1 pr-4">
               <label className={labelClass}>pH (Unid. pH)</label>
-              <span className={subLabelClass}>Nivel Guía: 6.5 - 8.5 • Ley 24.051</span>
+              <span className={subLabelClass}><Info className="h-2 w-2" /> Nivel Guía: 6.5 - 8.5 • Ley 24.051</span>
             </div>
             <div className={inputContainerClass}>
               <input type="number" step="0.01" min="0" max="14" className={cn(inputClass, "w-full")} value={formData.ph ?? ""} onChange={(e) => handleInputChange("ph", e.target.value)} />
@@ -275,7 +305,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
           <div className={rowClass}>
             <div className="flex flex-col flex-1 pr-4">
               <label className={labelClass}>Plomo (Pb) - mg/L</label>
-              <span className={subLabelClass}>Nivel Guía: 0.05 mg/L • Ley 24.051</span>
+              <span className={subLabelClass}><Info className="h-2 w-2" /> Nivel Guía: 0.05 mg/L • Ley 24.051</span>
             </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.plomo ?? ""} onChange={(e) => handleInputChange("plomo", e.target.value)} />
@@ -284,7 +314,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
           <div className={rowClass}>
             <div className="flex flex-col flex-1 pr-4">
               <label className={labelClass}>Cadmio (Cd) - mg/L</label>
-              <span className={subLabelClass}>Nivel Guía: 0.005 mg/L • Ley 24.051</span>
+              <span className={subLabelClass}><Info className="h-2 w-2" /> Nivel Guía: 0.005 mg/L • Ley 24.051</span>
             </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.cadmio ?? ""} onChange={(e) => handleInputChange("cadmio", e.target.value)} />
@@ -293,7 +323,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
           <div className={rowClass}>
             <div className="flex flex-col flex-1 pr-4">
               <label className={labelClass}>Arsénico (As) - mg/L</label>
-              <span className={subLabelClass}>Nivel Guía: 0.05 mg/L • Ley 24.051</span>
+              <span className={subLabelClass}><Info className="h-2 w-2" /> Nivel Guía: 0.05 mg/L • Ley 24.051</span>
             </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.arsenico ?? ""} onChange={(e) => handleInputChange("arsenico", e.target.value)} />
@@ -302,7 +332,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
           <div className={rowClass}>
             <div className="flex flex-col flex-1 pr-4">
               <label className={labelClass}>TPH (Hidrocarburos) - mg/L</label>
-              <span className={subLabelClass}>Nivel Guía: 0.1 mg/L • Dec. 831/93</span>
+              <span className={subLabelClass}><Info className="h-2 w-2" /> Nivel Guía: 0.1 mg/L • Dec. 831/93</span>
             </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.tph ?? ""} onChange={(e) => handleInputChange("tph", e.target.value)} />
@@ -311,7 +341,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         </div>
 
         {/* Sección 4 - Resultado */}
-        <div className="bg-neutral-800 px-3 py-3 flex items-center justify-between mt-2">
+        <div className="bg-black px-4 py-4 flex items-center justify-between mt-2">
           <div className="flex flex-col">
             <span className="text-[10px] font-black uppercase text-white leading-none">Cota de Agua Estimada</span>
             <span className="text-[8px] text-neutral-400 font-bold italic mt-1">Metodología de Cálculo: CB - NE</span>
@@ -327,10 +357,10 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="w-full bg-black hover:bg-neutral-800 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all flex items-center justify-center gap-3 rounded-none"
+          className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] font-black uppercase tracking-widest text-white transition-all flex items-center justify-center gap-3 rounded-none shadow-md"
         >
           {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-          Finalizar y Registrar Planilla
+          Finalizar y Registrar Planilla Técnica
         </button>
       </div>
     </div>
