@@ -37,6 +37,7 @@
       "type": "object",
       "properties": {
         "reportId": { "type": "string", "description": "Referencia al reporte de origen." },
+        "formId": { "type": "string", "description": "ID único de la instancia de la planilla dentro del reporte." },
         "stationId": { "type": "string", "description": "Referencia a la estación de origen." },
         "medium": { "type": "string", "enum": ["agua_superficial", "agua_subterranea", "suelo", "sedimentos"], "description": "Medio ambiental (Matriz)." },
         "parameterType": { "type": "string", "description": "Categoría del parámetro (Fisicoquímico, etc)." },
@@ -46,7 +47,7 @@
         "userId": { "type": "string" },
         "userEmail": { "type": "string" }
       },
-      "required": ["reportId", "stationId", "medium", "parameterType", "analyte", "value"]
+      "required": ["reportId", "formId", "stationId", "medium", "parameterType", "analyte", "value"]
     },
     "CustomTemplate": {
       "title": "CustomTemplate",

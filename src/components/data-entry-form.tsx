@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -47,6 +48,7 @@ export function DataEntryForm({
   const [isStartingReport, setIsStartingReport] = useState(false);
   const [activeView, setActiveView] = useState<FormView>('summary');
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
+  const [activeFormId, setActiveFormId] = useState<string | null>(null);
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
   
   const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
@@ -73,12 +75,14 @@ export function DataEntryForm({
   }, [db, currentReportId]);
   const { data: currentReportSamples } = useCollection(currentReportSamplesQuery);
 
-  const existingMediums = useMemo(() => {
-    const mediums = new Set<string>();
+  const existingPlanillas = useMemo(() => {
+    const planillasMap = new Map<string, { formId: string, medium: string }>();
     currentReportSamples.forEach((s: any) => {
-      if (s.medium) mediums.add(s.medium);
+      if (s.formId && s.medium) {
+        planillasMap.set(s.formId, { formId: s.formId, medium: s.medium });
+      }
     });
-    return Array.from(mediums);
+    return Array.from(planillasMap.values());
   }, [currentReportSamples]);
 
   useEffect(() => {
@@ -104,14 +108,10 @@ export function DataEntryForm({
             const parsed = JSON.parse(savedState);
             setActiveView(parsed.activeView || 'summary');
             setCurrentReportId(parsed.currentReportId || null);
+            setActiveFormId(parsed.activeFormId || null);
             setViewingReportId(parsed.viewingReportId || null);
             setSelectedProject(parsed.selectedProject || '');
             setSelectedTemplate(parsed.selectedTemplate || 'manual');
-            if (parsed.selectedProject) {
-              const match = parsed.selectedProject.match(/\((.*?)\)$/);
-              const display = match ? `${match[0]} ${parsed.selectedProject.replace(match[0], '').trim()}` : parsed.selectedProject;
-              setProjectSearch(display);
-            }
           } else {
             setActiveView(selectedPoint.stationId ? 'summary' : 'create-station');
           }
@@ -142,6 +142,7 @@ export function DataEntryForm({
         setActiveView('create-station');
       }
       setCurrentReportId(null);
+      setActiveFormId(null);
       setViewingReportId(null);
       setIsEditingCoords(false);
       setSelectedProject('');
@@ -154,10 +155,10 @@ export function DataEntryForm({
 
   useEffect(() => {
     if (selectedPoint) {
-      const state = { activeView, currentReportId, viewingReportId, selectedProject, selectedTemplate };
+      const state = { activeView, currentReportId, activeFormId, viewingReportId, selectedProject, selectedTemplate };
       localStorage.setItem('dea_form_state', JSON.stringify(state));
     }
-  }, [activeView, currentReportId, viewingReportId, selectedProject, selectedTemplate, selectedPoint]);
+  }, [activeView, currentReportId, activeFormId, viewingReportId, selectedProject, selectedTemplate, selectedPoint]);
 
   useEffect(() => {
     const stored = localStorage.getItem('trello_cards_sync');
@@ -170,8 +171,7 @@ export function DataEntryForm({
   }, []);
 
   const filteredTrelloProjects = useMemo(() => {
-    const listWithoutExcluded = trelloProjects.filter(p => !p.includes('(XXX000)'));
-    const transformed = listWithoutExcluded.map(p => {
+    const transformed = trelloProjects.map(p => {
       const match = p.match(/\((.*?)\)$/);
       const display = match ? `${match[0]} ${p.replace(match[0], '').trim()}` : p;
       return { original: p, display };
@@ -286,14 +286,18 @@ export function DataEntryForm({
   };
 
   const handleConfirmTemplate = () => {
+    // Generar un nuevo formId único para esta nueva planilla
+    const newFormId = crypto.randomUUID();
+    setActiveFormId(newFormId);
+    
     if (currentReportId) {
       setActiveView('report-entry');
     } else {
-      handleStartReport();
+      handleStartReport(newFormId);
     }
   };
 
-  const handleStartReport = async () => {
+  const handleStartReport = async (formId: string) => {
     if (!selectedPoint?.stationId || !user) return;
     if (!selectedProject) {
       toast({
@@ -374,10 +378,18 @@ export function DataEntryForm({
   const handleOpenExistingReport = (reportId: string) => {
     setCurrentReportId(reportId);
     setActiveView('select-template'); 
-    toast({
-      title: "Continuar reporte",
-      description: "Elegí qué planilla querés cargar a continuación.",
-    });
+  };
+
+  const handleReopenPlanilla = (planilla: { formId: string, medium: string }) => {
+    setActiveFormId(planilla.formId);
+    // Intentar encontrar el templateId correcto basado en el medium
+    const foundTemplate = templates.find(t => t.medium === planilla.medium);
+    if (foundTemplate) {
+      setSelectedTemplate(foundTemplate.id);
+    } else {
+      setSelectedTemplate('manual');
+    }
+    setActiveView('report-entry');
   };
 
   const handleStartEditCoords = () => {
@@ -399,24 +411,7 @@ export function DataEntryForm({
         title: "Punto reubicado",
         description: "Las coordenadas han sido actualizadas.",
       });
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Ingresá valores numéricos válidos.",
-      });
     }
-  };
-
-  const handleReopenTemplate = (medium: string) => {
-    // Buscar si hay una planilla del sistema que coincida con el medium
-    const foundTemplate = templates.find(t => t.medium === medium);
-    if (foundTemplate) {
-      setSelectedTemplate(foundTemplate.id);
-    } else {
-      setSelectedTemplate('manual');
-    }
-    setActiveView('report-entry');
   };
 
   if (!selectedPoint) {
@@ -435,7 +430,7 @@ export function DataEntryForm({
     );
   }
 
-  if (activeView === 'report-entry' && currentReportId) {
+  if (activeView === 'report-entry' && currentReportId && activeFormId) {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => setActiveView('select-template')} className="mb-2">
@@ -443,6 +438,7 @@ export function DataEntryForm({
         </Button>
         <SamplingReportForm 
           reportId={currentReportId} 
+          formId={activeFormId}
           stationId={selectedPoint.stationId!} 
           onClose={() => setActiveView('summary')} 
           templateId={selectedTemplate}
@@ -553,12 +549,12 @@ export function DataEntryForm({
               {currentReportId ? 'Gestión de Planillas' : '2. Elegir Planilla de Carga'}
             </CardTitle>
             <CardDescription className="text-xs">
-              {currentReportId ? 'Agregá un nuevo protocolo o editá los ya registrados.' : 'Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.'}
+              {currentReportId ? 'Iniciá una nueva planilla vacía o editá las registradas.' : 'Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Nueva Planilla / Protocolo</Label>
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Nueva Planilla (Independiente)</Label>
               <div className="flex gap-2">
                 <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                   <SelectTrigger className="h-11 flex-1 text-xs font-medium border-accent/20 bg-accent/5">
@@ -597,14 +593,14 @@ export function DataEntryForm({
               </div>
             </div>
 
-            {currentReportId && existingMediums.length > 0 && (
+            {currentReportId && existingPlanillas.length > 0 && (
               <div className="space-y-3 pt-2">
-                <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Planillas en este reporte</Label>
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Planillas en este reporte (Editar)</Label>
                 <div className="grid grid-cols-1 gap-2">
-                  {existingMediums.map((medium) => (
+                  {existingPlanillas.map((p) => (
                     <button
-                      key={medium}
-                      onClick={() => handleReopenTemplate(medium)}
+                      key={p.formId}
+                      onClick={() => handleReopenPlanilla(p)}
                       className="w-full flex items-center justify-between p-3 rounded-md bg-muted/30 border border-muted/50 hover:bg-primary/5 hover:border-primary/30 transition-all group"
                     >
                       <div className="flex items-center gap-3">
@@ -612,8 +608,8 @@ export function DataEntryForm({
                           <FileText className="h-3.5 w-3.5 text-primary" />
                         </div>
                         <div className="text-left">
-                          <p className="text-xs font-bold capitalize">{medium.replace('_', ' ')}</p>
-                          <p className="text-[9px] text-muted-foreground uppercase font-semibold">Editar / Completar datos</p>
+                          <p className="text-xs font-bold capitalize">{p.medium.replace('_', ' ')}</p>
+                          <p className="text-[9px] text-muted-foreground uppercase font-semibold">ID: {p.formId.substring(0, 8)} • Editar datos</p>
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
@@ -640,30 +636,13 @@ export function DataEntryForm({
                   <CardTitle className="text-xl font-bold text-primary leading-none">{selectedPoint.name}</CardTitle>
                 </div>
                 <div className="space-y-0.5 ml-7">
-                  <div className="flex items-center gap-2">
-                    {isEditingCoords ? (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Input value={editLat} onChange={(e) => setEditLat(e.target.value)} className="h-6 w-24 text-[11px] font-code py-0 px-1" />
-                        <Input value={editLon} onChange={(e) => setEditLon(e.target.value)} className="h-6 w-24 text-[11px] font-code py-0 px-1" />
-                        <button onClick={handleSaveEditedCoords} className="text-green-600 hover:text-green-700"><Check className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => setIsEditingCoords(false)} className="text-destructive hover:text-destructive/80"><X className="h-3.5 w-3.5" /></button>
-                      </div>
-                    ) : (
-                      <>
-                        <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
-                          {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
-                        </CardDescription>
-                        <button onClick={handleStartEditCoords} className="text-muted-foreground hover:text-primary transition-colors" title="Editar coordenadas">
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
+                    {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
+                  </CardDescription>
                   <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>
-                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">Por: {stationDetails?.userEmail || '---'}</CardDescription>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Deseleccionar"><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
         </Card>
@@ -671,30 +650,8 @@ export function DataEntryForm({
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="p-4 pb-3">
             <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1 flex-1">
-                <CardTitle className="text-lg flex items-center gap-2 text-primary"><PlusCircle className="h-5 w-5" />Nuevo Punto de Muestreo</CardTitle>
-                <div className="flex items-center gap-2 ml-7">
-                  {isEditingCoords ? (
-                    <div className="flex items-center gap-1 mt-1">
-                      <Input value={editLat} onChange={(e) => setEditLat(e.target.value)} className="h-6 w-24 text-[11px] font-code py-0 px-1" />
-                      <Input value={editLon} onChange={(e) => setEditLon(e.target.value)} className="h-6 w-24 text-[11px] font-code py-0 px-1" />
-                      <button onClick={handleSaveEditedCoords} className="text-green-600 hover:text-green-700"><Check className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => setIsEditingCoords(false)} className="text-destructive hover:text-destructive/80"><X className="h-3.5 w-3.5" /></button>
-                    </div>
-                  ) : (
-                    <>
-                      <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
-                        {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
-                        {selectedPoint.basinCode && ` • Cuenca: ${selectedPoint.basinCode}`}
-                      </CardDescription>
-                      <button onClick={handleStartEditCoords} className="text-muted-foreground hover:text-primary transition-colors" title="Editar coordenadas">
-                        <Pencil className="h-3 w-3" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-              <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Cancelar"><X className="h-4 w-4" /></Button>
+              <CardTitle className="text-lg flex items-center gap-2 text-primary"><PlusCircle className="h-5 w-5" />Nuevo Punto</CardTitle>
+              <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
         </Card>
@@ -704,24 +661,18 @@ export function DataEntryForm({
         <Card className="border-t-4 border-t-accent shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
           <CardHeader>
             <CardTitle className="text-md">Definir Estación</CardTitle>
-            <CardDescription>Verificá el nombre sugerido antes de guardar.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="station-name">Nombre de la Estación</Label>
                 <div className="relative">
-                  <Input id="station-name" placeholder="Ej: EMA0001" className={cn(isGeneratingName && "pr-10")} {...stationForm.register('name')} />
-                  {isGeneratingName && (
-                    <div className="absolute right-3 top-2.5">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  )}
+                  <Input id="station-name" placeholder="Ej: EMA0001" {...stationForm.register('name')} />
+                  {isGeneratingName && <div className="absolute right-3 top-2.5"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
                 </div>
-                {stationForm.formState.errors.name && <p className="text-xs text-destructive">{stationForm.formState.errors.name.message}</p>}
               </div>
-              <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isGeneratingName}>
-                <Send className="mr-2 h-4 w-4" /> Guardar punto en el mapa
+              <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isGeneratingName}>
+                <Send className="mr-2 h-4 w-4" /> Guardar punto
               </Button>
             </form>
           </CardContent>
@@ -732,8 +683,8 @@ export function DataEntryForm({
         <div className="space-y-4">
           <Separator />
           <div className="grid grid-cols-1 gap-3 pt-2">
-            <Button className="w-full h-14 text-md font-bold flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md transition-all hover:scale-[1.01]" onClick={() => setActiveView('select-project')}>
-              <FileText className="h-6 w-6" /> Crear reporte de muestreo
+            <Button className="w-full h-14 text-md font-bold flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md" onClick={() => setActiveView('select-project')}>
+              <FileText className="h-6 w-6" /> Crear reporte
             </Button>
             <Button variant="outline" className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5 shadow-sm" onClick={() => setActiveView('consult')}>
               <Search className="h-6 w-6" /> Ver Historial
