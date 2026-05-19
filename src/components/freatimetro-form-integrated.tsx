@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, Info, Check, Send } from 'lucide-react';
@@ -61,15 +61,30 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
   const stationRef = useMemo(() => doc(db, 'stations', stationId), [db, stationId]);
   const { data: stationData } = useDoc(stationRef);
 
+  // Mapeo riguroso de etiquetas de Firestore a las keys del estado local
+  const analyteToKeyMap: Record<string, keyof FreatimetroData> = {
+    'Cota Brocal': 'cotaBrocal',
+    'Nivel Estático': 'nivelEstatico',
+    'Profundidad Total': 'profundidadTotal',
+    'pH': 'ph',
+    'Conductividad': 'conductividad',
+    'Temperatura': 'temperatura',
+    'Plomo (Pb)': 'plomo',
+    'Cadmio (Cd)': 'cadmio',
+    'Arsénico (As)': 'arsenico',
+    'TPH (Hidrocarburos)': 'tph'
+  };
+
   // Cargar datos existentes del reporte para pre-poblar el formulario
   useEffect(() => {
     const fetchExistingData = async () => {
+      if (!reportId || !db) return;
+      setIsLoadingExisting(true);
       try {
         const q = query(
           collection(db, 'samples'),
           where('reportId', '==', reportId),
-          where('medium', '==', 'agua_subterranea'),
-          orderBy('timestamp', 'asc') // Los más nuevos al final para que sobreescriban en el loop si hay duplicados antiguos
+          where('medium', '==', 'agua_subterranea')
         );
         const snapshot = await getDocs(q);
         
@@ -80,34 +95,12 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
           const data = doc.data();
           const analyte = data.analyte;
           const value = parseFloat(data.value);
-
-          if (analyte === 'Cota Brocal') newFormData.cotaBrocal = value;
-          if (analyte === 'Nivel Estático') newFormData.nivelEstatico = value;
-          if (analyte === 'Profundidad Total') newFormData.profundidadTotal = value;
-          if (analyte === 'pH') newFormData.ph = value;
-          if (analyte === 'Conductividad') newFormData.conductividad = value;
-          if (analyte === 'Temperatura') newFormData.temperatura = value;
-          if (analyte === 'Plomo (Pb)') newFormData.plomo = value;
-          if (analyte === 'Cadmio (Cd)') newFormData.cadmio = value;
-          if (analyte === 'Arsénico (As)') newFormData.arsenico = value;
-          if (analyte === 'TPH (Hidrocarburos)') newFormData.tph = value;
           
-          const fieldKey = Object.keys(newFormData).find(k => {
-             const labels: any = {
-               cotaBrocal: 'Cota Brocal',
-               nivelEstatico: 'Nivel Estático',
-               profundidadTotal: 'Profundidad Total',
-               ph: 'pH',
-               conductividad: 'Conductividad',
-               temperatura: 'Temperatura',
-               plomo: 'Plomo (Pb)',
-               cadmio: 'Cadmio (Cd)',
-               arsenico: 'Arsénico (As)',
-               tph: 'TPH (Hidrocarburos)'
-             };
-             return labels[k] === analyte;
-          });
-          if (fieldKey) newSavedFields[fieldKey] = true;
+          const fieldKey = analyteToKeyMap[analyte];
+          if (fieldKey && !isNaN(value)) {
+            (newFormData as any)[fieldKey] = value;
+            newSavedFields[fieldKey] = true;
+          }
         });
 
         setFormData(prev => ({ ...prev, ...newFormData }));
@@ -143,6 +136,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         ? value 
         : value === "" ? null : parseFloat(value),
     }));
+    // Si el usuario cambia el valor, quitamos el estado de "guardado"
     if (savedFields[field]) {
       setSavedFields(prev => {
         const next = { ...prev };
@@ -153,7 +147,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
   };
 
   const saveIndividualParam = async (key: keyof FreatimetroData | 'cotaAgua', label: string, type: string, unit: string) => {
-    if (!user) return;
+    if (!user || !db) return;
     
     const value = key === 'cotaAgua' ? cotaAgua : formData[key as keyof FreatimetroData];
     if (value === null || value === undefined || value === "") {
@@ -217,7 +211,7 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
   };
 
   const handleFinalize = async () => {
-    if (!user) return;
+    if (!user || !db) return;
     setIsSaving(true);
 
     try {

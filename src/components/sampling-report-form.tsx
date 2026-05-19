@@ -42,6 +42,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
   const [template, setTemplate] = useState<any>(null);
   const [planillaValues, setPlanillaValues] = useState<Record<string, string>>({});
   const [isSavingPlanilla, setIsSavingPlanilla] = useState(false);
+  const [isLoadingExisting, setIsLoadingExisting] = useState(false);
 
   const [allParams, setAllParams] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,6 +52,23 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
 
   const reportRef = useMemo(() => doc(db, 'reports', reportId), [db, reportId]);
   const { data: reportData } = useDoc(reportRef);
+
+  // Consulta de analitos registrados para este reporte
+  const samplesQuery = useMemo(() => query(collection(db, 'samples'), where('reportId', '==', reportId)), [db, reportId]);
+  const { data: samplesData } = useCollection(samplesQuery);
+
+  // Efecto para cargar los valores existentes en el estado del formulario
+  useEffect(() => {
+    if (samplesData && samplesData.length > 0) {
+      const existingValues: Record<string, string> = {};
+      samplesData.forEach((s: any) => {
+        if (s.analyte && s.value) {
+          existingValues[s.analyte] = s.value;
+        }
+      });
+      setPlanillaValues(prev => ({ ...prev, ...existingValues }));
+    }
+  }, [samplesData]);
 
   useEffect(() => {
     fetch('/data/parametros_monitoreo.json')
@@ -65,7 +83,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
   }, []);
 
   useEffect(() => {
-    if (!templateId) return;
+    if (!templateId || !db) return;
 
     if (templateId === 'personalizada') {
       setTemplate({ id: 'personalizada', nombre: 'Nueva Planilla Personalizada', parametros: [] });
@@ -83,15 +101,10 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
           const found = data.medios.find((m: any) => m.id === templateId);
           if (found) {
             setTemplate(found);
-            const savedPlanilla = localStorage.getItem(`dea_planilla_${reportId}_${templateId}`);
-            if (savedPlanilla) setPlanillaValues(JSON.parse(savedPlanilla));
           }
         });
     }
-  }, [templateId, reportId, db]);
-
-  const samplesQuery = useMemo(() => query(collection(db, 'samples'), where('reportId', '==', reportId)), [db, reportId]);
-  const { data: samplesData } = useCollection(samplesQuery);
+  }, [templateId, db]);
   
   const groupedSamples = useMemo(() => {
     const groups: Record<string, any[]> = {};
@@ -109,7 +122,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
   });
 
   const handleSavePlanilla = async () => {
-    if (!user || !template) return;
+    if (!user || !template || !db) return;
     setIsSavingPlanilla(true);
 
     const samplesCol = collection(db, 'samples');
@@ -119,10 +132,10 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
     try {
       for (const param of activeParams) {
         const val = planillaValues[param.nombre];
-        if (val && val.trim() !== '') {
+        if (val !== undefined && val !== null && val.trim() !== '') {
           const medium = template.medium || param.mediumKey || 'agua_superficial';
           
-          // Buscar si ya existe para actualizarlo (UPSERT)
+          // Lógica de UPSERT: Buscar si ya existe para este reporte y analito
           const q = query(
             samplesCol,
             where('reportId', '==', reportId),
@@ -132,6 +145,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
           const snapshot = await getDocs(q);
 
           if (!snapshot.empty) {
+            // Si existe, actualizamos el primer documento encontrado
             const existingId = snapshot.docs[0].id;
             await updateDoc(doc(db, 'samples', existingId), {
               value: val,
@@ -140,6 +154,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
               userEmail: user.email
             });
           } else {
+            // Si no existe, creamos un nuevo documento
             const sampleData = {
               medium,
               parameterType: param.categoria,
@@ -158,9 +173,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
       }
 
       if (savedCount > 0 && user.email) await updateDoc(reportRef, { editors: arrayUnion(user.email) });
-      localStorage.removeItem(`dea_planilla_${reportId}_${templateId}`);
-      setPlanillaValues({});
-      toast({ title: "Planilla guardada", description: `Se actualizaron ${savedCount} parámetros.` });
+      toast({ title: "Planilla guardada", description: `Se sincronizaron ${savedCount} parámetros correctamente.` });
     } catch (e) {
       console.error(e);
       toast({ variant: "destructive", title: "Error", description: "Falla al guardar planilla." });
@@ -170,7 +183,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
   };
 
   const handleSaveCustomTemplate = async () => {
-    if (!user || !customTemplateName || selectedParams.length === 0) return;
+    if (!user || !customTemplateName || selectedParams.length === 0 || !db) return;
     setIsSavingTemplate(true);
     const templateData = {
       name: customTemplateName,
@@ -316,13 +329,14 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
                     </div>
                   ))}
                 </div>
-                <Button onClick={handleSavePlanilla} className="w-full h-10 mt-2 bg-primary hover:bg-primary/90 text-xs shadow-md" disabled={isSavingPlanilla || Object.keys(planillaValues).length === 0}>
+                <Button onClick={handleSavePlanilla} className="w-full h-10 mt-2 bg-primary hover:bg-primary/90 text-xs shadow-md" disabled={isSavingPlanilla}>
                   {isSavingPlanilla ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                   Guardar Datos en el Reporte
                 </Button>
               </div>
             ) : templateId === 'manual' ? (
               <form onSubmit={form.handleSubmit(async (d) => {
+                if (!db) return;
                 const samplesCol = collection(db, 'samples');
                 const q = query(
                   samplesCol,
@@ -375,13 +389,13 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
       <Card className="border-t shadow-inner bg-muted/5">
         <CardHeader className="p-3 pb-1 flex flex-row items-center justify-between">
           <CardTitle className="text-[11px] font-bold uppercase flex items-center gap-1.5 text-muted-foreground tracking-widest">
-            <FlaskConical className="h-3.5 w-3.5" /> Analitos Registrados ({samplesData.length})
+            <FlaskConical className="h-3.5 w-3.5" /> Analitos Registrados ({samplesData?.length || 0})
           </CardTitle>
           <Button onClick={onClose} size="sm" className="h-7 text-[10px] px-3 bg-green-600 hover:bg-green-700 font-bold uppercase tracking-wider shadow-sm">Listo / Finalizar</Button>
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="h-40 rounded-md">
-            {Object.keys(groupedSamples).length === 0 ? (
+            {!samplesData || Object.keys(groupedSamples).length === 0 ? (
               <div className="text-center py-6 text-[10px] italic text-muted-foreground">Sin datos registrados aún en este reporte.</div>
             ) : (
               Object.entries(groupedSamples).map(([medium, items]) => (
