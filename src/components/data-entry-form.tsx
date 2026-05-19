@@ -82,7 +82,6 @@ export function DataEntryForm({
     currentReportSamples.forEach((s: any) => {
       if (s.formId && s.medium) {
         const existing = planillasMap.get(s.formId);
-        // Nos quedamos con el primer técnico y timestamp que encontremos para esa planilla
         if (!existing || (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() < existing.timestamp.toMillis()))) {
           planillasMap.set(s.formId, { 
             formId: s.formId, 
@@ -303,6 +302,8 @@ export function DataEntryForm({
     const newFormId = crypto.randomUUID();
     setActiveFormId(newFormId);
     
+    // Si ya existe un currentReportId (estamos abriendo un reporte viejo para agregar planilla), vamos directo.
+    // Si no (es un flujo de reporte nuevo), disparamos handleStartReport que hará el addDoc.
     if (currentReportId) {
       setActiveView('report-entry');
     } else {
@@ -395,7 +396,6 @@ export function DataEntryForm({
 
   const handleReopenPlanilla = (planilla: { formId: string, medium: string }) => {
     setActiveFormId(planilla.formId);
-    // Intentar encontrar el templateId correcto basado en el medium
     const foundTemplate = templates.find(t => t.medium === planilla.medium);
     if (foundTemplate) {
       setSelectedTemplate(foundTemplate.id);
@@ -403,28 +403,6 @@ export function DataEntryForm({
       setSelectedTemplate('manual');
     }
     setActiveView('report-entry');
-  };
-
-  const handleStartEditCoords = () => {
-    if (!selectedPoint) return;
-    setEditLat(selectedPoint.lat.toString());
-    setEditLon(selectedPoint.lon.toString());
-    setIsEditingCoords(true);
-  };
-
-  const handleSaveEditedCoords = () => {
-    if (!selectedPoint) return;
-    const lat = parseFloat(editLat);
-    const lon = parseFloat(editLon);
-    
-    if (!isNaN(lat) && !isNaN(lon)) {
-      onPointUpdate({ ...selectedPoint, lat, lon });
-      setIsEditingCoords(false);
-      toast({
-        title: "Punto reubicado",
-        description: "Las coordenadas han sido actualizadas.",
-      });
-    }
   };
 
   if (!selectedPoint) {
@@ -503,7 +481,7 @@ export function DataEntryForm({
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   placeholder="Buscá el proyecto o código..." 
-                  className="pl-9 h-11 text-xs font-bold border-input focus-visible:ring-primary/50 text-foreground"
+                  className="pl-9 h-11 text-xs font-normal border-input focus-visible:ring-primary/50 text-foreground"
                   value={projectSearch}
                   onChange={(e) => setProjectSearch(e.target.value)}
                 />
@@ -553,7 +531,7 @@ export function DataEntryForm({
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
         <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2 text-foreground font-bold">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver atrás
         </Button>
         <Card className="border-t-4 border-t-accent shadow-lg overflow-hidden">
           <CardHeader className="pb-4">
@@ -567,7 +545,7 @@ export function DataEntryForm({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Nueva Planilla (Independiente)</Label>
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Nueva Planilla</Label>
               <div className="flex gap-2">
                 <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                   <SelectTrigger className="h-11 flex-1 text-xs font-bold border-accent/20 bg-accent/5 text-foreground">
@@ -601,7 +579,7 @@ export function DataEntryForm({
                   disabled={isStartingReport} 
                   onClick={handleConfirmTemplate}
                 >
-                  {isStartingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : "Iniciar Carga"}
+                  {isStartingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : "INICIAR CARGA"}
                 </Button>
               </div>
             </div>
@@ -702,7 +680,10 @@ export function DataEntryForm({
         <div className="space-y-4">
           <Separator />
           <div className="grid grid-cols-1 gap-3 pt-2">
-            <Button className="w-full h-14 text-md font-black uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white" onClick={() => setActiveView('select-project')}>
+            <Button className="w-full h-14 text-md font-black uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white" onClick={() => {
+              setCurrentReportId(null);
+              setActiveView('select-project');
+            }}>
               <FileText className="h-6 w-6" /> Crear reporte
             </Button>
             <Button variant="outline" className="w-full h-14 text-md font-black uppercase tracking-widest flex items-center gap-3 border-foreground text-foreground hover:bg-foreground/5 shadow-sm" onClick={() => setActiveView('consult')}>
