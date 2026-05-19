@@ -424,17 +424,12 @@ export default function Home() {
 
         <div className="flex flex-1 flex-col md:flex-row overflow-hidden relative">
           <div className="w-full h-[40vh] md:h-auto md:flex-1 relative overflow-hidden bg-muted/20">
-            <div className={cn(
-              "absolute inset-0",
-              "md:w-[100vw] md:-left-[25vw]" 
-            )}>
-              <div className="h-full w-full p-2 md:p-4">
-                <MapView 
-                  onPointSelect={handlePointSelect} 
-                  selectedPoint={selectedPoint} 
-                  activeLayer={activeLayer}
-                />
-              </div>
+            <div className="absolute inset-0">
+              <MapView 
+                onPointSelect={handlePointSelect} 
+                selectedPoint={selectedPoint} 
+                activeLayer={activeLayer}
+              />
             </div>
             {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
           </div>

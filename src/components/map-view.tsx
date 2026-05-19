@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
@@ -414,7 +413,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer }: MapViewPr
   }, [stations]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-lg shadow-inner bg-muted/20 border-2 border-primary/10 flex flex-col">
+    <div className="relative h-full w-full overflow-hidden bg-muted/20 flex flex-col">
       <div ref={mapRef} className="absolute inset-0 z-10" />
 
       {hoveredText && tooltipPos && (
