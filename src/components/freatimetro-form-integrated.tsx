@@ -138,8 +138,9 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
     }
   };
 
-  const rowClass = "flex items-center justify-between py-1 border-b border-neutral-300 hover:bg-neutral-50 transition-colors";
-  const labelClass = "text-[11px] font-bold text-black tracking-tight font-headline flex-1 pr-4";
+  const rowClass = "flex items-start justify-between py-2 border-b border-neutral-300 hover:bg-neutral-50 transition-colors";
+  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none";
+  const subLabelClass = "text-[9px] text-neutral-600 font-bold uppercase italic leading-tight mt-1";
   const inputContainerClass = "w-40 flex items-center gap-1.5 justify-end";
   const inputClass = "h-7 border-none bg-transparent px-2 text-[12px] focus:ring-0 focus:outline-none font-code text-black font-bold text-right rounded-none placeholder:text-neutral-300";
   const sectionHeaderClass = "flex items-center bg-neutral-200 px-3 py-1 border-y border-neutral-400 mt-2 first:mt-0";
@@ -168,31 +169,46 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         </div>
         <div className="px-3">
           <div className={rowClass}>
-            <label className={labelClass}>ID Pozo</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>ID Pozo</label>
+              <span className={subLabelClass}>Identificación Técnica de Campo</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="text" className={cn(inputClass, "w-full")} placeholder="PM-001" value={formData.idPozo} onChange={(e) => handleInputChange("idPozo", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>Coord. X (UTM Este)</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Coord. X (UTM Este)</label>
+              <span className={subLabelClass}>Sistema de Referencia WGS84</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.coordenadaX ?? ""} onChange={(e) => handleInputChange("coordenadaX", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>Coord. Y (UTM Norte)</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Coord. Y (UTM Norte)</label>
+              <span className={subLabelClass}>Sistema de Referencia WGS84</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.coordenadaY ?? ""} onChange={(e) => handleInputChange("coordenadaY", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>Cota Brocal (m s.n.m.)</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Cota Brocal (m s.n.m.)</label>
+              <span className={subLabelClass}>Elevación sobre nivel del mar</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.cotaBrocal ?? ""} onChange={(e) => handleInputChange("cotaBrocal", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>Fecha y Hora</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Fecha y Hora</label>
+              <span className={subLabelClass}>Momento del Muestreo</span>
+            </div>
             <div className="w-48 flex items-center justify-end">
               <input type="datetime-local" className={cn(inputClass, "w-full")} value={formData.fechaHora} onChange={(e) => handleInputChange("fechaHora", e.target.value)} />
             </div>
@@ -205,31 +221,46 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         </div>
         <div className="px-3">
           <div className={rowClass}>
-            <label className={labelClass}>Nivel Estático (m)</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Nivel Estático (m)</label>
+              <span className={subLabelClass}>Medición desde brocal</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.nivelEstatico ?? ""} onChange={(e) => handleInputChange("nivelEstatico", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>Profundidad Total (m)</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Profundidad Total (m)</label>
+              <span className={subLabelClass}>Hasta fondo del pozo</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.profundidadTotal ?? ""} onChange={(e) => handleInputChange("profundidadTotal", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>pH (Unid. pH)</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>pH (Unid. pH)</label>
+              <span className={subLabelClass}>Nivel Guía: 6.5 - 8.5 • Ley 24.051</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="0.01" min="0" max="14" className={cn(inputClass, "w-full")} value={formData.ph ?? ""} onChange={(e) => handleInputChange("ph", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>Conductividad (μS/cm)</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Conductividad (μS/cm)</label>
+              <span className={subLabelClass}>Salinidad estimada in situ</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.conductividad ?? ""} onChange={(e) => handleInputChange("conductividad", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>Temperatura (°C)</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Temperatura (°C)</label>
+              <span className={subLabelClass}>Compensación térmica</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="0.1" className={cn(inputClass, "w-full")} value={formData.temperatura ?? ""} onChange={(e) => handleInputChange("temperatura", e.target.value)} />
             </div>
@@ -242,25 +273,37 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         </div>
         <div className="px-3">
           <div className={rowClass}>
-            <label className={labelClass}>Plomo (Pb) - mg/L</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Plomo (Pb) - mg/L</label>
+              <span className={subLabelClass}>Nivel Guía: 0.05 mg/L • Ley 24.051</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.plomo ?? ""} onChange={(e) => handleInputChange("plomo", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>Cadmio (Cd) - mg/L</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Cadmio (Cd) - mg/L</label>
+              <span className={subLabelClass}>Nivel Guía: 0.005 mg/L • Ley 24.051</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.cadmio ?? ""} onChange={(e) => handleInputChange("cadmio", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>Arsénico (As) - mg/L</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>Arsénico (As) - mg/L</label>
+              <span className={subLabelClass}>Nivel Guía: 0.05 mg/L • Ley 24.051</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.arsenico ?? ""} onChange={(e) => handleInputChange("arsenico", e.target.value)} />
             </div>
           </div>
           <div className={rowClass}>
-            <label className={labelClass}>TPH (Hidrocarburos) - mg/L</label>
+            <div className="flex flex-col flex-1 pr-4">
+              <label className={labelClass}>TPH (Hidrocarburos) - mg/L</label>
+              <span className={subLabelClass}>Nivel Guía: 0.1 mg/L • Dec. 831/93</span>
+            </div>
             <div className={inputContainerClass}>
               <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.tph ?? ""} onChange={(e) => handleInputChange("tph", e.target.value)} />
             </div>
@@ -268,12 +311,12 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         </div>
 
         {/* Sección 4 - Resultado */}
-        <div className="bg-neutral-800 px-3 py-2 flex items-center justify-between mt-2">
+        <div className="bg-neutral-800 px-3 py-3 flex items-center justify-between mt-2">
           <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase text-white leading-none">Cota de Agua</span>
-            <span className="text-[8px] text-neutral-400 font-bold uppercase italic">Cálculo: CB - NE</span>
+            <span className="text-[10px] font-black uppercase text-white leading-none">Cota de Agua Estimada</span>
+            <span className="text-[8px] text-neutral-400 font-bold uppercase italic mt-1">Metodología de Cálculo: CB - NE</span>
           </div>
-          <div className="text-lg font-black text-white font-code">
+          <div className="text-xl font-black text-white font-code">
             {cotaAgua !== null ? `${cotaAgua} m` : "—"}
           </div>
         </div>
