@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -260,10 +259,10 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">2. Mediciones de Campo (In Situ)</span></div>
         <div className="px-3">
           {[
-            { key: 'nivelEstatico', name: 'Nivel Estático', unit: 'm', type: 'Campo', desc: 'Profundidad desde brocal. Ley 24.051.' },
-            { key: 'ph', name: 'pH', unit: 'upH', type: 'Campo', desc: 'Acidez/Alcalinidad. Dec. 831/93.' },
-            { key: 'conductividad', name: 'Conductividad', unit: 'μS/cm', type: 'Campo', desc: 'Salinidad total. Dec. 831/93.' },
-            { key: 'temperatura', name: 'Temperatura', unit: '°C', type: 'Campo', desc: 'Temp. del fluido al momento de extracción.' }
+            { key: 'nivelEstatico', name: 'Nivel Estático', unit: 'm', type: 'Campo', desc: 'Profundidad desde brocal. Ley 24.051 / Dec. 831/93.' },
+            { key: 'ph', name: 'pH', unit: 'upH', type: 'Campo', desc: 'Guía: 6.5-8.5. Dec. 831/93 (Fuente de agua).' },
+            { key: 'conductividad', name: 'Conductividad', unit: 'μS/cm', type: 'Campo', desc: 'Ref: ADA (Prov. BA) / Dec. 831/93.' },
+            { key: 'temperatura', name: 'Temperatura', unit: '°C', type: 'Campo', desc: 'Variable. Influencia en solubilidad de metales.' }
           ].map((field) => (
             <div key={field.key} className={rowClass}>
               <div className="flex flex-col flex-1">
@@ -286,7 +285,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
             { key: 'plomo', name: 'Plomo (Pb)', unit: 'mg/L', type: 'Laboratorio', desc: 'Nivel Guía: 0.05 mg/L. Dec. 831/93.' },
             { key: 'cadmio', name: 'Cadmio (Cd)', unit: 'mg/L', type: 'Laboratorio', desc: 'Nivel Guía: 0.005 mg/L. Dec. 831/93.' },
             { key: 'arsenico', name: 'Arsénico (As)', unit: 'mg/L', type: 'Laboratorio', desc: 'Nivel Guía: 0.05 mg/L. Dec. 831/93.' },
-            { key: 'tph', name: 'TPH (Hidrocarburos)', unit: 'mg/L', type: 'Laboratorio', desc: 'Total Petroleum Hydrocarbons. Res. 405/19.' }
+            { key: 'tph', name: 'TPH (Hidrocarburos)', unit: 'mg/L', type: 'Laboratorio', desc: 'Guía: Res. 405/19 (Nación) / Res. ADA 618/06.' }
           ].map((field) => (
             <div key={field.key} className={rowClass}>
               <div className="flex flex-col flex-1">

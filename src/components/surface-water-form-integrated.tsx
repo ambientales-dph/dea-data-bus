@@ -31,73 +31,54 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   const stationRef = useMemo(() => doc(db, 'stations', stationId), [db, stationId]);
   const { data: stationData } = useDoc(stationRef);
 
-  // Definición de parámetros basada en la captura de pantalla
   const sections = [
     {
       title: "1. Fisicoquímicos y Sólidos",
       params: [
-        { name: "Turbidez/Turbiedad", unit: "NTU", cat: "Fisicoquímico" },
-        { name: "Sólidos sedimentables 10m", unit: "mg/l", cat: "Sólidos" },
-        { name: "Sólidos sedimentables 1h", unit: "mg/l", cat: "Sólidos" },
-        { name: "Sólidos Suspendidos", unit: "mg/l", cat: "Sólidos" },
-        { name: "Sólidos totales secados a 103-105°C", unit: "mg/l", cat: "Sólidos" },
-        { name: "Dureza Total", unit: "mg/l", cat: "Fisicoquímico" },
-        { name: "Alcalinidad Tot", unit: "mg/l", cat: "Fisicoquímico" }
+        { name: "Turbidez/Turbiedad", unit: "NTU", cat: "Fisicoquímico", desc: "Monitoreo. Ley 24.051 / Dec. 831/93." },
+        { name: "Sólidos Suspendidos", unit: "mg/l", cat: "Sólidos", desc: "Nivel Guía: 100 mg/l (Dec. 831/93)." },
+        { name: "Sólidos totales", unit: "mg/l", cat: "Sólidos", desc: "Ref. Dec. 831/93 / Res. ADA (Prov. BA)." },
+        { name: "Dureza Total", unit: "mg/l", cat: "Fisicoquímico", desc: "Variable segun geología de cuenca." },
+        { name: "Alcalinidad Tot", unit: "mg/l", cat: "Fisicoquímico", desc: "Indicador de capacidad tampón del agua." }
       ]
     },
     {
       title: "2. Nutrientes y Materia Orgánica",
       params: [
-        { name: "Nitrógeno Amoniacal", unit: "mg/l", cat: "Nutrientes" },
-        { name: "Amonio", unit: "mg/l", cat: "Nutrientes" },
-        { name: "Nitrógeno total", unit: "mg/l", cat: "Nutrientes" },
-        { name: "Fosforo total", unit: "mg/l", cat: "Nutrientes" },
-        { name: "Fosforo reactivo soluble", unit: "mg/l", cat: "Nutrientes" },
-        { name: "Clorofila a", unit: "ug/l", cat: "Biología" },
-        { name: "Materia organica", unit: "mg/l", cat: "Orgánicos" },
-        { name: "DB05", unit: "mg/l", cat: "Orgánicos" },
-        { name: "DQO", unit: "mg/l", cat: "Orgánicos" }
+        { name: "Nitrógeno Amoniacal", unit: "mg/l", cat: "Nutrientes", desc: "Nivel Guía: 0.02 mg/l (Dec. 831/93)." },
+        { name: "Nitrógeno total", unit: "mg/l", cat: "Nutrientes", desc: "Indicador de eutrofización. Dec. 831/93." },
+        { name: "Fosforo total", unit: "mg/l", cat: "Nutrientes", desc: "Nivel Guía: 0.025 mg/l (lagos) Dec. 831/93." },
+        { name: "Clorofila a", unit: "ug/l", cat: "Biología", desc: "Biomasa algal. Ref. ADA (Prov. BA)." },
+        { name: "DBO5", unit: "mg/l", cat: "Orgánicos", desc: "Guía: 5 mg/l (Vida acuática) Dec. 831/93." },
+        { name: "DQO", unit: "mg/l", cat: "Orgánicos", desc: "Ref: ADA (Prov. BA) / Dec. 831/93." }
       ]
     },
     {
       title: "3. Microbiología y Biología",
       params: [
-        { name: "Coliformes totales", unit: "3NMP/100ml", cat: "Microbiología" },
-        { name: "Coliformes fecales", unit: "3NMP/100ml", cat: "Microbiología" },
-        { name: "Escherichia coli", unit: "3NMP/100ml", cat: "Microbiología" },
-        { name: "Fitoplancton", unit: "individuo", cat: "Biología" },
-        { name: "Zooplancton", unit: "individuo", cat: "Biología" }
+        { name: "Coliformes totales", unit: "3NMP/100ml", cat: "Microbiología", desc: "Guía: 1000/100ml (Recreativo) Dec. 831/93." },
+        { name: "Escherichia coli", unit: "3NMP/100ml", cat: "Microbiología", desc: "Indicador fecal. Dec. 831/93 / Res. ADA." }
       ]
     },
     {
       title: "4. Metales",
       params: [
-        { name: "Arsenico", unit: "mg/ml", cat: "Metales" },
-        { name: "Cadmio", unit: "ug/l", cat: "Metales" },
-        { name: "Cobre", unit: "mg/l", cat: "Metales" },
-        { name: "Cromo", unit: "mg/l", cat: "Metales" },
-        { name: "Hierro", unit: "mg/l", cat: "Metales" },
-        { name: "Magnesio", unit: "mg/l", cat: "Metales" },
-        { name: "Mercurio", unit: "mg/l", cat: "Metales" },
-        { name: "Níquel", unit: "mg/l", cat: "Metales" },
-        { name: "Plomo", unit: "mg/l", cat: "Metales" },
-        { name: "Zinc", unit: "mg/l", cat: "Metales" }
+        { name: "Arsenico", unit: "mg/l", cat: "Metales", desc: "Nivel Guía: 0.05 mg/l. Dec. 831/93." },
+        { name: "Cadmio", unit: "ug/l", cat: "Metales", desc: "Nivel Guía: 0.2-2 ug/l según dureza. Dec. 831/93." },
+        { name: "Cromo", unit: "mg/l", cat: "Metales", desc: "Nivel Guía: 0.05 mg/l (Cr VI) Dec. 831/93." },
+        { name: "Plomo", unit: "mg/l", cat: "Metales", desc: "Nivel Guía: 0.05 mg/l. Dec. 831/93." },
+        { name: "Zinc", unit: "mg/l", cat: "Metales", desc: "Nivel Guía: 0.1 mg/l. Dec. 831/93." }
       ]
     },
     {
       title: "5. Iones y Otros",
       params: [
-        { name: "Cloruros", unit: "mg/l", cat: "Iones" },
-        { name: "Sulfatos", unit: "mg/l", cat: "Iones" },
-        { name: "Carbonatos", unit: "mg/l", cat: "Iones" },
-        { name: "Bicarbonatos", unit: "mg/l", cat: "Iones" },
-        { name: "Amoníaco", unit: "mg/l", cat: "Iones" },
-        { name: "Fluoruros", unit: "mg/l", cat: "Iones" },
-        { name: "Nitratos", unit: "mg/l", cat: "Iones" },
-        { name: "Nitritos", unit: "mg/l", cat: "Iones" },
-        { name: "Sodio", unit: "mg/l", cat: "Iones" },
-        { name: "Potasio", unit: "mg/l", cat: "Iones" },
-        { name: "Glifosato", unit: "mg/l", cat: "Plaguicidas" }
+        { name: "Cloruros", unit: "mg/l", cat: "Iones", desc: "Nivel Guía: 250 mg/l (Bebida) Dec. 831/93." },
+        { name: "Sulfatos", unit: "mg/l", cat: "Iones", desc: "Nivel Guía: 250 mg/l (Bebida) Dec. 831/93." },
+        { name: "Nitratos", unit: "mg/l", cat: "Iones", desc: "Nivel Guía: 10 mg/l (como N) Dec. 831/93." },
+        { name: "Nitritos", unit: "mg/l", cat: "Iones", desc: "Nivel Guía: 1 mg/l (como N) Dec. 831/93." },
+        { name: "Sodio", unit: "mg/l", cat: "Iones", desc: "Ref. Dec. 831/93 / ADA (Prov. BA)." },
+        { name: "Glifosato", unit: "mg/l", cat: "Plaguicidas", desc: "Ref. Dec. 831/93 / Res. ADA." }
       ]
     }
   ];
@@ -248,7 +229,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                 <div key={pIdx} className={rowClass}>
                   <div className="flex flex-col flex-1">
                     <label className={labelClass}>{param.name}</label>
-                    <span className={subLabelClass}>Unidad: {param.unit}</span>
+                    <span className={subLabelClass}>{param.desc}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <input 
