@@ -138,173 +138,166 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
     }
   };
 
-  const inputClass = "h-9 border-neutral-400 bg-white px-3 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-body transition-all text-black font-bold";
-  // IMPORTANTE: Eliminado 'uppercase' para respetar notación científica (pH, Pb, etc)
-  const labelClass = "text-[11px] font-black text-black tracking-wider font-headline mb-1 block";
-  const sectionHeaderClass = "flex items-center border-b border-neutral-400 bg-neutral-200 px-3 py-2";
-  const sectionNumberClass = "mr-2 flex h-6 w-6 items-center justify-center bg-black text-[12px] font-black text-white rounded-full";
+  const rowClass = "flex items-center justify-between py-1.5 border-b border-neutral-200 hover:bg-neutral-50 transition-colors";
+  const labelClass = "text-[11px] font-bold text-black tracking-tight font-headline flex-1 pr-4";
+  const inputContainerClass = "w-36 flex items-center gap-1.5 justify-end";
+  const inputClass = "h-8 border-2 border-neutral-300 bg-white px-2 text-[12px] focus:ring-2 focus:ring-primary focus:border-primary font-code transition-all text-black font-bold text-right rounded";
+  const sectionHeaderClass = "flex items-center bg-neutral-100 px-3 py-1.5 border-y-2 border-neutral-300 mt-4 first:mt-0";
+  const sectionNumberClass = "mr-2 flex h-5 w-5 items-center justify-center bg-black text-[10px] font-black text-white rounded-full";
 
   return (
-    <div className="mx-auto w-full border-2 border-neutral-500 bg-white font-body shadow-2xl rounded-xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Header - High Contrast */}
-      <div className="border-b-2 border-neutral-500 bg-neutral-100 px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-black uppercase tracking-tighter text-black font-headline leading-none">
-              Planilla Técnica Ambiental
-            </h1>
-            <p className="text-[12px] text-neutral-800 font-bold uppercase mt-1">
-              Muestreo de Freatímetros • Pozos de Monitoreo
-            </p>
-          </div>
-          <div className="text-right text-[10px] text-neutral-700 font-black uppercase leading-tight">
-            <p>Formulario FTA-001</p>
-            <p>Versión 2024.1</p>
-          </div>
+    <div className="mx-auto w-full border-2 border-neutral-400 bg-white font-body shadow-xl rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* Header Compacto */}
+      <div className="border-b-2 border-neutral-300 bg-neutral-50 px-4 py-3 flex justify-between items-end">
+        <div>
+          <h1 className="text-md font-black uppercase tracking-tight text-black font-headline leading-none">
+            Planilla Técnica Ambiental
+          </h1>
+          <p className="text-[10px] text-neutral-600 font-bold uppercase mt-1">
+            Muestreo de Freatímetros • Formulario FTA-001
+          </p>
+        </div>
+        <div className="text-right text-[9px] text-neutral-500 font-black uppercase leading-tight">
+          <p>VERSIÓN 2024.1</p>
         </div>
       </div>
 
-      {/* Sección 1 */}
-      <div className="border-b-2 border-neutral-400">
+      <div className="p-4 space-y-2">
+        {/* Sección 1 */}
         <div className={sectionHeaderClass}>
           <span className={sectionNumberClass}>1</span>
-          <span className="text-[12px] font-black uppercase tracking-widest text-black">Ubicación y Datos de Pozo</span>
+          <span className="text-[11px] font-black uppercase tracking-wider text-black">Datos de Identificación</span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-6 divide-x-2 divide-neutral-400">
-          <div className="p-3 border-b-2 md:border-b-0 border-neutral-400">
+        <div className="space-y-0.5">
+          <div className={rowClass}>
             <label className={labelClass}>ID Pozo</label>
-            <input type="text" className={cn(inputClass, "w-full border-2 rounded-md")} placeholder="PM-001" value={formData.idPozo} onChange={(e) => handleInputChange("idPozo", e.target.value)} />
+            <div className={inputContainerClass}>
+              <input type="text" className={cn(inputClass, "w-full")} placeholder="PM-001" value={formData.idPozo} onChange={(e) => handleInputChange("idPozo", e.target.value)} />
+            </div>
           </div>
-          <div className="p-3 border-b-2 md:border-b-0 border-neutral-400">
-            <label className={labelClass}>Coord. X (UTM)</label>
-            <input type="number" step="any" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="Este" value={formData.coordenadaX ?? ""} onChange={(e) => handleInputChange("coordenadaX", e.target.value)} />
+          <div className={rowClass}>
+            <label className={labelClass}>Coord. X (UTM Este)</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.coordenadaX ?? ""} onChange={(e) => handleInputChange("coordenadaX", e.target.value)} />
+            </div>
           </div>
-          <div className="p-3 border-b-2 md:border-b-0 border-neutral-400">
-            <label className={labelClass}>Coord. Y (UTM)</label>
-            <input type="number" step="any" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="Norte" value={formData.coordenadaY ?? ""} onChange={(e) => handleInputChange("coordenadaY", e.target.value)} />
+          <div className={rowClass}>
+            <label className={labelClass}>Coord. Y (UTM Norte)</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.coordenadaY ?? ""} onChange={(e) => handleInputChange("coordenadaY", e.target.value)} />
+            </div>
           </div>
-          <div className="p-3 border-neutral-400">
-            <label className={labelClass}>Cota Brocal</label>
-            <input type="number" step="any" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="m s.n.m." value={formData.cotaBrocal ?? ""} onChange={(e) => handleInputChange("cotaBrocal", e.target.value)} />
+          <div className={rowClass}>
+            <label className={labelClass}>Cota Brocal (m s.n.m.)</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.cotaBrocal ?? ""} onChange={(e) => handleInputChange("cotaBrocal", e.target.value)} />
+            </div>
           </div>
-          <div className="col-span-2 p-3 border-neutral-400">
-            <label className={labelClass}>Fecha / Hora</label>
-            <input type="datetime-local" className={cn(inputClass, "w-full border-2 rounded-md")} value={formData.fechaHora} onChange={(e) => handleInputChange("fechaHora", e.target.value)} />
+          <div className={rowClass}>
+            <label className={labelClass}>Fecha y Hora de Muestreo</label>
+            <div className="w-48 flex items-center justify-end">
+              <input type="datetime-local" className={cn(inputClass, "w-full")} value={formData.fechaHora} onChange={(e) => handleInputChange("fechaHora", e.target.value)} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Sección 2 */}
-      <div className="border-b-2 border-neutral-400">
+        {/* Sección 2 */}
         <div className={sectionHeaderClass}>
           <span className={sectionNumberClass}>2</span>
-          <span className="text-[12px] font-black uppercase tracking-widest text-black">Mediciones de Campo</span>
+          <span className="text-[11px] font-black uppercase tracking-wider text-black">Mediciones In Situ</span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 divide-x-2 divide-neutral-400">
-          <div className="p-3 border-b-2 md:border-b-0 border-neutral-400">
-            <label className={labelClass}>Nivel Estático</label>
-            <input type="number" step="any" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="m" value={formData.nivelEstatico ?? ""} onChange={(e) => handleInputChange("nivelEstatico", e.target.value)} />
+        <div className="space-y-0.5">
+          <div className={rowClass}>
+            <label className={labelClass}>Nivel Estático (m)</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.nivelEstatico ?? ""} onChange={(e) => handleInputChange("nivelEstatico", e.target.value)} />
+            </div>
           </div>
-          <div className="p-3 border-b-2 md:border-b-0 border-neutral-400">
-            <label className={labelClass}>Prof. Total</label>
-            <input type="number" step="any" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="m" value={formData.profundidadTotal ?? ""} onChange={(e) => handleInputChange("profundidadTotal", e.target.value)} />
+          <div className={rowClass}>
+            <label className={labelClass}>Profundidad Total (m)</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.profundidadTotal ?? ""} onChange={(e) => handleInputChange("profundidadTotal", e.target.value)} />
+            </div>
           </div>
-          <div className="p-3 border-b-2 md:border-b-0 border-neutral-400">
-            <label className={labelClass}>pH</label>
-            <input type="number" step="0.01" min="0" max="14" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="0-14" value={formData.ph ?? ""} onChange={(e) => handleInputChange("ph", e.target.value)} />
+          <div className={rowClass}>
+            <label className={labelClass}>pH (Unid. pH)</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="0.01" min="0" max="14" className={cn(inputClass, "w-full")} value={formData.ph ?? ""} onChange={(e) => handleInputChange("ph", e.target.value)} />
+            </div>
           </div>
-          <div className="p-3 border-neutral-400">
-            <label className={labelClass}>Conductividad</label>
-            <input type="number" step="any" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="μS/cm" value={formData.conductividad ?? ""} onChange={(e) => handleInputChange("conductividad", e.target.value)} />
+          <div className={rowClass}>
+            <label className={labelClass}>Conductividad (μS/cm)</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.conductividad ?? ""} onChange={(e) => handleInputChange("conductividad", e.target.value)} />
+            </div>
           </div>
-          <div className="p-3 border-neutral-400">
-            <label className={labelClass}>Temperatura</label>
-            <input type="number" step="0.1" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="°C" value={formData.temperatura ?? ""} onChange={(e) => handleInputChange("temperatura", e.target.value)} />
+          <div className={rowClass}>
+            <label className={labelClass}>Temperatura (°C)</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="0.1" className={cn(inputClass, "w-full")} value={formData.temperatura ?? ""} onChange={(e) => handleInputChange("temperatura", e.target.value)} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Sección 3 */}
-      <div className="border-b-2 border-neutral-400">
+        {/* Sección 3 */}
         <div className={sectionHeaderClass}>
           <span className={sectionNumberClass}>3</span>
-          <span className="text-[12px] font-black uppercase tracking-widest text-black">Resultados de Laboratorio</span>
+          <span className="text-[11px] font-black uppercase tracking-wider text-black">Análisis de Laboratorio</span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 divide-x-2 divide-neutral-400">
-          <div className="p-4 border-b-2 md:border-b-0 border-neutral-400">
-            <p className="mb-3 text-[10px] font-black uppercase text-black tracking-[0.2em]">Metales Pesados (mg/L)</p>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className={labelClass}>Pb</label>
-                <input type="number" step="any" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="mg/L" value={formData.plomo ?? ""} onChange={(e) => handleInputChange("plomo", e.target.value)} />
-              </div>
-              <div>
-                <label className={labelClass}>Cd</label>
-                <input type="number" step="any" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="mg/L" value={formData.cadmio ?? ""} onChange={(e) => handleInputChange("cadmio", e.target.value)} />
-              </div>
-              <div>
-                <label className={labelClass}>As</label>
-                <input type="number" step="any" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="mg/L" value={formData.arsenico ?? ""} onChange={(e) => handleInputChange("arsenico", e.target.value)} />
-              </div>
+        <div className="space-y-0.5">
+          <div className={rowClass}>
+            <label className={labelClass}>Plomo (Pb) - mg/L</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.plomo ?? ""} onChange={(e) => handleInputChange("plomo", e.target.value)} />
             </div>
           </div>
-          <div className="p-4 border-neutral-400">
-            <p className="mb-3 text-[10px] font-black uppercase text-black tracking-[0.2em]">Hidrocarburos (mg/L)</p>
-            <div>
-              <label className={labelClass}>TPH</label>
-              <input type="number" step="any" className={cn(inputClass, "w-full border-2 rounded-md font-code")} placeholder="mg/L" value={formData.tph ?? ""} onChange={(e) => handleInputChange("tph", e.target.value)} />
+          <div className={rowClass}>
+            <label className={labelClass}>Cadmio (Cd) - mg/L</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.cadmio ?? ""} onChange={(e) => handleInputChange("cadmio", e.target.value)} />
+            </div>
+          </div>
+          <div className={rowClass}>
+            <label className={labelClass}>Arsénico (As) - mg/L</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.arsenico ?? ""} onChange={(e) => handleInputChange("arsenico", e.target.value)} />
+            </div>
+          </div>
+          <div className={rowClass}>
+            <label className={labelClass}>TPH (Hidrocarburos) - mg/L</label>
+            <div className={inputContainerClass}>
+              <input type="number" step="any" className={cn(inputClass, "w-full")} value={formData.tph ?? ""} onChange={(e) => handleInputChange("tph", e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Sección 4 - Resultados Críticos */}
+        <div className={cn(sectionHeaderClass, "bg-accent/10 border-accent/20")}>
+          <span className={cn(sectionNumberClass, "bg-accent")}>4</span>
+          <span className="text-[11px] font-black uppercase tracking-wider text-accent">Resultado de Cota</span>
+        </div>
+        <div className="py-2 px-1">
+          <div className="flex items-center justify-between p-3 border-2 border-accent bg-accent/5 rounded-md shadow-inner">
+            <div className="space-y-0.5">
+              <p className="text-[10px] font-black text-accent uppercase leading-none">Cota de Agua Calculada</p>
+              <p className="text-[9px] text-accent/70 italic font-bold">Fórmula: CB - NE</p>
+            </div>
+            <div className="text-xl font-black text-accent font-code">
+              {cotaAgua !== null ? `${cotaAgua} m` : "—"}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Sección 4 - Cálculos Críticos */}
-      <div className="border-b-2 border-neutral-500">
-        <div className={sectionHeaderClass}>
-          <span className={sectionNumberClass}>4</span>
-          <span className="text-[12px] font-black uppercase tracking-widest text-black">Cálculos e Indicadores</span>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 divide-x-2 divide-neutral-500 bg-neutral-50">
-          <div className="p-3">
-            <label className={labelClass}>Cota Brocal</label>
-            <div className="h-10 flex items-center bg-white border-2 border-neutral-400 px-3 text-sm font-black font-code rounded-md shadow-sm">
-              {formData.cotaBrocal ?? "—"}
-            </div>
-          </div>
-          <div className="p-3">
-            <label className={labelClass}>Nivel Estático</label>
-            <div className="h-10 flex items-center bg-white border-2 border-neutral-400 px-3 text-sm font-black font-code rounded-md shadow-sm">
-              {formData.nivelEstatico ?? "—"}
-            </div>
-          </div>
-          <div className="p-3">
-            <label className={labelClass}>Fórmula</label>
-            <div className="h-10 flex items-center bg-neutral-100 border-2 border-dashed border-neutral-400 px-3 text-[11px] text-black font-black italic rounded-md">
-              CB - NE
-            </div>
-          </div>
-          <div className="p-3 bg-accent/10">
-            <label className={cn(labelClass, "text-accent font-black")}>Cota de Agua</label>
-            <div className="h-10 flex items-center border-2 border-accent bg-accent/20 px-3 font-code text-sm font-black text-accent rounded-md shadow-[inset_0_1px_4px_rgba(0,0,0,0.1)]">
-              {cotaAgua !== null ? `${cotaAgua} m s.n.m.` : "—"}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer - Alta visibilidad */}
-      <div className="flex flex-col md:flex-row items-center justify-between bg-neutral-200 px-4 py-5 gap-4">
-        <div className="flex items-center gap-2 text-[10px] text-black font-black italic">
-          <Info className="h-4 w-4 shrink-0" />
-          <span>* VALORES DE REFERENCIA SEGÚN NIVEL GUÍA VIGENTE.</span>
-        </div>
+      {/* Footer de Acción */}
+      <div className="bg-neutral-100 px-4 py-4 border-t-2 border-neutral-300">
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="w-full md:w-auto bg-black hover:bg-neutral-800 px-10 py-3 text-[12px] font-black uppercase tracking-[0.2em] text-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 rounded-lg border-2 border-black"
+          className="w-full bg-black hover:bg-neutral-800 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-3 rounded-md"
         >
-          {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-          Guardar Planilla Técnica
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+          Finalizar y Guardar Planilla
         </button>
       </div>
     </div>
