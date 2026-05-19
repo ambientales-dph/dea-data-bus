@@ -38,74 +38,73 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     localStorage.setItem('dea_timeout_enabled', enabled.toString());
     localStorage.setItem('dea_timeout_minutes', minutes.toString());
     
-    // Emitir evento personalizado para que el manager se actualice
     window.dispatchEvent(new Event('dea-settings-updated'));
     
     toast({
       title: "Configuración guardada",
-      description: `Tiempo de inactividad: ${enabled ? `${minutes} minutos` : 'Desactivado'}.`,
+      description: `Inactividad: ${enabled ? `${minutes} min` : 'Desactivado'}.`,
     });
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px] border-t-4 border-t-primary shadow-2xl">
-        <DialogHeader>
-          <div className="mx-auto mb-2 p-3 bg-primary/10 rounded-full w-fit">
-            <Settings className="h-6 w-6 text-primary" />
+      <DialogContent className="sm:max-w-[340px] p-4 border-t-4 border-t-primary shadow-2xl">
+        <DialogHeader className="space-y-1">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="p-1.5 bg-primary/10 rounded-full">
+              <Settings className="h-4 w-4 text-primary" />
+            </div>
+            <DialogTitle className="text-sm font-bold font-headline">Configuración de Sesión</DialogTitle>
           </div>
-          <DialogTitle className="text-center font-headline font-bold text-xl">Configuración de Sesión</DialogTitle>
-          <DialogDescription className="text-center text-xs">
-            Ajustá el comportamiento del sistema para el trabajo en campo.
+          <DialogDescription className="text-left text-[11px] leading-tight">
+            Ajustá el sistema para el trabajo en campo.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-muted-foreground/10">
+        <div className="space-y-4 py-2">
+          <div className="flex items-center justify-between p-2 rounded-md bg-muted/30 border border-muted-foreground/10">
             <div className="space-y-0.5">
-              <Label className="text-sm font-bold flex items-center gap-2">
-                <Timer className="h-4 w-4 text-primary" />
-                Auto-cierre de sesión
+              <Label className="text-xs font-bold flex items-center gap-2">
+                <Timer className="h-3 w-3 text-primary" />
+                Auto-cierre
               </Label>
-              <p className="text-[10px] text-muted-foreground leading-tight">Cierra la sesión automáticamente tras inactividad.</p>
+              <p className="text-[9px] text-muted-foreground leading-none">Cerrar sesión por inactividad.</p>
             </div>
             <Switch 
               checked={enabled} 
               onCheckedChange={setEnabled} 
+              className="scale-75"
             />
           </div>
 
           {enabled && (
-            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              <Label className="text-[11px] uppercase font-bold text-muted-foreground tracking-wider px-1">Tiempo de inactividad (minutos)</Label>
-              <div className="flex items-center gap-4">
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-1">Minutos permitidos</Label>
+              <div className="flex items-center gap-3">
                 <Input 
                   type="number" 
                   min="1" 
                   max="480" 
                   value={minutes} 
                   onChange={(e) => setMinutes(parseInt(e.target.value, 10) || 1)}
-                  className="h-12 text-lg font-code font-bold text-center border-primary/20 focus-visible:ring-primary/30"
+                  className="h-9 w-20 text-sm font-code font-bold text-center border-primary/20 focus-visible:ring-primary/30"
                 />
-                <span className="text-xs font-medium text-muted-foreground shrink-0">minutos</span>
+                <span className="text-[11px] font-medium text-muted-foreground">minutos</span>
               </div>
-              <p className="text-[10px] text-muted-foreground italic px-1">
-                Sugerencia: 10 min (estándar) o 30 min (campo intenso).
-              </p>
             </div>
           )}
 
-          <div className="flex items-start gap-3 p-3 rounded-md bg-primary/5 border border-primary/10">
-            <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-            <p className="text-[10px] leading-tight text-primary/80">
-              <b>Nota de seguridad:</b> Desactivar el auto-cierre facilita el trabajo, pero recordá cerrar sesión manualmente si compartís el dispositivo.
+          <div className="flex items-start gap-2 p-2 rounded-md bg-primary/5 border border-primary/10">
+            <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+            <p className="text-[9px] leading-tight text-primary/80 italic">
+              Desactivar el cierre facilita el trabajo, pero recordá cerrar sesión manualmente al terminar.
             </p>
           </div>
         </div>
 
-        <DialogFooter className="sm:justify-center">
-          <Button onClick={handleSave} className="w-full h-12 font-bold shadow-md bg-primary hover:bg-primary/90">
+        <DialogFooter className="mt-2">
+          <Button onClick={handleSave} className="w-full h-9 text-xs font-bold shadow-sm bg-primary hover:bg-primary/90">
             Guardar Cambios
           </Button>
         </DialogFooter>
