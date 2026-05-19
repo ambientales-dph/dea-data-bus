@@ -201,7 +201,7 @@ export function DataEntryForm({
   }, [trelloProjects, projectSearch]);
 
   const stationRef = useMemo(() => {
-    if (!selectedPoint?.stationId) return null;
+    if (!db || !selectedPoint?.stationId) return null;
     return doc(db, 'stations', selectedPoint.stationId);
   }, [db, selectedPoint?.stationId]);
 
@@ -522,14 +522,14 @@ export function DataEntryForm({
                           setProjectSearch(item.display);
                         }}
                         className={cn(
-                          "w-full text-left px-3 py-2.5 rounded-md text-[11px] font-bold transition-colors flex items-center justify-between",
+                          "w-full text-left px-3 py-2.5 rounded-md text-[11px] font-normal transition-colors flex items-start justify-between gap-2",
                           selectedProject === item.original 
                             ? "bg-primary text-white" 
                             : "hover:bg-primary/5 text-foreground border border-transparent"
                         )}
                       >
-                        <span className="truncate">{item.display}</span>
-                        {selectedProject === item.original && <Check className="h-3.5 w-3.5 shrink-0 ml-2" />}
+                        <span className="flex-1 break-words">{item.display}</span>
+                        {selectedProject === item.original && <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
                       </button>
                     ))
                   )}
