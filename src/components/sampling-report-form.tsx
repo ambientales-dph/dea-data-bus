@@ -5,19 +5,16 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDoc, getDocs } from 'firebase/firestore';
-import { useFirestore, useUser, useCollection, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useUser, useCollection, useDoc } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Save, FlaskConical, CheckCircle2, Loader2, Star, Search, Check, Info, Clock, User } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Checkbox } from '@/components/ui/checkbox';
+import { CheckCircle2, Loader2, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FreatimetroFormIntegrated } from './freatimetro-form-integrated';
+import { SurfaceWaterFormIntegrated } from './surface-water-form-integrated';
 
 const analyteSchema = z.object({
   medium: z.enum(['agua_superficial', 'agua_subterranea', 'suelo', 'sedimentos']),
@@ -45,14 +42,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   const [isSavingPlanilla, setIsSavingPlanilla] = useState(false);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
 
-  const [allParams, setAllParams] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedParams, setSelectedParams] = useState<any[]>([]);
-  const [customTemplateName, setCustomTemplateName] = useState('');
-  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-
   const reportRef = useMemo(() => doc(db, 'reports', reportId), [db, reportId]);
-  const { data: reportData } = useDoc(reportRef);
 
   // Consulta de analitos específicos de ESTA planilla (formId)
   const samplesQuery = useMemo(() => 
@@ -84,18 +74,6 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   }, [samplesData]);
 
   useEffect(() => {
-    fetch('/data/parametros_monitoreo.json')
-      .then(res => res.json())
-      .then(data => {
-        const flattened = data.medios.flatMap((m: any) => 
-          m.parametros.map((p: any) => ({ ...p, mediumOrigin: m.id, mediumKey: m.medium }))
-        );
-        const unique = Array.from(new Map(flattened.map((p: any) => [p.nombre, p])).values());
-        setAllParams(unique);
-      });
-  }, []);
-
-  useEffect(() => {
     if (!templateId || !db) return;
 
     if (templateId === 'personalizada') {
@@ -115,18 +93,13 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     }
   }, [templateId, db]);
 
-  const form = useForm<AnalyteValues>({
-    resolver: zodResolver(analyteSchema),
-    defaultValues: { medium: 'agua_superficial', parameterType: '', analyte: '', value: '' },
-  });
-
   const handleSavePlanilla = async () => {
     if (!user || !template || !db) return;
     setIsSavingPlanilla(true);
 
     const samplesCol = collection(db, 'samples');
     let savedCount = 0;
-    const activeParams = templateId === 'personalizada' ? selectedParams : template.parametros;
+    const activeParams = template.parametros || template.parameters || [];
 
     try {
       for (const param of activeParams) {
@@ -189,15 +162,25 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     });
   };
 
+  // Lógica para detectar el componente técnico adecuado
+  const lowerTemplateId = templateId?.toLowerCase() || '';
+  const lowerTemplateName = template?.nombre?.toLowerCase() || template?.name?.toLowerCase() || '';
+
   const isFreatimetro = useMemo(() => {
-    if (!templateId) return false;
-    const lowerId = templateId.toLowerCase();
-    const lowerName = template?.nombre?.toLowerCase() || template?.name?.toLowerCase() || '';
-    return lowerId.includes('subterranea') || lowerId.includes('freatimetro') || lowerName.includes('subterránea') || lowerName.includes('freatímetro');
-  }, [templateId, template]);
+    return lowerTemplateId.includes('subterranea') || lowerTemplateId.includes('freatimetro') || 
+           lowerTemplateName.includes('subterránea') || lowerTemplateName.includes('freatímetro');
+  }, [lowerTemplateId, lowerTemplateName]);
+
+  const isAguaSuperficial = useMemo(() => {
+    return lowerTemplateId.includes('superficial') || lowerTemplateName.includes('superficial');
+  }, [lowerTemplateId, lowerTemplateName]);
 
   if (isFreatimetro) {
     return <FreatimetroFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
+  }
+
+  if (isAguaSuperficial) {
+    return <SurfaceWaterFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
   }
 
   return (
@@ -221,7 +204,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
           {template ? (
             <div className="space-y-2 animate-in fade-in duration-300">
               <div className="grid grid-cols-1 gap-1.5">
-                {(template.parametros || template.parameters).map((param: any) => (
+                {(template.parametros || template.parameters || []).map((param: any) => (
                   <div key={param.nombre} className="flex items-center gap-2 p-2 rounded-sm bg-muted/20 border border-muted-20 hover:border-primary/20 transition-all">
                     <div className="flex-1 min-w-0">
                       <Label className="text-[10px] font-black text-foreground block leading-none truncate">{param.nombre}</Label>
