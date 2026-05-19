@@ -68,7 +68,8 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         const q = query(
           collection(db, 'samples'),
           where('reportId', '==', reportId),
-          where('medium', '==', 'agua_subterranea')
+          where('medium', '==', 'agua_subterranea'),
+          orderBy('timestamp', 'asc') // Los más nuevos al final para que sobreescriban en el loop si hay duplicados antiguos
         );
         const snapshot = await getDocs(q);
         
@@ -80,7 +81,6 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
           const analyte = data.analyte;
           const value = parseFloat(data.value);
 
-          // Mapeo manual basado en los nombres técnicos mostrados en la planilla
           if (analyte === 'Cota Brocal') newFormData.cotaBrocal = value;
           if (analyte === 'Nivel Estático') newFormData.nivelEstatico = value;
           if (analyte === 'Profundidad Total') newFormData.profundidadTotal = value;
@@ -92,7 +92,6 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
           if (analyte === 'Arsénico (As)') newFormData.arsenico = value;
           if (analyte === 'TPH (Hidrocarburos)') newFormData.tph = value;
           
-          // Marcar como guardado si existe en la BD
           const fieldKey = Object.keys(newFormData).find(k => {
              const labels: any = {
                cotaBrocal: 'Cota Brocal',
@@ -144,7 +143,6 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
         ? value 
         : value === "" ? null : parseFloat(value),
     }));
-    // Al editar, quitamos la marca de "guardado" para forzar re-sincronización
     if (savedFields[field]) {
       setSavedFields(prev => {
         const next = { ...prev };
@@ -165,31 +163,52 @@ export function FreatimetroFormIntegrated({ reportId, stationId, onSuccess }: Pr
 
     setSavingFields(prev => ({ ...prev, [key]: true }));
     
-    const sampleData = {
-      medium: 'agua_subterranea',
-      parameterType: type,
-      analyte: label,
-      value: `${value}`,
-      reportId,
-      stationId,
-      userId: user.uid,
-      userEmail: user.email,
-      timestamp: serverTimestamp(),
-    };
-
     try {
-      // Usar setDoc o un identificador consistente para evitar duplicados en la misma planilla?
-      // Por ahora mantenemos addDoc para historial, pero marcamos la UI
-      await addDoc(collection(db, 'samples'), sampleData);
+      // Lógica de UPSERT: Buscar si ya existe el analito para este reporte
+      const q = query(
+        collection(db, 'samples'),
+        where('reportId', '==', reportId),
+        where('analyte', '==', label),
+        where('medium', '==', 'agua_subterranea')
+      );
+      
+      const snapshot = await getDocs(q);
+      
+      const sampleData = {
+        medium: 'agua_subterranea',
+        parameterType: type,
+        analyte: label,
+        value: `${value}`,
+        reportId,
+        stationId,
+        userId: user.uid,
+        userEmail: user.email,
+        timestamp: serverTimestamp(),
+      };
+
+      if (!snapshot.empty) {
+        // Actualizar el existente
+        const existingDocId = snapshot.docs[0].id;
+        await updateDoc(doc(db, 'samples', existingDocId), {
+          value: `${value}`,
+          timestamp: serverTimestamp(),
+          userId: user.uid,
+          userEmail: user.email
+        });
+      } else {
+        // Crear uno nuevo
+        await addDoc(collection(db, 'samples'), sampleData);
+      }
+
       await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       
       setSavedFields(prev => ({ ...prev, [key]: true }));
-      toast({ title: "Guardado", description: `${label} registrado correctamente.` });
+      toast({ title: "Guardado", description: `${label} actualizado correctamente.` });
     } catch (error: any) {
       const permissionError = new FirestorePermissionError({
         path: 'samples',
-        operation: 'create',
-        requestResourceData: sampleData,
+        operation: 'write',
+        requestResourceData: { analyte: label, value: `${value}` },
       });
       errorEmitter.emit('permission-error', permissionError);
     } finally {

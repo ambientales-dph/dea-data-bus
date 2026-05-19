@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDoc, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -120,18 +120,39 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
       for (const param of activeParams) {
         const val = planillaValues[param.nombre];
         if (val && val.trim() !== '') {
-          const sampleData = {
-            medium: template.medium || param.mediumKey || 'agua_superficial',
-            parameterType: param.categoria,
-            analyte: param.nombre,
-            value: val,
-            reportId,
-            stationId,
-            userId: user.uid,
-            userEmail: user.email,
-            timestamp: serverTimestamp(),
-          };
-          await addDoc(samplesCol, sampleData);
+          const medium = template.medium || param.mediumKey || 'agua_superficial';
+          
+          // Buscar si ya existe para actualizarlo (UPSERT)
+          const q = query(
+            samplesCol,
+            where('reportId', '==', reportId),
+            where('analyte', '==', param.nombre),
+            where('medium', '==', medium)
+          );
+          const snapshot = await getDocs(q);
+
+          if (!snapshot.empty) {
+            const existingId = snapshot.docs[0].id;
+            await updateDoc(doc(db, 'samples', existingId), {
+              value: val,
+              timestamp: serverTimestamp(),
+              userId: user.uid,
+              userEmail: user.email
+            });
+          } else {
+            const sampleData = {
+              medium,
+              parameterType: param.categoria,
+              analyte: param.nombre,
+              value: val,
+              reportId,
+              stationId,
+              userId: user.uid,
+              userEmail: user.email,
+              timestamp: serverTimestamp(),
+            };
+            await addDoc(samplesCol, sampleData);
+          }
           savedCount++;
         }
       }
@@ -139,7 +160,7 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
       if (savedCount > 0 && user.email) await updateDoc(reportRef, { editors: arrayUnion(user.email) });
       localStorage.removeItem(`dea_planilla_${reportId}_${templateId}`);
       setPlanillaValues({});
-      toast({ title: "Planilla guardada", description: `Se registraron ${savedCount} parámetros.` });
+      toast({ title: "Planilla guardada", description: `Se actualizaron ${savedCount} parámetros.` });
     } catch (e) {
       console.error(e);
       toast({ variant: "destructive", title: "Error", description: "Falla al guardar planilla." });
@@ -197,13 +218,16 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
     if (!templateId) return false;
     const lowerId = templateId.toLowerCase();
     const lowerName = template?.nombre?.toLowerCase() || '';
+    const lowerCustomName = template?.name?.toLowerCase() || '';
     return (
       lowerId.includes('subterranea') || 
       lowerId.includes('freatimetro') || 
       lowerName.includes('subterránea') || 
-      lowerName.includes('freatímetro')
+      lowerName.includes('freatímetro') ||
+      lowerCustomName.includes('subterránea') ||
+      lowerCustomName.includes('freatímetro')
     );
-  }, [templateId, template?.nombre]);
+  }, [templateId, template?.nombre, template?.name]);
 
   return (
     <div className="space-y-4">
@@ -298,12 +322,32 @@ export function SamplingReportForm({ reportId, stationId, onClose, templateId }:
                 </Button>
               </div>
             ) : templateId === 'manual' ? (
-              <form onSubmit={form.handleSubmit((d) => {
-                const sampleData = { ...d, reportId, stationId, userId: user?.uid, userEmail: user?.email, timestamp: serverTimestamp() };
-                addDoc(collection(db, 'samples'), sampleData).then(() => {
-                  if (user?.email) updateDoc(reportRef, { editors: arrayUnion(user.email) });
-                  form.reset({ medium: d.medium, parameterType: d.parameterType, analyte: '', value: '' });
-                });
+              <form onSubmit={form.handleSubmit(async (d) => {
+                const samplesCol = collection(db, 'samples');
+                const q = query(
+                  samplesCol,
+                  where('reportId', '==', reportId),
+                  where('analyte', '==', d.analyte),
+                  where('medium', '==', d.medium)
+                );
+                const snapshot = await getDocs(q);
+
+                if (!snapshot.empty) {
+                  const existingId = snapshot.docs[0].id;
+                  await updateDoc(doc(db, 'samples', existingId), {
+                    value: d.value,
+                    timestamp: serverTimestamp(),
+                    userId: user?.uid,
+                    userEmail: user?.email
+                  });
+                } else {
+                  const sampleData = { ...d, reportId, stationId, userId: user?.uid, userEmail: user?.email, timestamp: serverTimestamp() };
+                  await addDoc(samplesCol, sampleData);
+                }
+
+                if (user?.email) updateDoc(reportRef, { editors: arrayUnion(user.email) });
+                form.reset({ medium: d.medium, parameterType: d.parameterType, analyte: '', value: '' });
+                toast({ title: "Agregado", description: "Parámetro registrado con éxito." });
               })} className="grid grid-cols-2 gap-2">
                 <div className="space-y-1"><Label className="text-[10px] font-bold uppercase">Medio</Label>
                   <Select onValueChange={(v) => form.setValue('medium', v as any)} value={form.watch('medium')}>
