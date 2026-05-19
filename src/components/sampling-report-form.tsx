@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -207,10 +206,10 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
         <CardHeader className="p-3 pb-2">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <CardTitle className="text-sm font-bold">{template?.nombre || template?.name || 'Carga de Analitos'}</CardTitle>
+              <CardTitle className="text-sm font-black uppercase tracking-tight text-foreground">{template?.nombre || template?.name || 'Carga de Analitos'}</CardTitle>
               <div className="flex flex-col gap-0.5">
-                <CardDescription className="text-[10px]">ID: <span className="font-bold text-primary">{formId.substring(0, 8)}</span></CardDescription>
-                <div className="flex items-center gap-3 text-[9px] text-muted-foreground font-bold uppercase tracking-tight">
+                <CardDescription className="text-[10px] font-bold">ID: <span className="text-foreground">{formId.substring(0, 8)}</span></CardDescription>
+                <div className="flex items-center gap-3 text-[9px] text-muted-foreground font-black uppercase tracking-tight">
                   <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
                   <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> {metadata.user || user?.email}</span>
                 </div>
@@ -225,19 +224,19 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
                 {(template.parametros || template.parameters).map((param: any) => (
                   <div key={param.nombre} className="flex items-center gap-2 p-2 rounded-sm bg-muted/20 border border-muted-20 hover:border-primary/20 transition-all">
                     <div className="flex-1 min-w-0">
-                      <Label className="text-[10px] font-bold text-primary block leading-none truncate">{param.nombre}</Label>
-                      <span className="text-[8px] text-muted-foreground uppercase">{param.categoria} • {param.unidades}</span>
+                      <Label className="text-[10px] font-black text-foreground block leading-none truncate">{param.nombre}</Label>
+                      <span className="text-[8px] text-muted-foreground uppercase font-bold">{param.categoria} • {param.unidades}</span>
                     </div>
                     <Input 
                       placeholder="Valor" 
-                      className="h-8 w-24 text-[11px] font-code py-0 px-2 bg-white text-right border-primary/20"
+                      className="h-8 w-24 text-[11px] font-code py-0 px-2 bg-white text-right border-input font-bold text-foreground"
                       value={planillaValues[param.nombre] || ''}
                       onChange={(e) => setPlanillaValues(prev => ({...prev, [param.nombre]: e.target.value}))}
                     />
                   </div>
                 ))}
               </div>
-              <Button onClick={handleSavePlanilla} className="w-full h-10 mt-2 bg-primary hover:bg-primary/90 text-xs shadow-md" disabled={isSavingPlanilla}>
+              <Button onClick={handleSavePlanilla} className="w-full h-10 mt-2 bg-primary hover:bg-primary/90 text-[10px] font-black uppercase tracking-widest text-white shadow-md" disabled={isSavingPlanilla}>
                 {isSavingPlanilla ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                 Guardar Datos
               </Button>
@@ -251,7 +250,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
       </Card>
       
       <div className="flex justify-end">
-        <Button onClick={onClose} variant="outline" className="text-xs font-bold uppercase tracking-widest">Listo / Finalizar</Button>
+        <Button onClick={onClose} variant="outline" className="text-[10px] font-black uppercase tracking-widest border-foreground text-foreground hover:bg-foreground/5">Listo / Finalizar</Button>
       </div>
     </div>
   );

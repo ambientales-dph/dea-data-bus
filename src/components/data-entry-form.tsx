@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -429,10 +428,10 @@ export function DataEntryForm({
     return (
       <div className="flex flex-col items-center pt-8 md:pt-16 min-h-[60vh] text-center space-y-6 px-4">
         <div className="p-8 bg-primary/5 rounded-full shadow-inner border border-primary/5">
-          <MapPin className="h-16 w-16 text-primary/30 animate-pulse" />
+          <MapPin className="h-16 w-16 text-foreground/20 animate-pulse" />
         </div>
         <div className="max-w-xs space-y-2">
-          <h3 className="text-xl font-bold text-primary tracking-tight">Iniciá la recolección</h3>
+          <h3 className="text-xl font-bold text-foreground tracking-tight">Iniciá la recolección</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Hacé clic en un punto del mapa para crear una nueva estación o seleccioná una existente para gestionar sus datos.
           </p>
@@ -444,7 +443,7 @@ export function DataEntryForm({
   if (activeView === 'report-entry' && currentReportId && activeFormId) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('select-template')} className="mb-2">
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('select-template')} className="mb-2 text-foreground font-bold">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver a planillas
         </Button>
         <SamplingReportForm 
@@ -461,7 +460,7 @@ export function DataEntryForm({
   if (activeView === 'consult' && selectedPoint.stationId) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2">
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-foreground font-bold">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
         </Button>
         <ReportList stationId={selectedPoint.stationId} onViewReport={handleViewReportDetails} onOpenReport={handleOpenExistingReport} />
@@ -472,7 +471,7 @@ export function DataEntryForm({
   if (activeView === 'report-view' && viewingReportId) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('consult')} className="mb-2">
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('consult')} className="mb-2 text-foreground font-bold">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al listado
         </Button>
         <ReportDetail reportId={viewingReportId} onClose={() => setActiveView('consult')} />
@@ -483,13 +482,13 @@ export function DataEntryForm({
   if (activeView === 'select-project' && selectedPoint.stationId) {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2">
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-foreground font-bold">
           <ArrowLeft className="mr-2 h-4 w-4" /> Cancelar
         </Button>
         <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
           <CardHeader className="pb-4">
-            <CardTitle className="text-md flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-primary" />
+            <CardTitle className="text-md flex items-center gap-2 text-foreground">
+              <Briefcase className="h-5 w-5 text-foreground" />
               1. Seleccionar Proyecto
             </CardTitle>
             <CardDescription className="text-xs">Asociá este nuevo reporte a un proyecto activo de Trello.</CardDescription>
@@ -501,7 +500,7 @@ export function DataEntryForm({
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   placeholder="Buscá el proyecto o código..." 
-                  className="pl-9 h-11 text-xs font-medium border-primary/20 focus-visible:ring-primary/50"
+                  className="pl-9 h-11 text-xs font-bold border-input focus-visible:ring-primary/50 text-foreground"
                   value={projectSearch}
                   onChange={(e) => setProjectSearch(e.target.value)}
                 />
@@ -520,7 +519,7 @@ export function DataEntryForm({
                           setProjectSearch(item.display);
                         }}
                         className={cn(
-                          "w-full text-left px-3 py-2.5 rounded-md text-[11px] font-medium transition-colors flex items-center justify-between",
+                          "w-full text-left px-3 py-2.5 rounded-md text-[11px] font-bold transition-colors flex items-center justify-between",
                           selectedProject === item.original 
                             ? "bg-primary text-white" 
                             : "hover:bg-primary/5 text-foreground border border-transparent"
@@ -535,7 +534,7 @@ export function DataEntryForm({
               </ScrollArea>
             </div>
             <Button 
-              className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 shadow-md" 
+              className="w-full h-12 text-sm font-black uppercase tracking-widest bg-primary hover:bg-primary/90 shadow-md text-white" 
               disabled={!selectedProject} 
               onClick={() => setActiveView('select-template')}
             >
@@ -550,12 +549,12 @@ export function DataEntryForm({
   if (activeView === 'select-template' && selectedPoint.stationId) {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-        <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2">
+        <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2 text-foreground font-bold">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
         </Button>
         <Card className="border-t-4 border-t-accent shadow-lg overflow-hidden">
           <CardHeader className="pb-4">
-            <CardTitle className="text-md flex items-center gap-2">
+            <CardTitle className="text-md flex items-center gap-2 text-foreground">
               <LayoutList className="h-5 w-5 text-accent" />
               {currentReportId ? 'Gestión de Planillas' : '2. Elegir Planilla de Carga'}
             </CardTitle>
@@ -568,13 +567,13 @@ export function DataEntryForm({
               <Label className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1.5 px-1">Nueva Planilla (Independiente)</Label>
               <div className="flex gap-2">
                 <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                  <SelectTrigger className="h-11 flex-1 text-xs font-medium border-accent/20 bg-accent/5">
+                  <SelectTrigger className="h-11 flex-1 text-xs font-bold border-accent/20 bg-accent/5 text-foreground">
                     <SelectValue placeholder="Elegí un protocolo..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="manual" className="text-xs font-bold">Carga Manual (uno por uno)</SelectItem>
-                    <SelectItem value="personalizada" className="text-xs font-bold text-primary flex items-center gap-1">
-                      <Star className="h-3 w-3 inline mr-1 fill-primary" /> Crear Planilla Personalizada
+                    <SelectItem value="personalizada" className="text-xs font-bold text-foreground flex items-center gap-1">
+                      <Star className="h-3 w-3 inline mr-1 fill-accent" /> Crear Planilla Personalizada
                     </SelectItem>
                     {customTemplates && customTemplates.length > 0 && (
                       <>
@@ -595,7 +594,7 @@ export function DataEntryForm({
                   </SelectContent>
                 </Select>
                 <Button 
-                  className="h-11 px-4 bg-primary hover:bg-primary/90 font-bold" 
+                  className="h-11 px-4 bg-primary hover:bg-primary/90 font-black uppercase tracking-widest text-white" 
                   disabled={isStartingReport} 
                   onClick={handleConfirmTemplate}
                 >
@@ -616,20 +615,20 @@ export function DataEntryForm({
                     >
                       <div className="flex items-center gap-3">
                         <div className="p-1.5 rounded bg-white shadow-sm border">
-                          <FileText className="h-3.5 w-3.5 text-primary" />
+                          <FileText className="h-3.5 w-3.5 text-foreground" />
                         </div>
                         <div className="text-left">
-                          <p className="text-xs font-bold capitalize">{p.medium.replace('_', ' ')}</p>
+                          <p className="text-xs font-black capitalize text-foreground">{p.medium.replace('_', ' ')}</p>
                           <div className="flex flex-col mt-0.5">
                             <p className="text-[9px] text-muted-foreground uppercase font-semibold">ID: {p.formId.substring(0, 8)}</p>
-                            <div className="flex items-center gap-2 text-[9px] text-primary/80 font-bold uppercase tracking-tight">
+                            <div className="flex items-center gap-2 text-[9px] text-foreground font-black uppercase tracking-tight">
                               <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span>
                               <span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
                     </button>
                   ))}
                 </div>
@@ -649,14 +648,14 @@ export function DataEntryForm({
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-primary/60 shrink-0" />
-                  <CardTitle className="text-xl font-bold text-primary leading-none">{selectedPoint.name}</CardTitle>
+                  <Database className="h-5 w-5 text-foreground shrink-0" />
+                  <CardTitle className="text-xl font-black text-foreground leading-none tracking-tight">{selectedPoint.name}</CardTitle>
                 </div>
                 <div className="space-y-0.5 ml-7">
-                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">
+                  <CardDescription className="text-[11px] font-bold text-muted-foreground font-code">
                     {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
                   </CardDescription>
-                  <CardDescription className="text-[11px] font-medium text-muted-foreground font-code">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>
+                  <CardDescription className="text-[11px] font-bold text-muted-foreground font-code">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
@@ -667,7 +666,7 @@ export function DataEntryForm({
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="p-4 pb-3">
             <div className="flex items-start justify-between gap-2">
-              <CardTitle className="text-lg flex items-center gap-2 text-primary"><PlusCircle className="h-5 w-5" />Nuevo Punto</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2 text-foreground font-bold tracking-tight"><PlusCircle className="h-5 w-5" />Nuevo Punto</CardTitle>
               <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
@@ -677,18 +676,18 @@ export function DataEntryForm({
       {activeView === 'create-station' && (
         <Card className="border-t-4 border-t-accent shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
           <CardHeader>
-            <CardTitle className="text-md">Definir Estación</CardTitle>
+            <CardTitle className="text-md text-foreground font-black uppercase tracking-widest">Definir Estación</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="station-name">Nombre de la Estación</Label>
+                <Label htmlFor="station-name" className="text-[10px] font-bold uppercase text-muted-foreground">Nombre de la Estación</Label>
                 <div className="relative">
-                  <Input id="station-name" placeholder="Ej: EMA0001" {...stationForm.register('name')} />
-                  {isGeneratingName && <div className="absolute right-3 top-2.5"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
+                  <Input id="station-name" placeholder="Ej: EMA0001" {...stationForm.register('name')} className="text-foreground font-bold h-11" />
+                  {isGeneratingName && <div className="absolute right-3 top-3"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
                 </div>
               </div>
-              <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isGeneratingName}>
+              <Button type="submit" className="w-full h-12 bg-accent hover:bg-accent/90 text-white font-black uppercase tracking-widest" disabled={isGeneratingName}>
                 <Send className="mr-2 h-4 w-4" /> Guardar punto
               </Button>
             </form>
@@ -700,10 +699,10 @@ export function DataEntryForm({
         <div className="space-y-4">
           <Separator />
           <div className="grid grid-cols-1 gap-3 pt-2">
-            <Button className="w-full h-14 text-md font-bold flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md" onClick={() => setActiveView('select-project')}>
+            <Button className="w-full h-14 text-md font-black uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white" onClick={() => setActiveView('select-project')}>
               <FileText className="h-6 w-6" /> Crear reporte
             </Button>
-            <Button variant="outline" className="w-full h-14 text-md font-bold flex items-center gap-3 border-primary text-primary hover:bg-primary/5 shadow-sm" onClick={() => setActiveView('consult')}>
+            <Button variant="outline" className="w-full h-14 text-md font-black uppercase tracking-widest flex items-center gap-3 border-foreground text-foreground hover:bg-foreground/5 shadow-sm" onClick={() => setActiveView('consult')}>
               <Search className="h-6 w-6" /> Ver Historial
             </Button>
           </div>

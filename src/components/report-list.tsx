@@ -78,7 +78,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
   if (reportsLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin mb-2" />
+        <Loader2 className="h-8 w-8 animate-spin mb-2 text-foreground" />
         <p className="text-sm">Buscando reportes...</p>
       </div>
     );
@@ -88,11 +88,11 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
     <TooltipProvider>
       <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
         <CardHeader className="pb-1 pt-3 px-4">
-          <CardTitle className="text-md flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-primary" />
+          <CardTitle className="text-md flex items-center gap-2 text-foreground font-black uppercase tracking-tight">
+            <Calendar className="h-4 w-4 text-foreground" />
             Historial de Reportes
           </CardTitle>
-          <CardDescription className="text-[10px]">
+          <CardDescription className="text-[10px] font-bold">
             Todos los muestreos registrados en esta estación.
           </CardDescription>
         </CardHeader>
@@ -116,27 +116,27 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
               ) : (
                 sortedReports.map((report: any) => (
                   <TableRow key={report.id} className="hover:bg-primary/5 transition-colors group h-9">
-                    <TableCell className="px-3 py-0 font-code text-[10px]">
+                    <TableCell className="px-3 py-0 font-code text-[10px] text-foreground font-bold">
                       {formatDate(report.createdAt)}
                     </TableCell>
                     <TableCell className="px-3 py-0">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="text-[10px] font-code text-primary font-bold uppercase cursor-help hover:underline decoration-primary/30 transition-all">
+                          <span className="text-[10px] font-code text-foreground font-black uppercase cursor-help hover:underline decoration-foreground/30 transition-all">
                             {report.oid || report.id.substring(0, 8)}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="p-2 w-auto min-w-[180px] shadow-2xl border-primary/20">
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-1.5 border-b pb-1.5 mb-1">
-                              <Users className="h-3.5 w-3.5 text-primary" />
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Técnicos Colaboradores</span>
+                              <Users className="h-3.5 w-3.5 text-foreground" />
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">Técnicos Colaboradores</span>
                             </div>
                             <div className="flex flex-col gap-1">
                               {report.editors && report.editors.length > 0 ? (
                                 report.editors.map((email: string) => (
-                                  <div key={email} className="flex items-center gap-2 text-[10px] font-medium bg-muted/30 px-2 py-1 rounded">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                  <div key={email} className="flex items-center gap-2 text-[10px] font-bold bg-muted/30 px-2 py-1 rounded text-foreground">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-foreground" />
                                     {email}
                                   </div>
                                 ))
@@ -151,7 +151,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                     <TableCell className="px-3 py-0">
                       <div className="flex items-center gap-1">
                         <Briefcase className="h-2.5 w-2.5 text-muted-foreground" />
-                        <span className="text-[10px] font-bold text-muted-foreground truncate max-w-[80px]" title={report.trelloCardName || 'Sin proyecto'}>
+                        <span className="text-[10px] font-black text-foreground truncate max-w-[80px] uppercase" title={report.trelloCardName || 'Sin proyecto'}>
                           {getProjectCode(report.trelloCardName || '')}
                         </span>
                       </div>
@@ -161,7 +161,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-6 w-6 text-primary hover:bg-primary/10"
+                          className="h-6 w-6 text-foreground hover:bg-primary/10"
                           onClick={() => onOpenReport(report.id)}
                           title="Abrir para cargar datos"
                         >
@@ -171,14 +171,14 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-6 w-6 text-primary hover:bg-primary/10"
+                            className="h-6 w-6 text-foreground hover:bg-primary/10"
                             onClick={() => onViewReport(report.id)}
                             title="Ver detalles"
                           >
                             <FileSearch className="h-3 w-3" />
                           </Button>
                           <div 
-                            className="flex items-center px-0.5 text-[9px] font-bold text-primary min-w-[14px] justify-center" 
+                            className="flex items-center px-0.5 text-[9px] font-black text-foreground min-w-[14px] justify-center" 
                             title="Muestreos"
                           >
                             {analyteCounts[report.id] || 0}

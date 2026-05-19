@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -62,14 +61,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     >
       <div className="flex items-center justify-between mb-3 border-b pb-2">
         <div className="flex items-center gap-2">
-          <Settings className="h-3.5 w-3.5 text-primary" />
-          <h2 id="settings-title" className="text-[10px] font-black uppercase tracking-widest text-primary font-headline">
+          <Settings className="h-3.5 w-3.5 text-foreground" />
+          <h2 id="settings-title" className="text-[10px] font-black uppercase tracking-widest text-foreground font-headline">
             Configuración
           </h2>
         </div>
         <button 
           onClick={() => onOpenChange(false)}
-          className="text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+          className="text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
           aria-label="Cerrar configuración"
         >
           <X className="h-3.5 w-3.5" />
@@ -79,8 +78,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="space-y-0.5">
-            <Label className="text-[10px] font-bold flex items-center gap-1.5">
-              <Timer className="h-3 w-3 text-primary/60" />
+            <Label className="text-[10px] font-bold flex items-center gap-1.5 text-foreground">
+              <Timer className="h-3 w-3 text-muted-foreground" />
               Auto-cierre
             </Label>
           </div>
@@ -101,7 +100,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 max="480" 
                 value={minutes} 
                 onChange={(e) => setMinutes(parseInt(e.target.value, 10) || 1)}
-                className="h-7 w-16 text-xs font-code font-bold text-center border-primary/20 focus-visible:ring-primary/30"
+                className="h-7 w-16 text-xs font-code font-bold text-center border-input focus-visible:ring-primary/30"
               />
               <span className="text-[10px] font-medium text-muted-foreground">min</span>
             </div>
@@ -109,8 +108,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         )}
 
         <div className="flex items-start gap-1.5 p-1.5 rounded bg-primary/5 border border-primary/10">
-          <ShieldCheck className="h-3 w-3 text-primary shrink-0 mt-0.5" />
-          <p className="text-[8px] leading-tight text-primary/70 italic">
+          <ShieldCheck className="h-3 w-3 text-foreground shrink-0 mt-0.5" />
+          <p className="text-[8px] leading-tight text-foreground/80 italic">
             Ajuste recomendado para trabajo prolongado en campo.
           </p>
         </div>

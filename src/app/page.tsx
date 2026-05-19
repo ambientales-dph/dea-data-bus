@@ -286,7 +286,7 @@ export default function Home() {
                 <Leaf className="h-5 w-5 md:h-6 md:w-6" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-sm md:text-xl font-bold font-headline text-primary tracking-tight leading-none">DEA Data Bus</h1>
+                <h1 className="text-sm md:text-xl font-bold font-headline text-foreground tracking-tight leading-none">DEA Data Bus</h1>
                 <p className="hidden md:block text-[9px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">Plataforma de Monitoreo</p>
               </div>
             </div>
@@ -294,17 +294,17 @@ export default function Home() {
             <div ref={searchContainerRef} className="relative flex-1 max-w-xl ml-2 md:ml-4">
               <div className="flex items-center bg-muted/30 hover:bg-muted/50 border border-transparent focus-within:border-primary/30 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/10 rounded-full overflow-hidden transition-all h-9">
                 <div className="pl-3 text-muted-foreground">
-                  {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Search className="h-4 w-4" />}
+                  {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-foreground" /> : <Search className="h-4 w-4" />}
                 </div>
                 <Input 
                   placeholder={isMobile ? "Buscar..." : "Buscar estación, reporte, cuenca o lugar..."} 
-                  className="border-0 focus-visible:ring-0 h-full text-xs bg-transparent placeholder:text-[10px] md:placeholder:text-xs"
+                  className="border-0 focus-visible:ring-0 h-full text-xs bg-transparent placeholder:text-[10px] md:placeholder:text-xs text-foreground font-medium"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setShowResults(true)}
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="pr-3 text-muted-foreground hover:text-primary">
+                  <button onClick={() => setSearchQuery('')} className="pr-3 text-muted-foreground hover:text-foreground">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -316,7 +316,7 @@ export default function Home() {
                     <div className="p-1">
                       {isSearching && searchResults.length === 0 ? (
                         <div className="p-6 text-center text-xs text-muted-foreground">
-                          <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-primary/50" />
+                          <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-foreground/50" />
                           <p className="font-medium">Buscando...</p>
                         </div>
                       ) : searchResults.length > 0 ? (
@@ -328,7 +328,7 @@ export default function Home() {
                           >
                             <div className={cn(
                               "mt-0.5 p-1.5 rounded",
-                              result.type === 'station' ? "bg-primary/10 text-primary" : 
+                              result.type === 'station' ? "bg-primary/10 text-foreground" : 
                               result.type === 'report' ? "bg-accent/10 text-accent" :
                               "bg-muted text-muted-foreground"
                             )}>
@@ -337,7 +337,7 @@ export default function Home() {
                                <MapPin className="h-3.5 w-3.5" />}
                             </div>
                             <div className="flex-1 overflow-hidden">
-                              <p className="text-[11px] font-bold leading-tight truncate">{result.display_name}</p>
+                              <p className="text-[11px] font-bold leading-tight truncate text-foreground">{result.display_name}</p>
                               <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">
                                 {result.type === 'station' ? 'Estación de Monitoreo' : 
                                  result.type === 'report' ? `Reporte • ${result.trelloCode}` : 
@@ -361,7 +361,7 @@ export default function Home() {
           <div className="flex items-center gap-1 md:gap-4 ml-2 md:ml-4">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-9 gap-1 md:gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 px-2 md:px-3">
+                <Button variant="ghost" size="sm" className="h-9 gap-1 md:gap-2 text-muted-foreground hover:text-foreground hover:bg-primary/5 px-2 md:px-3">
                   <Layers className="h-4 w-4" />
                   <span className="text-xs font-semibold hidden md:inline">Capas</span>
                 </Button>
@@ -392,12 +392,12 @@ export default function Home() {
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 hover:bg-primary/5 p-1 rounded-full transition-colors outline-none">
                     <div className="flex flex-col items-end hidden md:flex">
-                      <span className="text-[11px] font-bold leading-none">{user?.displayName || 'Técnico'}</span>
+                      <span className="text-[11px] font-bold leading-none text-foreground">{user?.displayName || 'Técnico'}</span>
                       <span className="text-[9px] text-muted-foreground">{user?.email}</span>
                     </div>
                     <Avatar className="h-8 w-8 md:h-9 md:w-9 border-2 border-primary/10 shadow-sm">
                       <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'Usuario'} />
-                      <AvatarFallback className="bg-primary/5 text-primary font-bold text-xs">
+                      <AvatarFallback className="bg-primary/5 text-foreground font-bold text-xs">
                         {user?.email?.charAt(0).toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
@@ -408,7 +408,7 @@ export default function Home() {
                     Mi Cuenta
                   </DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setIsSettingsOpen(true)} className="text-xs font-medium cursor-pointer py-2.5">
-                    <Settings className="mr-2 h-4 w-4 text-primary" />
+                    <Settings className="mr-2 h-4 w-4 text-foreground" />
                     Configuración de Sesión
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
