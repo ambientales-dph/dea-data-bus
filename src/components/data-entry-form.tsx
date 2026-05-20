@@ -169,7 +169,7 @@ export function DataEntryForm({
 
   useEffect(() => {
     if (selectedPoint) {
-      const state = { activeView, currentReportId, activeFormId, viewingReportId, selectedProject, selectedTemplate };
+      const state = { activeView, currentReportId, activeFormId, viewingReportId, selectedProject, setSelectedTemplate };
       localStorage.setItem('dea_form_state', JSON.stringify(state));
     }
   }, [activeView, currentReportId, activeFormId, viewingReportId, selectedProject, selectedTemplate, selectedPoint]);
@@ -684,42 +684,44 @@ export function DataEntryForm({
 
       {activeView === 'create-station' && (
         <Card className="border-none bg-transparent shadow-none animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden rounded-none">
-          <CardContent className="p-0 space-y-4">
+          <CardContent className="p-0 space-y-2">
             <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="station-name" className="text-[10px] font-normal uppercase text-black block">ETIQUETA</Label>
-                <div className="relative">
+              <div className="space-y-0">
+                <div className="flex items-center justify-between py-2 border-b border-neutral-200">
+                  <Label htmlFor="station-name" className="text-[10px] font-normal uppercase text-black shrink-0">ETIQUETA</Label>
+                  <div className="relative flex-1 flex justify-end">
+                    <Input 
+                      id="station-name" 
+                      placeholder="EMA0000" 
+                      {...stationForm.register('name')} 
+                      className="text-black font-code text-[12px] h-8 border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" 
+                    />
+                    {isGeneratingName && <div className="absolute right-0 top-2"><Loader2 className="h-3 w-3 animate-spin text-neutral-400" /></div>}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-b border-neutral-200">
+                  <Label className="text-[10px] font-normal uppercase text-black shrink-0">LATITUD</Label>
                   <Input 
-                    id="station-name" 
-                    placeholder="Ej: EMA0001" 
-                    {...stationForm.register('name')} 
-                    className="text-black font-code text-xs h-9 border-none shadow-none focus-visible:ring-0 rounded-none bg-white px-0" 
+                    type="text" 
+                    value={editLat} 
+                    onChange={(e) => handleManualCoordChange('lat', e.target.value)}
+                    className="h-8 text-[12px] font-code text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full"
                   />
-                  {isGeneratingName && <div className="absolute right-0 top-2.5"><Loader2 className="h-4 w-4 animate-spin text-neutral-400" /></div>}
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-b border-neutral-200">
+                  <Label className="text-[10px] font-normal uppercase text-black shrink-0">LONGITUD</Label>
+                  <Input 
+                    type="text" 
+                    value={editLon} 
+                    onChange={(e) => handleManualCoordChange('lon', e.target.value)}
+                    className="h-8 text-[12px] font-code text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full"
+                  />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[10px] font-normal uppercase text-black">LATITUD</Label>
-                <Input 
-                  type="text" 
-                  value={editLat} 
-                  onChange={(e) => handleManualCoordChange('lat', e.target.value)}
-                  className="h-9 text-[11px] font-code text-black bg-white border-none shadow-none focus-visible:ring-0 rounded-none px-0"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-[10px] font-normal uppercase text-black">LONGITUD</Label>
-                <Input 
-                  type="text" 
-                  value={editLon} 
-                  onChange={(e) => handleManualCoordChange('lon', e.target.value)}
-                  className="h-9 text-[11px] font-code text-black bg-white border-none shadow-none focus-visible:ring-0 rounded-none px-0"
-                />
-              </div>
-
-              <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-normal uppercase tracking-widest shadow-md rounded-none" disabled={isGeneratingName}>
+              <Button type="submit" className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-normal uppercase tracking-widest shadow-md rounded-none" disabled={isGeneratingName}>
                 <Send className="mr-2 h-4 w-4" /> GUARDAR PUNTO
               </Button>
             </form>
