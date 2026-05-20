@@ -615,28 +615,34 @@ export function DataEntryForm({
 
   const handleExplorerSelectStation = (point: SelectedPoint) => {
     onPointUpdate(point);
+    lastPointKeyRef.current = `${point.lat}-${point.lon}-${point.stationId}`;
+    setActiveView('summary');
   };
 
   const handleExplorerSelectReport = (station: any, reportId: string) => {
-    onPointUpdate({
+    const point = {
       lat: station.latitude,
       lon: station.longitude,
       stationId: station.id,
       name: station.name,
       basinCode: station.basinCode
-    });
+    };
+    onPointUpdate(point);
+    lastPointKeyRef.current = `${point.lat}-${point.lon}-${point.stationId}`;
     setViewingReportId(reportId);
     setActiveView('report-view');
   };
 
   const handleExplorerSelectPlanilla = (station: any, reportId: string, formId: string, medium: string) => {
-    onPointUpdate({
+    const point = {
       lat: station.latitude,
       lon: station.longitude,
       stationId: station.id,
       name: station.name,
       basinCode: station.basinCode
-    });
+    };
+    onPointUpdate(point);
+    lastPointKeyRef.current = `${point.lat}-${point.lon}-${point.stationId}`;
     setCurrentReportId(reportId);
     setActiveFormId(formId);
     
