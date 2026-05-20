@@ -130,7 +130,7 @@ function DataExplorer({
                     <div className="flex items-center gap-1 group">
                       <div className="w-1.5 h-1.5 bg-primary shrink-0" />
                       <AccordionTrigger className="flex-1 py-1 px-2 hover:no-underline hover:bg-neutral-50 rounded-none transition-colors">
-                        <button 
+                        <span 
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectStation({
@@ -141,10 +141,10 @@ function DataExplorer({
                               basinCode: station.basinCode
                             });
                           }}
-                          className="text-[12px] text-black font-normal truncate text-left hover:underline underline-offset-4 decoration-primary/30"
+                          className="text-[12px] text-black font-normal truncate text-left hover:underline underline-offset-4 decoration-primary/30 cursor-pointer"
                         >
                           {station.name}
-                        </button>
+                        </span>
                       </AccordionTrigger>
                     </div>
 
@@ -160,15 +160,15 @@ function DataExplorer({
                                 <div className="flex items-center gap-1">
                                   <FileText className="h-3 w-3 text-neutral-400 shrink-0" />
                                   <AccordionTrigger className="flex-1 py-1 px-2 hover:no-underline hover:bg-neutral-50 rounded-none transition-colors">
-                                    <button 
+                                    <span 
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         onSelectReport(station, report.id);
                                       }}
-                                      className="text-[10px] text-neutral-600 uppercase font-normal tracking-tight text-left hover:underline"
+                                      className="text-[10px] text-neutral-600 uppercase font-normal tracking-tight text-left hover:underline cursor-pointer"
                                     >
                                       {report.oid}
-                                    </button>
+                                    </span>
                                   </AccordionTrigger>
                                 </div>
                                 
