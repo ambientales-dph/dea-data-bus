@@ -169,7 +169,7 @@ export function DataEntryForm({
 
   useEffect(() => {
     if (selectedPoint) {
-      const state = { activeView, currentReportId, activeFormId, viewingReportId, selectedProject, setSelectedTemplate };
+      const state = { activeView, currentReportId, activeFormId, viewingReportId, selectedProject, selectedTemplate };
       localStorage.setItem('dea_form_state', JSON.stringify(state));
     }
   }, [activeView, currentReportId, activeFormId, viewingReportId, selectedProject, selectedTemplate, selectedPoint]);
@@ -661,10 +661,10 @@ export function DataEntryForm({
                   <CardTitle className="text-lg font-normal text-black leading-none tracking-tight">{selectedPoint.name}</CardTitle>
                 </div>
                 <div className="space-y-0.5 ml-6">
-                  <CardDescription className="text-[10px] font-normal text-black font-code">
+                  <CardDescription className="text-[10px] font-normal text-black font-body">
                     {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
                   </CardDescription>
-                  <CardDescription className="text-[10px] font-normal text-black font-code">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>
+                  <CardDescription className="text-[10px] font-normal text-black font-body">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
@@ -694,7 +694,7 @@ export function DataEntryForm({
                       id="station-name" 
                       placeholder="EMA0000" 
                       {...stationForm.register('name')} 
-                      className="text-black font-code text-[12px] h-8 border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" 
+                      className="text-black font-body text-[12px] h-8 border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" 
                     />
                     {isGeneratingName && <div className="absolute right-0 top-2"><Loader2 className="h-3 w-3 animate-spin text-neutral-400" /></div>}
                   </div>
@@ -706,7 +706,7 @@ export function DataEntryForm({
                     type="text" 
                     value={editLat} 
                     onChange={(e) => handleManualCoordChange('lat', e.target.value)}
-                    className="h-8 text-[12px] font-code text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full"
+                    className="h-8 text-[12px] font-body text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full"
                   />
                 </div>
 
@@ -716,7 +716,7 @@ export function DataEntryForm({
                     type="text" 
                     value={editLon} 
                     onChange={(e) => handleManualCoordChange('lon', e.target.value)}
-                    className="h-8 text-[12px] font-code text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full"
+                    className="h-8 text-[12px] font-body text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full"
                   />
                 </div>
               </div>
