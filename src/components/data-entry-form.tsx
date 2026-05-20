@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, ChevronDown, Activity, Layers } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,6 @@ function DataExplorer({
   onSelectPlanilla: (station: any, reportId: string, formId: string, medium: string) => void
 }) {
   const db = useFirestore();
-  const { user } = useUser();
 
   const stationsQuery = useMemo(() => query(collection(db, 'stations'), orderBy('name', 'asc')), [db]);
   const { data: stations, loading: stationsLoading } = useCollection(stationsQuery);
@@ -63,15 +62,34 @@ function DataExplorer({
     );
   }
 
-  // Lógica de agrupamiento para el árbol
   const getReportsByStation = (stationId: string) => reports.filter((r: any) => r.stationId === stationId);
+  
   const getPlanillasByReport = (reportId: string) => {
     const rSamples = samples.filter((s: any) => s.reportId === reportId);
-    const planillas = new Map<string, string>();
+    const planillasMap = new Map<string, { medium: string, timestamp: any }>();
+    
     rSamples.forEach((s: any) => {
-      if (s.formId) planillas.set(s.formId, s.medium || 'otro');
+      const fId = s.formId || 'legacy';
+      const existing = planillasMap.get(fId);
+      if (!existing || (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis()))) {
+        planillasMap.set(fId, { 
+          medium: s.medium || 'otro', 
+          timestamp: s.timestamp 
+        });
+      }
     });
-    return Array.from(planillas.entries()).map(([formId, medium]) => ({ formId, medium }));
+
+    return Array.from(planillasMap.entries()).map(([formId, data]) => ({ 
+      formId, 
+      medium: data.medium,
+      timestamp: data.timestamp
+    }));
+  };
+
+  const formatDateShort = (timestamp: any) => {
+    if (!timestamp) return 'S/F';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
   };
 
   return (
@@ -161,10 +179,12 @@ function DataExplorer({
                                         <button 
                                           key={p.formId} 
                                           onClick={() => onSelectPlanilla(station, report.id, p.formId, p.medium)}
-                                          className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase hover:text-primary transition-colors group w-full text-left py-0.5"
+                                          className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase hover:text-black transition-colors group w-full text-left py-1"
                                         >
                                           <div className="w-1 h-1 rounded-full bg-neutral-200 group-hover:bg-primary" />
-                                          <span className="hover:underline">{p.medium.replace('_', ' ')}</span>
+                                          <span className="hover:underline">
+                                            {p.medium.replace('_', ' ')} • {formatDateShort(p.timestamp)} • {p.formId.substring(0, 4)}
+                                          </span>
                                         </button>
                                       ))}
                                     </div>
@@ -407,7 +427,7 @@ export function DataEntryForm({
           let nextNumber = 1;
 
           if (!querySnapshot.empty) {
-            const lastStation = querySnapshot.docs[0].data();
+            const lastStation = querySnapshot.docs[0].docs[0].data();
             const lastName = lastStation.name as string;
             const numberPart = lastName.substring(prefix.length);
             const parsed = parseInt(numberPart, 10);
@@ -593,7 +613,6 @@ export function DataEntryForm({
     setActiveView('report-entry');
   };
 
-  // Handlers para el explorador
   const handleExplorerSelectStation = (point: SelectedPoint) => {
     onPointUpdate(point);
   };
