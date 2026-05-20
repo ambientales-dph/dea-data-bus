@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, ChevronDown, Activity } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -28,6 +28,130 @@ const stationSchema = z.object({
 type StationValues = z.infer<typeof stationSchema>;
 
 type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'report-view' | 'select-project' | 'select-template';
+
+/**
+ * Explorador de datos informativo que muestra el árbol de estaciones, reportes y planillas.
+ */
+function DataExplorer({ onSelectStation }: { onSelectStation: (point: SelectedPoint) => void }) {
+  const db = useFirestore();
+  const { user } = useUser();
+
+  const stationsQuery = useMemo(() => query(collection(db, 'stations'), orderBy('name', 'asc')), [db]);
+  const { data: stations, loading: stationsLoading } = useCollection(stationsQuery);
+
+  const reportsQuery = useMemo(() => query(collection(db, 'reports')), [db]);
+  const { data: reports, loading: reportsLoading } = useCollection(reportsQuery);
+
+  const samplesQuery = useMemo(() => query(collection(db, 'samples')), [db]);
+  const { data: samples, loading: samplesLoading } = useCollection(samplesQuery);
+
+  if (stationsLoading || reportsLoading || samplesLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center pt-20 space-y-4">
+        <Loader2 className="h-6 w-6 animate-spin text-black" />
+        <p className="text-[10px] uppercase font-normal tracking-widest text-black">Sincronizando base de datos...</p>
+      </div>
+    );
+  }
+
+  // Lógica de agrupamiento para el árbol
+  const getReportsByStation = (stationId: string) => reports.filter((r: any) => r.stationId === stationId);
+  const getPlanillasByReport = (reportId: string) => {
+    const rSamples = samples.filter((s: any) => s.reportId === reportId);
+    const planillas = new Map<string, string>();
+    rSamples.forEach((s: any) => {
+      if (s.formId) planillas.set(s.formId, s.medium || 'otro');
+    });
+    return Array.from(planillas.entries()).map(([formId, medium]) => ({ formId, medium }));
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="border-b border-neutral-200 pb-4">
+        <h2 className="text-[11px] font-normal uppercase tracking-[0.2em] text-black flex items-center gap-2">
+          <Database className="h-4 w-4" /> Explorador de Datos
+        </h2>
+        <div className="flex gap-4 mt-2">
+          <div className="flex flex-col">
+            <span className="text-[14px] font-normal text-black">{stations.length}</span>
+            <span className="text-[8px] uppercase text-neutral-500 tracking-tighter">Estaciones</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[14px] font-normal text-black">{reports.length}</span>
+            <span className="text-[8px] uppercase text-neutral-500 tracking-tighter">Reportes</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[14px] font-normal text-black">{samples.length}</span>
+            <span className="text-[8px] uppercase text-neutral-500 tracking-tighter">Analitos</span>
+          </div>
+        </div>
+      </div>
+
+      <ScrollArea className="h-[calc(100vh-250px)] pr-4">
+        <div className="space-y-6">
+          {stations.length === 0 ? (
+            <div className="py-20 text-center opacity-40">
+              <MapPin className="h-10 w-10 mx-auto mb-3" />
+              <p className="text-[9px] uppercase tracking-widest">Sin datos registrados</p>
+            </div>
+          ) : (
+            stations.map((station: any) => {
+              const stationReports = getReportsByStation(station.id);
+              return (
+                <div key={station.id} className="space-y-2">
+                  <button 
+                    onClick={() => onSelectStation({
+                      lat: station.latitude,
+                      lon: station.longitude,
+                      stationId: station.id,
+                      name: station.name,
+                      basinCode: station.basinCode
+                    })}
+                    className="flex items-center gap-2 group w-full text-left"
+                  >
+                    <div className="w-1.5 h-1.5 bg-primary shrink-0" />
+                    <span className="text-[12px] text-black hover:underline underline-offset-4 decoration-primary/30 transition-all truncate">
+                      {station.name}
+                    </span>
+                  </button>
+
+                  <div className="ml-3.5 space-y-3 border-l border-neutral-100 pl-3">
+                    {stationReports.length === 0 ? (
+                      <p className="text-[9px] uppercase text-neutral-400 italic">---</p>
+                    ) : (
+                      stationReports.map((report: any) => {
+                        const planillas = getPlanillasByReport(report.id);
+                        return (
+                          <div key={report.id} className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-3 w-3 text-neutral-400" />
+                              <span className="text-[10px] text-neutral-600 uppercase font-normal tracking-tight">{report.oid}</span>
+                            </div>
+                            
+                            {planillas.length > 0 && (
+                              <div className="ml-5 space-y-1">
+                                {planillas.map((p) => (
+                                  <div key={p.formId} className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase">
+                                    <div className="w-1 h-1 rounded-full bg-neutral-200" />
+                                    {p.medium.replace('_', ' ')}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
 
 export function DataEntryForm({ 
   selectedPoint,
@@ -434,19 +558,7 @@ export function DataEntryForm({
   };
 
   if (!selectedPoint) {
-    return (
-      <div className="flex flex-col items-center pt-8 md:pt-16 min-h-[60vh] text-center space-y-6 px-4">
-        <div className="p-8 bg-primary/5 rounded-full shadow-inner border border-primary/5">
-          <MapPin className="h-16 w-16 text-foreground/20 animate-pulse" />
-        </div>
-        <div className="max-w-xs space-y-2">
-          <h3 className="text-xl font-normal text-black tracking-tight">Iniciá la recolección</h3>
-          <p className="text-sm text-neutral-600 leading-relaxed">
-            Hacé clic en un punto del mapa para crear una nueva estación o seleccioná una existente para gestionar sus datos.
-          </p>
-        </div>
-      </div>
-    );
+    return <DataExplorer onSelectStation={(point) => onPointUpdate(point)} />;
   }
 
   if (activeView === 'report-entry' && currentReportId && activeFormId) {
