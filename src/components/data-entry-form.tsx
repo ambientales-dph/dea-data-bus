@@ -80,16 +80,19 @@ export function DataEntryForm({
   const existingPlanillas = useMemo(() => {
     const planillasMap = new Map<string, { formId: string, medium: string, userEmail?: string, timestamp?: any }>();
     currentReportSamples.forEach((s: any) => {
-      if (s.formId && s.medium) {
-        const existing = planillasMap.get(s.formId);
-        if (!existing || (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() < existing.timestamp.toMillis()))) {
-          planillasMap.set(s.formId, { 
-            formId: s.formId, 
-            medium: s.medium, 
-            userEmail: s.userEmail, 
-            timestamp: s.timestamp 
-          });
-        }
+      // Usar 'legacy' si no tiene formId para permitir editar datos viejos
+      const fId = s.formId || 'legacy';
+      const medium = s.medium || 'otro';
+      
+      const existing = planillasMap.get(fId);
+      // Nos quedamos con la entrada que tenga el timestamp más reciente para el encabezado
+      if (!existing || (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis()))) {
+        planillasMap.set(fId, { 
+          formId: fId, 
+          medium: medium, 
+          userEmail: s.userEmail, 
+          timestamp: s.timestamp 
+        });
       }
     });
     return Array.from(planillasMap.values());
@@ -396,10 +399,12 @@ export function DataEntryForm({
 
   const handleReopenPlanilla = (planilla: { formId: string, medium: string }) => {
     setActiveFormId(planilla.formId);
+    // Intentar encontrar la plantilla correcta para configurar la vista
     const foundTemplate = templates.find(t => t.medium === planilla.medium);
     if (foundTemplate) {
       setSelectedTemplate(foundTemplate.id);
     } else {
+      // Fallback a manual o buscar en plantillas personalizadas si fuera necesario
       setSelectedTemplate('manual');
     }
     setActiveView('report-entry');
