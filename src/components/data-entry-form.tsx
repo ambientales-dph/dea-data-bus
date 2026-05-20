@@ -146,6 +146,7 @@ function DataExplorer({
                       <div className="w-1.5 h-1.5 bg-primary shrink-0" />
                       <AccordionTrigger className="flex-1 py-1 px-2 hover:no-underline hover:bg-neutral-50 rounded-none transition-colors">
                         <span 
+                          role="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectStation({
@@ -176,6 +177,7 @@ function DataExplorer({
                                   <FileText className="h-3 w-3 text-neutral-400 shrink-0" />
                                   <AccordionTrigger className="flex-1 py-1 px-2 hover:no-underline hover:bg-neutral-50 rounded-none transition-colors">
                                     <span 
+                                      role="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         onSelectReport(station, report.id);
@@ -192,6 +194,7 @@ function DataExplorer({
                                     <div className="space-y-1 py-1 border-l border-neutral-100 pl-3">
                                       {planillas.map((p) => (
                                         <span 
+                                          role="button"
                                           key={p.formId} 
                                           onClick={() => onSelectPlanilla(station, report.id, p.formId, p.medium)}
                                           className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase hover:text-black transition-colors group w-full text-left py-1 cursor-pointer"
@@ -1051,14 +1054,21 @@ export function DataEntryForm({
         <div className="space-y-3 pt-2">
           <Separator className="bg-neutral-200" />
           <div className="grid grid-cols-1 gap-2 pt-1">
-            <Button className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" onClick={() => {
-              setCurrentReportId(null);
-              setActiveView('select-project');
-            }}>
-              <FileText className="h-6 w-6" /> Crear reporte
+            <Button 
+              className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" 
+              onClick={() => setActiveView('consult')}
+            >
+              <Search className="h-6 w-6" /> REPORTES
             </Button>
-            <Button variant="outline" className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 border-black text-black hover:bg-neutral-50 shadow-sm rounded-none" onClick={() => setActiveView('consult')}>
-              <Search className="h-6 w-6" /> Ver Historial
+            <Button 
+              variant="outline" 
+              className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 border-black text-black hover:bg-neutral-50 shadow-sm rounded-none" 
+              onClick={() => {
+                setCurrentReportId(null);
+                setActiveView('select-project');
+              }}
+            >
+              <FileText className="h-6 w-6" /> Crear reporte
             </Button>
           </div>
         </div>
