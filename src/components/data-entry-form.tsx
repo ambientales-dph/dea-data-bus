@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, ChevronDown, Activity } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Pencil, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, ChevronDown, Activity, Layers } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ import { ReportList } from './report-list';
 import { ReportDetail } from './report-detail';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const stationSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -32,7 +33,15 @@ type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'rep
 /**
  * Explorador de datos informativo que muestra el árbol de estaciones, reportes y planillas.
  */
-function DataExplorer({ onSelectStation }: { onSelectStation: (point: SelectedPoint) => void }) {
+function DataExplorer({ 
+  onSelectStation,
+  onSelectReport,
+  onSelectPlanilla
+}: { 
+  onSelectStation: (point: SelectedPoint) => void,
+  onSelectReport: (station: any, reportId: string) => void,
+  onSelectPlanilla: (station: any, reportId: string, formId: string, medium: string) => void
+}) {
   const db = useFirestore();
   const { user } = useUser();
 
@@ -88,64 +97,91 @@ function DataExplorer({ onSelectStation }: { onSelectStation: (point: SelectedPo
       </div>
 
       <ScrollArea className="h-[calc(100vh-250px)] pr-4">
-        <div className="space-y-6">
+        <div className="space-y-1">
           {stations.length === 0 ? (
             <div className="py-20 text-center opacity-40">
               <MapPin className="h-10 w-10 mx-auto mb-3" />
               <p className="text-[9px] uppercase tracking-widest">Sin datos registrados</p>
             </div>
           ) : (
-            stations.map((station: any) => {
-              const stationReports = getReportsByStation(station.id);
-              return (
-                <div key={station.id} className="space-y-2">
-                  <button 
-                    onClick={() => onSelectStation({
-                      lat: station.latitude,
-                      lon: station.longitude,
-                      stationId: station.id,
-                      name: station.name,
-                      basinCode: station.basinCode
-                    })}
-                    className="flex items-center gap-2 group w-full text-left"
-                  >
-                    <div className="w-1.5 h-1.5 bg-primary shrink-0" />
-                    <span className="text-[12px] text-black hover:underline underline-offset-4 decoration-primary/30 transition-all truncate">
-                      {station.name}
-                    </span>
-                  </button>
+            <Accordion type="multiple" className="w-full space-y-2">
+              {stations.map((station: any) => {
+                const stationReports = getReportsByStation(station.id);
+                return (
+                  <AccordionItem key={station.id} value={station.id} className="border-none">
+                    <div className="flex items-center gap-1 group">
+                      <div className="w-1.5 h-1.5 bg-primary shrink-0" />
+                      <AccordionTrigger className="flex-1 py-1 px-2 hover:no-underline hover:bg-neutral-50 rounded-none transition-colors">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectStation({
+                              lat: station.latitude,
+                              lon: station.longitude,
+                              stationId: station.id,
+                              name: station.name,
+                              basinCode: station.basinCode
+                            });
+                          }}
+                          className="text-[12px] text-black font-normal truncate text-left hover:underline underline-offset-4 decoration-primary/30"
+                        >
+                          {station.name}
+                        </button>
+                      </AccordionTrigger>
+                    </div>
 
-                  <div className="ml-3.5 space-y-3 border-l border-neutral-100 pl-3">
-                    {stationReports.length === 0 ? (
-                      <p className="text-[9px] uppercase text-neutral-400 italic">---</p>
-                    ) : (
-                      stationReports.map((report: any) => {
-                        const planillas = getPlanillasByReport(report.id);
-                        return (
-                          <div key={report.id} className="space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-3 w-3 text-neutral-400" />
-                              <span className="text-[10px] text-neutral-600 uppercase font-normal tracking-tight">{report.oid}</span>
-                            </div>
-                            
-                            {planillas.length > 0 && (
-                              <div className="ml-5 space-y-1">
-                                {planillas.map((p) => (
-                                  <div key={p.formId} className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase">
-                                    <div className="w-1 h-1 rounded-full bg-neutral-200" />
-                                    {p.medium.replace('_', ' ')}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              );
-            })
+                    <AccordionContent className="pb-0 pl-3.5 border-l border-neutral-100 ml-1.5">
+                      {stationReports.length === 0 ? (
+                        <p className="text-[9px] uppercase text-neutral-400 italic py-2">Sin reportes</p>
+                      ) : (
+                        <Accordion type="multiple" className="w-full space-y-1 mt-1">
+                          {stationReports.map((report: any) => {
+                            const planillas = getPlanillasByReport(report.id);
+                            return (
+                              <AccordionItem key={report.id} value={report.id} className="border-none">
+                                <div className="flex items-center gap-1">
+                                  <FileText className="h-3 w-3 text-neutral-400 shrink-0" />
+                                  <AccordionTrigger className="flex-1 py-1 px-2 hover:no-underline hover:bg-neutral-50 rounded-none transition-colors">
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSelectReport(station, report.id);
+                                      }}
+                                      className="text-[10px] text-neutral-600 uppercase font-normal tracking-tight text-left hover:underline"
+                                    >
+                                      {report.oid}
+                                    </button>
+                                  </AccordionTrigger>
+                                </div>
+                                
+                                <AccordionContent className="pb-1 pl-5">
+                                  {planillas.length > 0 ? (
+                                    <div className="space-y-1 py-1 border-l border-neutral-100 pl-3">
+                                      {planillas.map((p) => (
+                                        <button 
+                                          key={p.formId} 
+                                          onClick={() => onSelectPlanilla(station, report.id, p.formId, p.medium)}
+                                          className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase hover:text-primary transition-colors group w-full text-left"
+                                        >
+                                          <div className="w-1 h-1 rounded-full bg-neutral-200 group-hover:bg-primary" />
+                                          <span className="hover:underline">{p.medium.replace('_', ' ')}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-[8px] text-neutral-300 uppercase italic pl-3">Sin planillas</p>
+                                  )}
+                                </AccordionContent>
+                              </AccordionItem>
+                            );
+                          })}
+                        </Accordion>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           )}
         </div>
       </ScrollArea>
@@ -557,8 +593,51 @@ export function DataEntryForm({
     setActiveView('report-entry');
   };
 
+  // Handlers para el explorador
+  const handleExplorerSelectStation = (point: SelectedPoint) => {
+    onPointUpdate(point);
+  };
+
+  const handleExplorerSelectReport = (station: any, reportId: string) => {
+    onPointUpdate({
+      lat: station.latitude,
+      lon: station.longitude,
+      stationId: station.id,
+      name: station.name,
+      basinCode: station.basinCode
+    });
+    setViewingReportId(reportId);
+    setActiveView('report-view');
+  };
+
+  const handleExplorerSelectPlanilla = (station: any, reportId: string, formId: string, medium: string) => {
+    onPointUpdate({
+      lat: station.latitude,
+      lon: station.longitude,
+      stationId: station.id,
+      name: station.name,
+      basinCode: station.basinCode
+    });
+    setCurrentReportId(reportId);
+    setActiveFormId(formId);
+    
+    const foundTemplate = templates.find(t => t.medium === medium);
+    if (foundTemplate) {
+      setSelectedTemplate(foundTemplate.id);
+    } else {
+      setSelectedTemplate('manual');
+    }
+    setActiveView('report-entry');
+  };
+
   if (!selectedPoint) {
-    return <DataExplorer onSelectStation={(point) => onPointUpdate(point)} />;
+    return (
+      <DataExplorer 
+        onSelectStation={handleExplorerSelectStation} 
+        onSelectReport={handleExplorerSelectReport}
+        onSelectPlanilla={handleExplorerSelectPlanilla}
+      />
+    );
   }
 
   if (activeView === 'report-entry' && currentReportId && activeFormId) {
