@@ -23,12 +23,13 @@ interface MapViewProps {
   onPointSelect: (point: SelectedPoint) => void;
   selectedPoint: SelectedPoint | null;
   activeLayer: 'osm' | 'grayscale' | 'satellite';
+  isMobile?: boolean;
 }
 
 // Umbral de caducidad para presencia (2 minutos)
 const PRESENCE_EXPIRATION_MS = 2 * 60 * 1000;
 
-export function MapView({ onPointSelect, selectedPoint, activeLayer }: MapViewProps) {
+export function MapView({ onPointSelect, selectedPoint, activeLayer, isMobile }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<Map | null>(null);
   const stationsSource = useRef<VectorSource>(new VectorSource());
@@ -137,6 +138,8 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer }: MapViewPr
           return features[0];
         }
         return null;
+      }, {
+        hitTolerance: isMobile ? 12 : 4
       });
 
       if (stationFeature) {
@@ -200,7 +203,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer }: MapViewPr
       map.setTarget(undefined);
       mapInstance.current = null;
     };
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     if (!mapInstance.current || !selectedPoint) {
@@ -311,12 +314,16 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer }: MapViewPr
         });
       }
 
+      const view = mapInstance.current?.getView();
+      const zoom = view ? view.getZoomForResolution(resolution) : 0;
+      const radius = (zoom && zoom > 7) ? 6.5 : 3.5;
+
       const stationFeature = features[0];
       const isSelected = selectedPoint?.stationId === stationFeature.get('stationId');
 
       return new Style({
         image: new CircleStyle({
-          radius: 3.5,
+          radius: radius,
           fill: new Fill({ color: isSelected ? '#22c55e' : '#4E97CA' }),
           stroke: new Stroke({ color: 'white', width: 0.8 }),
         })

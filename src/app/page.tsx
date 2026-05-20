@@ -435,6 +435,7 @@ export default function Home() {
                 onPointSelect={handlePointSelect} 
                 selectedPoint={selectedPoint} 
                 activeLayer={activeLayer}
+                isMobile={isMobile}
               />
             </div>
             {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
