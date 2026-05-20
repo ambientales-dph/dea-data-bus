@@ -48,6 +48,11 @@ interface SearchResult {
 
 const MIN_SIDEBAR_WIDTH = 320;
 
+// Función para normalizar texto (quitar tildes y diéresis)
+const normalizeText = (text: string) => {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+};
+
 export default function Home() {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(420);
@@ -176,20 +181,22 @@ export default function Home() {
     return match ? match[0] : fullName.substring(0, 8);
   };
 
-  // Lógica de búsqueda mejorada
+  // Lógica de búsqueda mejorada con normalización y debounce reducido
   useEffect(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const rawQuery = searchQuery.trim();
+    const q = normalizeText(rawQuery);
     
     if (q.length < 2) {
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
     
-    // 1. Búsqueda instantánea en ESTACIONES
+    // 1. Búsqueda instantánea en ESTACIONES (Local)
     const stationResults: SearchResult[] = (stations || [])
       .filter(s => {
-        const stationName = String(s.name || '').toLowerCase();
-        const basinCode = String(s.basinCode || '').toLowerCase();
+        const stationName = normalizeText(String(s.name || ''));
+        const basinCode = normalizeText(String(s.basinCode || ''));
         return stationName.includes(q) || basinCode.includes(q);
       })
       .map(s => ({
@@ -200,11 +207,11 @@ export default function Home() {
         stationId: s.id
       }));
 
-    // 2. Búsqueda instantánea en REPORTES
+    // 2. Búsqueda instantánea en REPORTES (Local)
     const reportResults: SearchResult[] = (reports || [])
       .filter(r => {
-        const oid = String(r.oid || '').toLowerCase();
-        const trello = String(r.trelloCardName || '').toLowerCase();
+        const oid = normalizeText(String(r.oid || ''));
+        const trello = normalizeText(String(r.trelloCardName || ''));
         return oid.includes(q) || trello.includes(q);
       })
       .map(r => {
@@ -225,16 +232,19 @@ export default function Home() {
     const localResults = [...stationResults, ...reportResults].sort((a, b) => a.display_name.localeCompare(b.display_name));
     setSearchResults(localResults);
 
-    // 3. Búsqueda en OSM con Debounce
-    if (q.length < 3) return;
+    // 3. Búsqueda en OSM con Debounce reducido (300ms)
+    if (q.length < 3) {
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setShowResults(true);
 
     const timer = setTimeout(async () => {
-      setIsSearching(true);
-      setShowResults(true);
-      
       try {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=20&countrycodes=ar`,
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(rawQuery)}&limit=20&countrycodes=ar`,
           { headers: { 'Accept-Language': 'es' } }
         );
         
@@ -248,7 +258,7 @@ export default function Home() {
           }));
 
           setSearchResults(prev => {
-            // Mantener locales y agregar lugares sin duplicar
+            // Mantener resultados locales actuales y agregar los lugares de OSM sin duplicar tipos
             const locals = prev.filter(r => r.type !== 'place');
             return [...locals, ...placeResults];
           });
@@ -258,7 +268,7 @@ export default function Home() {
       } finally {
         setIsSearching(false);
       }
-    }, 600);
+    }, 300);
     
     return () => clearTimeout(timer);
   }, [searchQuery, stations, reports]);
