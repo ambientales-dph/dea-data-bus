@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, doc, setDoc, serverTimestamp, query, where, orderBy, limit, getDocs, addDoc } from 'firebase/firestore';
-import { useFirestore, useUser, useDoc, useCollection, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,24 @@ import { ReportDetail } from './report-detail';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
+/**
+ * Helper para verificar si un punto está dentro de un polígono (Ray Casting Algorithm)
+ */
+function isPointInPoly(pt: [number, number], poly: [number, number][][]) {
+  for (let i = 0; i < poly.length; i++) {
+    let inside = false;
+    const ring = poly[i];
+    for (let j = 0, k = ring.length - 1; j < ring.length; k = j++) {
+      if (((ring[j][1] > pt[1]) !== (ring[k][1] > pt[1])) &&
+        (pt[0] < (ring[k][0] - ring[j][0]) * (pt[1] - ring[j][1]) / (ring[k][1] - ring[j][1]) + ring[j][0])) {
+        inside = !inside;
+      }
+    }
+    if (inside) return true;
+  }
+  return false;
+}
 
 const stationSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -444,7 +462,7 @@ export function DataEntryForm({
 
       generateNextName();
     }
-  }, [selectedPoint, db, stationForm]);
+  }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.basinCode, db, stationForm]);
 
   const handleManualCoordChange = (type: 'lat' | 'lon', val: string) => {
     if (type === 'lat') {
@@ -462,7 +480,7 @@ export function DataEntryForm({
     }
   };
 
-  const handleCaptureGPS = () => {
+  const handleCaptureGPS = async () => {
     if (!navigator.geolocation) {
       toast({
         variant: "destructive",
@@ -475,14 +493,53 @@ export function DataEntryForm({
     toast({ title: "Obteniendo ubicación...", description: "Por favor, esperá un momento." });
     
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
         setEditLat(latitude.toString());
         setEditLon(longitude.toString());
-        if (selectedPoint) {
-          onPointUpdate({ ...selectedPoint, lat: latitude, lon: longitude });
+        
+        let detectedBasin = selectedPoint?.basinCode || '';
+        
+        // Intentar identificar la cuenca de forma local
+        try {
+          const res = await fetch('/data/codigos_cuencas.json');
+          if (res.ok) {
+            const data = await res.json();
+            const features = data.features;
+            for (const feature of features) {
+              const geometry = feature.geometry;
+              if (geometry.type === 'Polygon') {
+                if (isPointInPoly([longitude, latitude], geometry.coordinates)) {
+                  detectedBasin = feature.properties.CODIGO || '';
+                  break;
+                }
+              } else if (geometry.type === 'MultiPolygon') {
+                for (const poly of geometry.coordinates) {
+                  if (isPointInPoly([longitude, latitude], poly)) {
+                    detectedBasin = feature.properties.CODIGO || '';
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error identificando cuenca localmente", error);
         }
-        toast({ title: "Ubicación capturada", description: `Coordenadas: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` });
+
+        if (selectedPoint) {
+          onPointUpdate({ 
+            ...selectedPoint, 
+            lat: latitude, 
+            lon: longitude,
+            basinCode: detectedBasin
+          });
+        }
+        
+        toast({ 
+          title: "Ubicación capturada", 
+          description: `Cuenca: ${detectedBasin || 'No detectada'}. Coordenadas: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` 
+        });
       },
       (error) => {
         console.error("GPS Error", error);
@@ -492,7 +549,7 @@ export function DataEntryForm({
           description: "No se pudo obtener la ubicación. Verificá los permisos de tu navegador.",
         });
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 
