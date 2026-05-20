@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, Search, Loader2, Layers, Map as MapIcon, Satellite, MapPin, Database, X, FileText, Settings, User } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, Search, Loader2, Layers, Map as MapIcon, Satellite, MapPin, Database, X, FileText, Settings, User, Cloud, CloudOff } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -48,7 +48,6 @@ interface SearchResult {
 
 const MIN_SIDEBAR_WIDTH = 320;
 
-// Función para normalizar texto (quitar tildes y diéresis)
 const normalizeText = (text: string) => {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 };
@@ -59,6 +58,7 @@ export default function Home() {
   const [isResizing, setIsResizing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
   
   const auth = useAuth();
   const db = useFirestore();
@@ -84,7 +84,20 @@ export default function Home() {
   }, [db, user]);
   const { data: reports } = useCollection(reportsQuery);
 
-  // Detectar mobile y setear ancho inicial
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
@@ -182,7 +195,6 @@ export default function Home() {
     return match ? match[0] : fullName.substring(0, 8);
   };
 
-  // Lógica de búsqueda híbrida mejorada
   useEffect(() => {
     const rawQuery = searchQuery.trim();
     const q = normalizeText(rawQuery);
@@ -193,10 +205,8 @@ export default function Home() {
       return;
     }
 
-    // Incrementar el ID de búsqueda para manejar respuestas asíncronas
     const currentSearchId = ++searchIdRef.current;
     
-    // 1. Búsqueda local inmediata (Estaciones y Reportes)
     const stationResults: SearchResult[] = (stations || [])
       .filter(s => {
         const stationName = normalizeText(String(s.name || ''));
@@ -233,12 +243,9 @@ export default function Home() {
       .filter((r): r is SearchResult => r !== null);
 
     const localResults = [...stationResults, ...reportResults];
-    
-    // Mostramos resultados locales de inmediato
     setSearchResults(localResults);
 
-    // 2. Búsqueda remota (Lugares OSM) con Debounce
-    if (q.length < 3) {
+    if (q.length < 3 || !isOnline) {
       setIsSearching(false);
       return;
     }
@@ -262,7 +269,6 @@ export default function Home() {
             lon: place.lon
           }));
 
-          // Fusionamos manteniendo los locales y reemplazando los previos de tipo 'place'
           setSearchResults(prev => {
             const locals = prev.filter(r => r.type !== 'place');
             return [...locals, ...placeResults];
@@ -278,7 +284,7 @@ export default function Home() {
     }, 400);
     
     return () => clearTimeout(timer);
-  }, [searchQuery, stations, reports]);
+  }, [searchQuery, stations, reports, isOnline]);
 
   const handleSelectResult = (result: SearchResult) => {
     handlePointSelect({
@@ -320,7 +326,7 @@ export default function Home() {
                   {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-foreground" /> : <Search className="h-4 w-4" />}
                 </div>
                 <Input 
-                  placeholder={isMobile ? "Buscar..." : "Buscar estación, reporte, cuenca o lugar..."} 
+                  placeholder={isMobile ? "Buscar..." : isOnline ? "Buscar estación, reporte, cuenca o lugar..." : "Buscar estación o reporte (Offline)..."} 
                   className="border-0 focus-visible:ring-0 h-full text-xs bg-transparent placeholder:text-[10px] md:placeholder:text-xs text-foreground font-medium"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -382,6 +388,14 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-1 md:gap-4 ml-2 md:ml-4">
+            <div className="flex items-center gap-2 pr-2">
+               {isOnline ? (
+                 <Cloud className="h-4 w-4 text-primary" title="Conectado y Sincronizado" />
+               ) : (
+                 <CloudOff className="h-4 w-4 text-destructive" title="Modo Offline - Datos guardados localmente" />
+               )}
+            </div>
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-9 gap-1 md:gap-2 text-muted-foreground hover:text-foreground hover:bg-primary/5 px-2 md:px-3">

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -30,9 +30,6 @@ type StationValues = z.infer<typeof stationSchema>;
 
 type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'report-view' | 'select-project' | 'select-template';
 
-/**
- * Explorador de datos informativo que muestra el árbol de estaciones, reportes y planillas.
- */
 function DataExplorer({ 
   onSelectStation,
   onSelectReport,
@@ -176,16 +173,16 @@ function DataExplorer({
                                   {planillas.length > 0 ? (
                                     <div className="space-y-1 py-1 border-l border-neutral-100 pl-3">
                                       {planillas.map((p) => (
-                                        <button 
+                                        <span 
                                           key={p.formId} 
                                           onClick={() => onSelectPlanilla(station, report.id, p.formId, p.medium)}
-                                          className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase hover:text-black transition-colors group w-full text-left py-1"
+                                          className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase hover:text-black transition-colors group w-full text-left py-1 cursor-pointer"
                                         >
                                           <div className="w-1 h-1 rounded-full bg-neutral-200 group-hover:bg-primary" />
                                           <span className="hover:underline">
                                             {p.medium.replace('_', ' ')} • {formatDateShort(p.timestamp)} • {p.formId.substring(0, 4)}
                                           </span>
-                                        </button>
+                                        </span>
                                       ))}
                                     </div>
                                   ) : (
@@ -427,7 +424,7 @@ export function DataEntryForm({
           let nextNumber = 1;
 
           if (!querySnapshot.empty) {
-            const lastStation = querySnapshot.docs[0].docs[0].data();
+            const lastStation = querySnapshot.docs[0].data();
             const lastName = lastStation.name as string;
             const numberPart = lastName.substring(prefix.length);
             const parsed = parseInt(numberPart, 10);
@@ -463,6 +460,40 @@ export function DataEntryForm({
         onPointUpdate({ ...selectedPoint, lon });
       }
     }
+  };
+
+  const handleCaptureGPS = () => {
+    if (!navigator.geolocation) {
+      toast({
+        variant: "destructive",
+        title: "GPS no disponible",
+        description: "Tu navegador no soporta geolocalización.",
+      });
+      return;
+    }
+
+    toast({ title: "Obteniendo ubicación...", description: "Por favor, esperá un momento." });
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setEditLat(latitude.toString());
+        setEditLon(longitude.toString());
+        if (selectedPoint) {
+          onPointUpdate({ ...selectedPoint, lat: latitude, lon: longitude });
+        }
+        toast({ title: "Ubicación capturada", description: `Coordenadas: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` });
+      },
+      (error) => {
+        console.error("GPS Error", error);
+        toast({
+          variant: "destructive",
+          title: "Error de GPS",
+          description: "No se pudo obtener la ubicación. Verificá los permisos de tu navegador.",
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
   const handleCreateStation = (data: StationValues) => {
@@ -646,7 +677,6 @@ export function DataEntryForm({
     setCurrentReportId(reportId);
     setActiveFormId(formId);
     
-    // Mapeo dinámico del medio al ID de la plantilla
     const foundTemplate = templates.find(t => t.medium === medium);
     if (foundTemplate) {
       setSelectedTemplate(foundTemplate.id);
@@ -938,9 +968,23 @@ export function DataEntryForm({
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-normal uppercase tracking-widest shadow-md rounded-none" disabled={isGeneratingName}>
-                <Send className="mr-2 h-4 w-4" /> GUARDAR PUNTO
-              </Button>
+              <div className="grid grid-cols-1 gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleCaptureGPS}
+                  className="w-full h-11 border-primary/20 text-primary hover:bg-primary/5 font-normal uppercase tracking-widest text-[10px] rounded-none"
+                >
+                  <Navigation className="mr-2 h-4 w-4" /> CAPTURAR MI UBICACIÓN (GPS)
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-normal uppercase tracking-widest shadow-md rounded-none" 
+                  disabled={isGeneratingName}
+                >
+                  <Send className="mr-2 h-4 w-4" /> GUARDAR PUNTO
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
