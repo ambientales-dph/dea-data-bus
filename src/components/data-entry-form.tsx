@@ -56,7 +56,6 @@ export function DataEntryForm({
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('manual');
 
-  const [isEditingCoords, setIsEditingCoords] = useState(false);
   const [editLat, setEditLat] = useState('');
   const [editLon, setEditLon] = useState('');
 
@@ -157,7 +156,6 @@ export function DataEntryForm({
       setCurrentReportId(null);
       setActiveFormId(null);
       setViewingReportId(null);
-      setIsEditingCoords(false);
       setSelectedProject('');
       setProjectSearch('');
       setSelectedTemplate('manual');
@@ -312,15 +310,6 @@ export function DataEntryForm({
     });
   };
 
-  const handleSaveCoordsEdit = () => {
-    const lat = parseFloat(editLat);
-    const lon = parseFloat(editLon);
-    if (!isNaN(lat) && !isNaN(lon) && selectedPoint) {
-      onPointUpdate({ ...selectedPoint, lat, lon });
-      setIsEditingCoords(false);
-    }
-  };
-
   const handleConfirmTemplate = () => {
     const newFormId = crypto.randomUUID();
     setActiveFormId(newFormId);
@@ -432,7 +421,7 @@ export function DataEntryForm({
           <MapPin className="h-16 w-16 text-foreground/20 animate-pulse" />
         </div>
         <div className="max-w-xs space-y-2">
-          <h3 className="text-xl font-bold text-black tracking-tight">Iniciá la recolección</h3>
+          <h3 className="text-xl font-normal text-black tracking-tight">Iniciá la recolección</h3>
           <p className="text-sm text-neutral-600 leading-relaxed">
             Hacé clic en un punto del mapa para crear una nueva estación o seleccioná una existente para gestionar sus datos.
           </p>
@@ -444,7 +433,7 @@ export function DataEntryForm({
   if (activeView === 'report-entry' && currentReportId && activeFormId) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('select-template')} className="mb-2 text-black font-bold">
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('select-template')} className="mb-2 text-black font-normal">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver a planillas
         </Button>
         <SamplingReportForm 
@@ -461,7 +450,7 @@ export function DataEntryForm({
   if (activeView === 'consult' && selectedPoint.stationId) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-black font-bold">
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-black font-normal">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
         </Button>
         <ReportList stationId={selectedPoint.stationId} onViewReport={handleViewReportDetails} onOpenReport={handleOpenExistingReport} />
@@ -472,7 +461,7 @@ export function DataEntryForm({
   if (activeView === 'report-view' && viewingReportId) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('consult')} className="mb-2 text-black font-bold">
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('consult')} className="mb-2 text-black font-normal">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al listado
         </Button>
         <ReportDetail reportId={viewingReportId} onClose={() => setActiveView('consult')} />
@@ -483,12 +472,12 @@ export function DataEntryForm({
   if (activeView === 'select-project' && selectedPoint.stationId) {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-black font-bold">
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-black font-normal">
           <ArrowLeft className="mr-2 h-4 w-4" /> Cancelar
         </Button>
         <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
           <CardHeader className="pb-4">
-            <CardTitle className="text-md flex items-center gap-2 text-black font-black uppercase tracking-tight">
+            <CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight">
               <Briefcase className="h-5 w-5 text-black" />
               1. Seleccionar Proyecto
             </CardTitle>
@@ -496,7 +485,7 @@ export function DataEntryForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
-              <Label className="text-[10px] uppercase font-bold text-black flex items-center gap-1.5 px-1">Proyecto de Trello</Label>
+              <Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Proyecto de Trello</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-black" />
                 <Input 
@@ -535,7 +524,7 @@ export function DataEntryForm({
               </ScrollArea>
             </div>
             <Button 
-              className="w-full h-12 text-sm font-black uppercase tracking-widest bg-primary hover:bg-primary/90 shadow-md text-white" 
+              className="w-full h-12 text-sm font-normal uppercase tracking-widest bg-primary hover:bg-primary/90 shadow-md text-white" 
               disabled={!selectedProject} 
               onClick={() => setActiveView('select-template')}
             >
@@ -550,12 +539,12 @@ export function DataEntryForm({
   if (activeView === 'select-template' && selectedPoint.stationId) {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-        <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2 text-black font-bold">
+        <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2 text-black font-normal">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver atrás
         </Button>
         <Card className="border-t-4 border-t-accent shadow-lg overflow-hidden">
           <CardHeader className="pb-4">
-            <CardTitle className="text-md flex items-center gap-2 text-black font-black uppercase tracking-tight">
+            <CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight">
               <LayoutList className="h-5 w-5 text-black" />
               {currentReportId ? 'Gestión de Planillas' : '2. Elegir Planilla de Carga'}
             </CardTitle>
@@ -565,21 +554,21 @@ export function DataEntryForm({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-bold text-black flex items-center gap-1.5 px-1">Nueva Planilla</Label>
+              <Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Nueva Planilla</Label>
               <div className="flex gap-2">
                 <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                  <SelectTrigger className="h-11 flex-1 text-xs font-bold border-accent/20 bg-accent/5 text-black">
+                  <SelectTrigger className="h-11 flex-1 text-xs font-normal border-accent/20 bg-accent/5 text-black">
                     <SelectValue placeholder="Elegí un protocolo..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="manual" className="text-xs font-bold">Carga Manual (uno por uno)</SelectItem>
-                    <SelectItem value="personalizada" className="text-xs font-bold text-black flex items-center gap-1">
+                    <SelectItem value="manual" className="text-xs font-normal">Carga Manual (uno por uno)</SelectItem>
+                    <SelectItem value="personalizada" className="text-xs font-normal text-black flex items-center gap-1">
                       <Star className="h-3 w-3 inline mr-1 fill-accent" /> Crear Planilla Personalizada
                     </SelectItem>
                     {customTemplates && customTemplates.length > 0 && (
                       <>
                         <Separator className="my-1" />
-                        <div className="px-2 py-1.5 text-[10px] font-bold text-black uppercase">Tus Planillas</div>
+                        <div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Tus Planillas</div>
                         {customTemplates.map((ct: any) => (
                           <SelectItem key={ct.id} value={`custom_${ct.id}`} className="text-xs">
                             {ct.name}
@@ -588,14 +577,14 @@ export function DataEntryForm({
                       </>
                     )}
                     <Separator className="my-1" />
-                    <div className="px-2 py-1.5 text-[10px] font-bold text-black uppercase">Plantillas del Sistema</div>
+                    <div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Plantillas del Sistema</div>
                     {templates.map((t) => (
                       <SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <Button 
-                  className="h-11 px-4 bg-primary hover:bg-primary/90 font-black uppercase tracking-widest text-white" 
+                  className="h-11 px-4 bg-primary hover:bg-primary/90 font-normal uppercase tracking-widest text-white" 
                   disabled={isStartingReport} 
                   onClick={handleConfirmTemplate}
                 >
@@ -606,7 +595,7 @@ export function DataEntryForm({
 
             {currentReportId && existingPlanillas.length > 0 && (
               <div className="space-y-3 pt-2">
-                <Label className="text-[10px] uppercase font-bold text-black flex items-center gap-1.5 px-1">Planillas en este reporte (Editar)</Label>
+                <Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Planillas en este reporte (Editar)</Label>
                 <div className="grid grid-cols-1 gap-2">
                   {existingPlanillas.map((p) => (
                     <button
@@ -619,10 +608,10 @@ export function DataEntryForm({
                           <FileText className="h-3.5 w-3.5 text-black" />
                         </div>
                         <div className="text-left">
-                          <p className="text-xs font-black capitalize text-black">{p.medium.replace('_', ' ')}</p>
+                          <p className="text-xs font-normal capitalize text-black">{p.medium.replace('_', ' ')}</p>
                           <div className="flex flex-col mt-0.5">
-                            <p className="text-[9px] text-neutral-600 uppercase font-semibold">ID: {p.formId.substring(0, 8)}</p>
-                            <div className="flex items-center gap-2 text-[9px] text-black font-black uppercase tracking-tighter">
+                            <p className="text-[9px] text-neutral-600 uppercase font-normal">ID: {p.formId.substring(0, 8)}</p>
+                            <div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter">
                               <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span>
                               <span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span>
                             </div>
@@ -650,13 +639,13 @@ export function DataEntryForm({
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2">
                   <Database className="h-4 w-4 text-black shrink-0" />
-                  <CardTitle className="text-lg font-black text-black leading-none tracking-tight">{selectedPoint.name}</CardTitle>
+                  <CardTitle className="text-lg font-normal text-black leading-none tracking-tight">{selectedPoint.name}</CardTitle>
                 </div>
                 <div className="space-y-0.5 ml-6">
-                  <CardDescription className="text-[10px] font-bold text-black font-code">
+                  <CardDescription className="text-[10px] font-normal text-black font-code">
                     {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
                   </CardDescription>
-                  <CardDescription className="text-[10px] font-bold text-black font-code">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>
+                  <CardDescription className="text-[10px] font-normal text-black font-code">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
@@ -667,7 +656,7 @@ export function DataEntryForm({
         <Card className="border-primary/20 bg-primary/5 shadow-sm">
           <CardHeader className="p-3">
             <div className="flex items-start justify-between gap-2">
-              <CardTitle className="text-md flex items-center gap-2 text-black font-black uppercase tracking-tight"><PlusCircle className="h-5 w-5" />Nuevo Punto</CardTitle>
+              <CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight"><PlusCircle className="h-5 w-5" />Nuevo Punto</CardTitle>
               <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
@@ -675,68 +664,39 @@ export function DataEntryForm({
       )}
 
       {activeView === 'create-station' && (
-        <Card className="border-t-4 border-t-accent shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden">
-          <CardHeader className="p-3 pb-2">
-            <CardTitle className="text-sm text-black font-black uppercase tracking-widest">Definir Estación</CardTitle>
-          </CardHeader>
-          <CardContent className="p-3">
-            <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-4">
+        <Card className="border-none bg-transparent shadow-none animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden">
+          <CardContent className="p-0 space-y-3">
+            <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-3">
               <div className="space-y-1">
-                <Label htmlFor="station-name" className="text-[10px] font-black uppercase text-black block">Nombre de la Estación</Label>
+                <Label htmlFor="station-name" className="text-[10px] font-normal uppercase text-black block">Etiqueta</Label>
                 <div className="relative">
-                  <Input id="station-name" placeholder="Ej: EMA0001" {...stationForm.register('name')} className="text-black font-black h-10 border-neutral-300" />
+                  <Input id="station-name" placeholder="Ej: EMA0001" {...stationForm.register('name')} className="text-black font-code text-xs h-9 border-neutral-300 rounded-none bg-white" />
                   {isGeneratingName && <div className="absolute right-3 top-2.5"><Loader2 className="h-4 w-4 animate-spin text-neutral-400" /></div>}
                 </div>
               </div>
 
-              <div className="space-y-2 bg-neutral-100 p-3 rounded-md border border-neutral-300 border-dashed">
-                <div className="flex items-center justify-between mb-1">
-                  <Label className="text-[10px] font-black uppercase text-black">Coordenadas Geográficas</Label>
-                  {!isEditingCoords ? (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditingCoords(true)} className="h-6 px-2 text-[10px] font-black uppercase text-black hover:bg-primary/10">
-                      <Pencil className="mr-1 h-3 w-3" /> Editar
-                    </Button>
-                  ) : (
-                    <div className="flex gap-1">
-                      <Button type="button" variant="ghost" size="sm" onClick={handleSaveCoordsEdit} className="h-6 px-2 text-[10px] font-black uppercase text-green-700 hover:bg-green-50">
-                        <Check className="mr-1 h-3 w-3" /> Aplicar
-                      </Button>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => {
-                        setEditLat(selectedPoint.lat.toString());
-                        setEditLon(selectedPoint.lon.toString());
-                        setIsEditingCoords(false);
-                      }} className="h-6 px-2 text-[10px] font-black uppercase text-destructive hover:bg-destructive/5">
-                        <X className="mr-1 h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-normal uppercase text-black">Latitud</Label>
+                  <Input 
+                    type="text" 
+                    value={editLat} 
+                    onChange={(e) => setEditLat(e.target.value)}
+                    className="h-9 text-[11px] font-code text-black bg-white border-neutral-300 rounded-none"
+                  />
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-0.5">
-                    <Label className="text-[9px] font-black uppercase text-black">Latitud</Label>
-                    <Input 
-                      type="text" 
-                      value={editLat} 
-                      onChange={(e) => setEditLat(e.target.value)}
-                      disabled={!isEditingCoords}
-                      className="h-8 text-[11px] font-code font-black text-black bg-white border-neutral-300"
-                    />
-                  </div>
-                  <div className="space-y-0.5">
-                    <Label className="text-[9px] font-black uppercase text-black">Longitud</Label>
-                    <Input 
-                      type="text" 
-                      value={editLon} 
-                      onChange={(e) => setEditLon(e.target.value)}
-                      disabled={!isEditingCoords}
-                      className="h-8 text-[11px] font-code font-black text-black bg-white border-neutral-300"
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-normal uppercase text-black">Longitud</Label>
+                  <Input 
+                    type="text" 
+                    value={editLon} 
+                    onChange={(e) => setEditLon(e.target.value)}
+                    className="h-9 text-[11px] font-code text-black bg-white border-neutral-300 rounded-none"
+                  />
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-11 bg-accent hover:bg-accent/90 text-white font-black uppercase tracking-widest shadow-md" disabled={isGeneratingName || isEditingCoords}>
+              <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-normal uppercase tracking-widest shadow-md rounded-none" disabled={isGeneratingName}>
                 <Send className="mr-2 h-4 w-4" /> Guardar punto
               </Button>
             </form>
@@ -748,13 +708,13 @@ export function DataEntryForm({
         <div className="space-y-3 pt-2">
           <Separator className="bg-neutral-200" />
           <div className="grid grid-cols-1 gap-2 pt-1">
-            <Button className="w-full h-14 text-md font-black uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white" onClick={() => {
+            <Button className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white" onClick={() => {
               setCurrentReportId(null);
               setActiveView('select-project');
             }}>
               <FileText className="h-6 w-6" /> Crear reporte
             </Button>
-            <Button variant="outline" className="w-full h-14 text-md font-black uppercase tracking-widest flex items-center gap-3 border-black text-black hover:bg-neutral-50 shadow-sm" onClick={() => setActiveView('consult')}>
+            <Button variant="outline" className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 border-black text-black hover:bg-neutral-50 shadow-sm" onClick={() => setActiveView('consult')}>
               <Search className="h-6 w-6" /> Ver Historial
             </Button>
           </div>
