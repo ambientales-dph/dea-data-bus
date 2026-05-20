@@ -161,7 +161,7 @@ function DataExplorer({
                                         <button 
                                           key={p.formId} 
                                           onClick={() => onSelectPlanilla(station, report.id, p.formId, p.medium)}
-                                          className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase hover:text-primary transition-colors group w-full text-left"
+                                          className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase hover:text-primary transition-colors group w-full text-left py-0.5"
                                         >
                                           <div className="w-1 h-1 rounded-full bg-neutral-200 group-hover:bg-primary" />
                                           <span className="hover:underline">{p.medium.replace('_', ' ')}</span>
@@ -621,6 +621,7 @@ export function DataEntryForm({
     setCurrentReportId(reportId);
     setActiveFormId(formId);
     
+    // Mapeo dinámico del medio al ID de la plantilla
     const foundTemplate = templates.find(t => t.medium === medium);
     if (foundTemplate) {
       setSelectedTemplate(foundTemplate.id);
