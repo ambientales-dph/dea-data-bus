@@ -62,14 +62,12 @@ export function DataEntryForm({
   const lastPointKeyRef = useRef<string | null>(null);
   const isInitialLoadRef = useRef(true);
 
-  // Cargar plantillas del sistema y personalizadas
   const customTemplatesQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(collection(db, 'custom_templates'));
   }, [db, user]);
   const { data: customTemplates } = useCollection(customTemplatesQuery);
 
-  // Consulta de analitos del reporte actual para mostrar planillas ya registradas
   const currentReportSamplesQuery = useMemo(() => {
     if (!db || !user || !currentReportId) return null;
     return query(collection(db, 'samples'), where('reportId', '==', currentReportId));
@@ -686,8 +684,8 @@ export function DataEntryForm({
 
       {activeView === 'create-station' && (
         <Card className="border-none bg-transparent shadow-none animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden rounded-none">
-          <CardContent className="p-0 space-y-3">
-            <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-3">
+          <CardContent className="p-0 space-y-4">
+            <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-4">
               <div className="space-y-1">
                 <Label htmlFor="station-name" className="text-[10px] font-normal uppercase text-black block">ETIQUETA</Label>
                 <div className="relative">
@@ -695,31 +693,30 @@ export function DataEntryForm({
                     id="station-name" 
                     placeholder="Ej: EMA0001" 
                     {...stationForm.register('name')} 
-                    className="text-black font-code text-xs h-9 border-neutral-300 rounded-none bg-white" 
+                    className="text-black font-code text-xs h-9 border-none shadow-none focus-visible:ring-0 rounded-none bg-white px-0" 
                   />
-                  {isGeneratingName && <div className="absolute right-3 top-2.5"><Loader2 className="h-4 w-4 animate-spin text-neutral-400" /></div>}
+                  {isGeneratingName && <div className="absolute right-0 top-2.5"><Loader2 className="h-4 w-4 animate-spin text-neutral-400" /></div>}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-normal uppercase text-black">LATITUD</Label>
-                  <Input 
-                    type="text" 
-                    value={editLat} 
-                    onChange={(e) => handleManualCoordChange('lat', e.target.value)}
-                    className="h-9 text-[11px] font-code text-black bg-white border-neutral-300 rounded-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-normal uppercase text-black">LONGITUD</Label>
-                  <Input 
-                    type="text" 
-                    value={editLon} 
-                    onChange={(e) => handleManualCoordChange('lon', e.target.value)}
-                    className="h-9 text-[11px] font-code text-black bg-white border-neutral-300 rounded-none"
-                  />
-                </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-normal uppercase text-black">LATITUD</Label>
+                <Input 
+                  type="text" 
+                  value={editLat} 
+                  onChange={(e) => handleManualCoordChange('lat', e.target.value)}
+                  className="h-9 text-[11px] font-code text-black bg-white border-none shadow-none focus-visible:ring-0 rounded-none px-0"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[10px] font-normal uppercase text-black">LONGITUD</Label>
+                <Input 
+                  type="text" 
+                  value={editLon} 
+                  onChange={(e) => handleManualCoordChange('lon', e.target.value)}
+                  className="h-9 text-[11px] font-code text-black bg-white border-none shadow-none focus-visible:ring-0 rounded-none px-0"
+                />
               </div>
 
               <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-normal uppercase tracking-widest shadow-md rounded-none" disabled={isGeneratingName}>
