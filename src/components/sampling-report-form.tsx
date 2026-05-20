@@ -15,6 +15,7 @@ import { CheckCircle2, Loader2, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FreatimetroFormIntegrated } from './freatimetro-form-integrated';
 import { SurfaceWaterFormIntegrated } from './surface-water-form-integrated';
+import { MONITORING_TEMPLATES } from '@/app/lib/monitoring-constants';
 
 const analyteSchema = z.object({
   medium: z.enum(['agua_superficial', 'agua_subterranea', 'suelo', 'sedimentos']),
@@ -84,12 +85,10 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
         if (snap.exists()) setTemplate(snap.data());
       });
     } else if (templateId !== 'manual') {
-      fetch('/data/parametros_monitoreo.json')
-        .then(res => res.json())
-        .then(data => {
-          const found = data.medios.find((m: any) => m.id === templateId);
-          if (found) setTemplate(found);
-        });
+      const found = MONITORING_TEMPLATES.find((m: any) => m.id === templateId);
+      if (found) {
+        setTemplate(found);
+      }
     }
   }, [templateId, db]);
 

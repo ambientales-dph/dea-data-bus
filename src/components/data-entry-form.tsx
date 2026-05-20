@@ -21,6 +21,7 @@ import { ReportDetail } from './report-detail';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { MONITORING_TEMPLATES, BASIN_CODES_DATA } from '@/app/lib/monitoring-constants';
 
 /**
  * Helper para verificar si un punto está dentro de un polígono (Ray Casting Algorithm)
@@ -55,7 +56,7 @@ function DataExplorer({
 }: { 
   onSelectStation: (point: SelectedPoint) => void,
   onSelectReport: (station: any, reportId: string) => void,
-  onSelectPlanilla: (station: any, reportId: string, formId: string, medium: string) => void
+  onSelectPlanilla: (station: any, reportId: string, formId: string, medium: string, timestamp: any) => void
 }) {
   const db = useFirestore();
 
@@ -107,6 +108,11 @@ function DataExplorer({
     return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
   };
 
+  const mediumLabel = (m: string) => {
+    const labels: any = { agua_superficial: 'Agua Superficial', agua_subterranea: 'Freatímetro', suelo: 'Suelo', sedimentos: 'Sedimento' };
+    return labels[m] || m;
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="border-b border-neutral-200 pb-4">
@@ -147,6 +153,7 @@ function DataExplorer({
                       <AccordionTrigger className="flex-1 py-1 px-2 hover:no-underline hover:bg-neutral-50 rounded-none transition-colors">
                         <span 
                           role="button"
+                          tabIndex={0}
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectStation({
@@ -157,7 +164,7 @@ function DataExplorer({
                               basinCode: station.basinCode
                             });
                           }}
-                          className="text-[12px] text-black font-normal truncate text-left hover:underline underline-offset-4 decoration-primary/30 cursor-pointer"
+                          className="text-[12px] text-black font-normal truncate text-left hover:underline underline-offset-4 decoration-primary/30 cursor-pointer focus:outline-none"
                         >
                           {station.name}
                         </span>
@@ -178,11 +185,12 @@ function DataExplorer({
                                   <AccordionTrigger className="flex-1 py-1 px-2 hover:no-underline hover:bg-neutral-50 rounded-none transition-colors">
                                     <span 
                                       role="button"
+                                      tabIndex={0}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         onSelectReport(station, report.id);
                                       }}
-                                      className="text-[10px] text-neutral-600 uppercase font-normal tracking-tight text-left hover:underline cursor-pointer"
+                                      className="text-[10px] text-neutral-600 uppercase font-normal tracking-tight text-left hover:underline cursor-pointer focus:outline-none"
                                     >
                                       {report.oid}
                                     </span>
@@ -195,13 +203,14 @@ function DataExplorer({
                                       {planillas.map((p) => (
                                         <span 
                                           role="button"
+                                          tabIndex={0}
                                           key={p.formId} 
-                                          onClick={() => onSelectPlanilla(station, report.id, p.formId, p.medium)}
-                                          className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase hover:text-black transition-colors group w-full text-left py-1 cursor-pointer"
+                                          onClick={() => onSelectPlanilla(station, report.id, p.formId, p.medium, p.timestamp)}
+                                          className="flex items-center gap-2 text-[9px] text-neutral-400 uppercase hover:text-black transition-colors group w-full text-left py-1 cursor-pointer focus:outline-none"
                                         >
                                           <div className="w-1 h-1 rounded-full bg-neutral-200 group-hover:bg-primary" />
                                           <span className="hover:underline">
-                                            {p.medium.replace('_', ' ')} • {formatDateShort(p.timestamp)} • {p.formId.substring(0, 4)}
+                                            {mediumLabel(p.medium)} • {formatDateShort(p.timestamp)} • {p.formId.substring(0, 4)}
                                           </span>
                                         </span>
                                       ))}
@@ -251,7 +260,6 @@ export function DataEntryForm({
   const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [projectSearch, setProjectSearch] = useState<string>('');
-  const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('manual');
 
   const [editLat, setEditLat] = useState('');
@@ -290,17 +298,6 @@ export function DataEntryForm({
     });
     return Array.from(planillasMap.values());
   }, [currentReportSamples]);
-
-  useEffect(() => {
-    fetch('/data/parametros_monitoreo.json')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.medios) {
-          setTemplates(data.medios);
-        }
-      })
-      .catch(err => console.error("Error al cargar plantillas", err));
-  }, []);
 
   useEffect(() => {
     if (selectedPoint && isInitialLoadRef.current) {
@@ -501,33 +498,23 @@ export function DataEntryForm({
         setEditLat(latitude.toString());
         setEditLon(longitude.toString());
         
-        let detectedBasin = selectedPoint?.basinCode || '';
-        
-        // Intentar identificar la cuenca de forma local
-        try {
-          const res = await fetch('/data/codigos_cuencas.json');
-          if (res.ok) {
-            const data = await res.json();
-            const features = data.features;
-            for (const feature of features) {
-              const geometry = feature.geometry;
-              if (geometry.type === 'Polygon') {
-                if (isPointInPoly([longitude, latitude], geometry.coordinates)) {
-                  detectedBasin = feature.properties.CODIGO || '';
-                  break;
-                }
-              } else if (geometry.type === 'MultiPolygon') {
-                for (const poly of geometry.coordinates) {
-                  if (isPointInPoly([longitude, latitude], poly)) {
-                    detectedBasin = feature.properties.CODIGO || '';
-                    break;
-                  }
-                }
+        let detectedBasin = '';
+        const features = BASIN_CODES_DATA.features;
+        for (const feature of features) {
+          const geometry = feature.geometry;
+          if (geometry.type === 'Polygon') {
+            if (isPointInPoly([longitude, latitude], geometry.coordinates as any)) {
+              detectedBasin = feature.properties.CODIGO || '';
+              break;
+            }
+          } else if (geometry.type === 'MultiPolygon') {
+            for (const poly of geometry.coordinates) {
+              if (isPointInPoly([longitude, latitude], poly as any)) {
+                detectedBasin = feature.properties.CODIGO || '';
+                break;
               }
             }
           }
-        } catch (error) {
-          console.error("Error identificando cuenca localmente", error);
         }
 
         if (selectedPoint) {
@@ -541,7 +528,7 @@ export function DataEntryForm({
         
         toast({ 
           title: "Ubicación capturada", 
-          description: `Cuenca: ${detectedBasin || 'No detectada'}. Coordenadas: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` 
+          description: `Cuenca detectada: ${detectedBasin || 'Desconocida'}. Coordenadas: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` 
         });
       },
       (error) => {
@@ -695,7 +682,7 @@ export function DataEntryForm({
 
   const handleReopenPlanilla = (planilla: { formId: string, medium: string }) => {
     setActiveFormId(planilla.formId);
-    const foundTemplate = templates.find(t => t.medium === planilla.medium);
+    const foundTemplate = MONITORING_TEMPLATES.find(t => t.medium === planilla.medium);
     if (foundTemplate) {
       setSelectedTemplate(foundTemplate.id);
     } else {
@@ -724,7 +711,7 @@ export function DataEntryForm({
     setActiveView('report-view');
   };
 
-  const handleExplorerSelectPlanilla = (station: any, reportId: string, formId: string, medium: string) => {
+  const handleExplorerSelectPlanilla = (station: any, reportId: string, formId: string, medium: string, timestamp: any) => {
     const point = {
       lat: station.latitude,
       lon: station.longitude,
@@ -737,7 +724,7 @@ export function DataEntryForm({
     setCurrentReportId(reportId);
     setActiveFormId(formId);
     
-    const foundTemplate = templates.find(t => t.medium === medium);
+    const foundTemplate = MONITORING_TEMPLATES.find(t => t.medium === medium);
     if (foundTemplate) {
       setSelectedTemplate(foundTemplate.id);
     } else {
@@ -904,7 +891,7 @@ export function DataEntryForm({
                     )}
                     <Separator className="my-1" />
                     <div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Plantillas del Sistema</div>
-                    {templates.map((t) => (
+                    {MONITORING_TEMPLATES.map((t) => (
                       <SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>
                     ))}
                   </SelectContent>
