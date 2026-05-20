@@ -70,6 +70,7 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchIdRef = useRef(0);
 
   const stationsQuery = useMemo(() => {
     if (!db || !user) return null;
@@ -181,7 +182,7 @@ export default function Home() {
     return match ? match[0] : fullName.substring(0, 8);
   };
 
-  // Lógica de búsqueda mejorada con normalización y debounce reducido
+  // Lógica de búsqueda híbrida mejorada
   useEffect(() => {
     const rawQuery = searchQuery.trim();
     const q = normalizeText(rawQuery);
@@ -191,8 +192,11 @@ export default function Home() {
       setIsSearching(false);
       return;
     }
+
+    // Incrementar el ID de búsqueda para manejar respuestas asíncronas
+    const currentSearchId = ++searchIdRef.current;
     
-    // 1. Búsqueda instantánea en ESTACIONES (Local)
+    // 1. Búsqueda local inmediata (Estaciones y Reportes)
     const stationResults: SearchResult[] = (stations || [])
       .filter(s => {
         const stationName = normalizeText(String(s.name || ''));
@@ -207,7 +211,6 @@ export default function Home() {
         stationId: s.id
       }));
 
-    // 2. Búsqueda instantánea en REPORTES (Local)
     const reportResults: SearchResult[] = (reports || [])
       .filter(r => {
         const oid = normalizeText(String(r.oid || ''));
@@ -229,10 +232,12 @@ export default function Home() {
       })
       .filter((r): r is SearchResult => r !== null);
 
-    const localResults = [...stationResults, ...reportResults].sort((a, b) => a.display_name.localeCompare(b.display_name));
+    const localResults = [...stationResults, ...reportResults];
+    
+    // Mostramos resultados locales de inmediato
     setSearchResults(localResults);
 
-    // 3. Búsqueda en OSM con Debounce reducido (300ms)
+    // 2. Búsqueda remota (Lugares OSM) con Debounce
     if (q.length < 3) {
       setIsSearching(false);
       return;
@@ -244,11 +249,11 @@ export default function Home() {
     const timer = setTimeout(async () => {
       try {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(rawQuery)}&limit=20&countrycodes=ar`,
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(rawQuery)}&limit=15&countrycodes=ar`,
           { headers: { 'Accept-Language': 'es' } }
         );
         
-        if (response.ok) {
+        if (response.ok && currentSearchId === searchIdRef.current) {
           const osmData = await response.json();
           const placeResults: SearchResult[] = osmData.map((place: any) => ({
             type: 'place',
@@ -257,8 +262,8 @@ export default function Home() {
             lon: place.lon
           }));
 
+          // Fusionamos manteniendo los locales y reemplazando los previos de tipo 'place'
           setSearchResults(prev => {
-            // Mantener resultados locales actuales y agregar los lugares de OSM sin duplicar tipos
             const locals = prev.filter(r => r.type !== 'place');
             return [...locals, ...placeResults];
           });
@@ -266,9 +271,11 @@ export default function Home() {
       } catch (error) {
         console.error("OSM Search failed", error);
       } finally {
-        setIsSearching(false);
+        if (currentSearchId === searchIdRef.current) {
+          setIsSearching(false);
+        }
       }
-    }, 300);
+    }, 400);
     
     return () => clearTimeout(timer);
   }, [searchQuery, stations, reports]);
