@@ -80,12 +80,10 @@ export function DataEntryForm({
   const existingPlanillas = useMemo(() => {
     const planillasMap = new Map<string, { formId: string, medium: string, userEmail?: string, timestamp?: any }>();
     currentReportSamples.forEach((s: any) => {
-      // Usar 'legacy' si no tiene formId para permitir editar datos viejos
       const fId = s.formId || 'legacy';
       const medium = s.medium || 'otro';
       
       const existing = planillasMap.get(fId);
-      // Nos quedamos con la entrada que tenga el timestamp más reciente para el encabezado
       if (!existing || (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis()))) {
         planillasMap.set(fId, { 
           formId: fId, 
@@ -153,6 +151,8 @@ export function DataEntryForm({
         setActiveView('summary');
       } else {
         setActiveView('create-station');
+        setEditLat(selectedPoint.lat.toString());
+        setEditLon(selectedPoint.lon.toString());
       }
       setCurrentReportId(null);
       setActiveFormId(null);
@@ -271,11 +271,23 @@ export function DataEntryForm({
   const handleCreateStation = (data: StationValues) => {
     if (!selectedPoint) return;
     
+    const finalLat = parseFloat(editLat);
+    const finalLon = parseFloat(editLon);
+
+    if (isNaN(finalLat) || isNaN(finalLon)) {
+      toast({
+        variant: "destructive",
+        title: "Error de coordenadas",
+        description: "Por favor ingresá valores numéricos válidos para latitud y longitud.",
+      });
+      return;
+    }
+
     const newStationRef = doc(collection(db, 'stations'));
     const stationData = {
       name: data.name,
-      latitude: selectedPoint.lat,
-      longitude: selectedPoint.lon,
+      latitude: finalLat,
+      longitude: finalLon,
       basinCode: selectedPoint.basinCode || '',
       userId: user?.uid,
       userEmail: user?.email,
@@ -300,13 +312,18 @@ export function DataEntryForm({
     });
   };
 
+  const handleSaveCoordsEdit = () => {
+    const lat = parseFloat(editLat);
+    const lon = parseFloat(editLon);
+    if (!isNaN(lat) && !isNaN(lon) && selectedPoint) {
+      onPointUpdate({ ...selectedPoint, lat, lon });
+      setIsEditingCoords(false);
+    }
+  };
+
   const handleConfirmTemplate = () => {
-    // Generar un nuevo formId único para esta nueva planilla
     const newFormId = crypto.randomUUID();
     setActiveFormId(newFormId);
-    
-    // Si ya existe un currentReportId (estamos abriendo un reporte viejo para agregar planilla), vamos directo.
-    // Si no (es un flujo de reporte nuevo), disparamos handleStartReport que hará el addDoc.
     if (currentReportId) {
       setActiveView('report-entry');
     } else {
@@ -399,12 +416,10 @@ export function DataEntryForm({
 
   const handleReopenPlanilla = (planilla: { formId: string, medium: string }) => {
     setActiveFormId(planilla.formId);
-    // Intentar encontrar la plantilla correcta para configurar la vista
     const foundTemplate = templates.find(t => t.medium === planilla.medium);
     if (foundTemplate) {
       setSelectedTemplate(foundTemplate.id);
     } else {
-      // Fallback a manual o buscar en plantillas personalizadas si fuera necesario
       setSelectedTemplate('manual');
     }
     setActiveView('report-entry');
@@ -665,7 +680,7 @@ export function DataEntryForm({
             <CardTitle className="text-md text-foreground font-black uppercase tracking-widest">Definir Estación</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-4">
+            <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="station-name" className="text-[10px] font-bold uppercase text-muted-foreground">Nombre de la Estación</Label>
                 <div className="relative">
@@ -673,7 +688,55 @@ export function DataEntryForm({
                   {isGeneratingName && <div className="absolute right-3 top-3"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
                 </div>
               </div>
-              <Button type="submit" className="w-full h-12 bg-accent hover:bg-accent/90 text-white font-black uppercase tracking-widest" disabled={isGeneratingName}>
+
+              <div className="space-y-3 bg-muted/10 p-4 rounded-md border border-dashed">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Coordenadas Geográficas</Label>
+                  {!isEditingCoords ? (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditingCoords(true)} className="h-6 px-2 text-[10px] font-bold uppercase hover:bg-primary/10">
+                      <Pencil className="mr-1 h-3 w-3" /> Editar
+                    </Button>
+                  ) : (
+                    <div className="flex gap-1">
+                      <Button type="button" variant="ghost" size="sm" onClick={handleSaveCoordsEdit} className="h-6 px-2 text-[10px] font-bold uppercase text-green-600 hover:bg-green-50">
+                        <Check className="mr-1 h-3 w-3" /> Aplicar
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => {
+                        setEditLat(selectedPoint.lat.toString());
+                        setEditLon(selectedPoint.lon.toString());
+                        setIsEditingCoords(false);
+                      }} className="h-6 px-2 text-[10px] font-bold uppercase text-destructive hover:bg-destructive/5">
+                        <X className="mr-1 h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold text-muted-foreground">Latitud</Label>
+                    <Input 
+                      type="text" 
+                      value={editLat} 
+                      onChange={(e) => setEditLat(e.target.value)}
+                      disabled={!isEditingCoords}
+                      className="h-8 text-[11px] font-code font-bold bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold text-muted-foreground">Longitud</Label>
+                    <Input 
+                      type="text" 
+                      value={editLon} 
+                      onChange={(e) => setEditLon(e.target.value)}
+                      disabled={!isEditingCoords}
+                      className="h-8 text-[11px] font-code font-bold bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Button type="submit" className="w-full h-12 bg-accent hover:bg-accent/90 text-white font-black uppercase tracking-widest" disabled={isGeneratingName || isEditingCoords}>
                 <Send className="mr-2 h-4 w-4" /> Guardar punto
               </Button>
             </form>
