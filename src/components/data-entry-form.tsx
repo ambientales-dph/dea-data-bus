@@ -135,8 +135,15 @@ function DataExplorer({
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <div className="border-b border-neutral-200 pb-2">
-        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-black flex items-center gap-2">
-          <Database className="h-3.5 w-3.5" /> Explorador
+        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-black flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <Database className="h-3.5 w-3.5" /> Explorador
+          </div>
+          <div className="flex items-center gap-3 font-normal normal-case tracking-normal text-neutral-400">
+            <span title="Estaciones">{stations.length} Est.</span>
+            <span title="Reportes">{reports.length} Rep.</span>
+            <span title="Parámetros">{samples.length} Par.</span>
+          </div>
         </h2>
       </div>
 
@@ -1084,3 +1091,4 @@ export function DataEntryForm({
     </div>
   );
 }
+
