@@ -1,17 +1,19 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, doc, setDoc, serverTimestamp, query, where, orderBy, limit, getDocs, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, query, where, orderBy, limit, getDocs, addDoc } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, useCollection, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation, FolderOpen, Map as MapIcon, Waves } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation, FolderOpen, Pencil } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -43,11 +45,12 @@ function isPointInPoly(pt: [number, number], poly: [number, number][][]) {
 
 const stationSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
+  description: z.string().optional(),
 });
 
 type StationValues = z.infer<typeof stationSchema>;
 
-type FormView = 'summary' | 'create-station' | 'report-entry' | 'consult' | 'report-view' | 'select-project' | 'select-template';
+type FormView = 'summary' | 'create-station' | 'edit-station' | 'report-entry' | 'consult' | 'report-view' | 'select-project' | 'select-template';
 
 function DataExplorer({ 
   onSelectStation,
@@ -70,7 +73,6 @@ function DataExplorer({
   const samplesQuery = useMemo(() => query(collection(db, 'samples')), [db]);
   const { data: samples, loading: samplesLoading } = useCollection(samplesQuery);
 
-  // Carga dinámica de los nombres de las cuencas desde el JSON público
   useEffect(() => {
     fetch('/data/codigos_cuencas.json')
       .then(res => res.json())
@@ -91,7 +93,6 @@ function DataExplorer({
   }, []);
 
   const getBasinCodeFromStationName = (name: string) => {
-    // Patrón: EM + Código (2-4 letras) + 4 dígitos
     const match = name.match(/^EM([A-Za-z]{2,4})\d{4}$/);
     return match ? match[1] : null;
   };
@@ -99,7 +100,6 @@ function DataExplorer({
   const stationsByBasin = useMemo(() => {
     const groups: Record<string, any[]> = {};
     stations.forEach(s => {
-      // Prioridad: Deducción por nombre -> Campo basinCode -> Sin Clasificar
       let bCode = getBasinCodeFromStationName(s.name || '');
       if (!bCode) bCode = s.basinCode || 'S/C';
       
@@ -471,8 +471,20 @@ export function DataEntryForm({
 
   const stationForm = useForm<StationValues>({
     resolver: zodResolver(stationSchema),
-    defaultValues: { name: '' },
+    defaultValues: { name: '', description: '' },
   });
+
+  // Update form values when station data changes
+  useEffect(() => {
+    if (stationDetails) {
+      stationForm.reset({
+        name: (stationDetails as any).name || '',
+        description: (stationDetails as any).description || '',
+      });
+      setEditLat((stationDetails as any).latitude.toString());
+      setEditLon((stationDetails as any).longitude.toString());
+    }
+  }, [stationDetails, stationForm]);
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '---';
@@ -627,6 +639,7 @@ export function DataEntryForm({
       name: data.name,
       latitude: finalLat,
       longitude: finalLon,
+      description: data.description || '',
       basinCode: selectedPoint.basinCode || '',
       userId: user?.uid,
       userEmail: user?.email,
@@ -649,6 +662,53 @@ export function DataEntryForm({
       title: "Estación registrada",
       description: `Se guardó el punto: ${data.name}`,
     });
+  };
+
+  const handleUpdateStation = (data: StationValues) => {
+    if (!selectedPoint?.stationId) return;
+    
+    const finalLat = parseFloat(editLat);
+    const finalLon = parseFloat(editLon);
+
+    if (isNaN(finalLat) || isNaN(finalLon)) {
+      toast({
+        variant: "destructive",
+        title: "Error de coordenadas",
+        description: "Por favor ingresá valores numéricos válidos para latitud y longitud.",
+      });
+      return;
+    }
+
+    const currentStationRef = doc(db, 'stations', selectedPoint.stationId);
+    const updateData = {
+      name: data.name,
+      latitude: finalLat,
+      longitude: finalLon,
+      description: data.description || '',
+    };
+
+    updateDoc(currentStationRef, updateData)
+      .then(() => {
+        onPointUpdate({
+          ...selectedPoint,
+          lat: finalLat,
+          lon: finalLon,
+          name: data.name,
+        });
+        setActiveView('summary');
+        toast({
+          title: "Estación actualizada",
+          description: `Se guardaron los cambios de: ${data.name}`,
+        });
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: currentStationRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   const handleConfirmTemplate = () => {
@@ -1008,12 +1068,25 @@ export function DataEntryForm({
                 <div className="flex items-center gap-2">
                   <Database className="h-4 w-4 text-black shrink-0" />
                   <CardTitle className="text-lg font-normal text-black leading-none tracking-tight">{selectedPoint.name}</CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setActiveView('edit-station')}
+                    className="h-6 w-6 ml-1 text-black hover:bg-primary/10 transition-colors"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
                 <div className="space-y-0.5 ml-6">
                   <CardDescription className="text-[10px] font-normal text-black font-body">
                     {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
                   </CardDescription>
                   <CardDescription className="text-[10px] font-normal text-black font-body">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>
+                  {stationDetails?.description && (
+                    <CardDescription className="text-[11px] font-normal text-black mt-2 italic leading-relaxed">
+                      {stationDetails.description}
+                    </CardDescription>
+                  )}
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
@@ -1031,10 +1104,10 @@ export function DataEntryForm({
         </Card>
       )}
 
-      {activeView === 'create-station' && (
+      {(activeView === 'create-station' || activeView === 'edit-station') && (
         <Card className="border-none bg-transparent shadow-none animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden rounded-none">
           <CardContent className="p-0 space-y-2">
-            <form onSubmit={stationForm.handleSubmit(handleCreateStation)} className="space-y-4">
+            <form onSubmit={stationForm.handleSubmit(activeView === 'edit-station' ? handleUpdateStation : handleCreateStation)} className="space-y-4">
               <div className="space-y-0">
                 <div className="flex items-center justify-between py-2 border-b border-neutral-200">
                   <Label htmlFor="station-name" className="text-[10px] font-normal uppercase text-black shrink-0">ETIQUETA</Label>
@@ -1068,6 +1141,16 @@ export function DataEntryForm({
                     className="h-8 text-[12px] font-body text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full"
                   />
                 </div>
+
+                <div className="py-3 border-b border-neutral-200 space-y-2">
+                  <Label htmlFor="description" className="text-[10px] font-normal uppercase text-black">DESCRIPCIÓN / NOTAS</Label>
+                  <Textarea 
+                    id="description" 
+                    {...stationForm.register('description')}
+                    placeholder="Detalles sobre el acceso, entorno o estado del punto..."
+                    className="min-h-[80px] text-[12px] font-body text-black border-neutral-200 focus-visible:ring-primary/50 rounded-none bg-neutral-50"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-2">
@@ -1079,13 +1162,25 @@ export function DataEntryForm({
                 >
                   <Navigation className="mr-2 h-4 w-4" /> CAPTURAR MI UBICACIÓN (GPS)
                 </Button>
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-normal uppercase tracking-widest shadow-md rounded-none" 
-                  disabled={isGeneratingName}
-                >
-                  <Send className="mr-2 h-4 w-4" /> GUARDAR PUNTO
-                </Button>
+                <div className="flex gap-2">
+                   {activeView === 'edit-station' && (
+                     <Button 
+                       type="button" 
+                       variant="ghost"
+                       onClick={() => setActiveView('summary')}
+                       className="flex-1 h-12 text-black font-normal uppercase tracking-widest text-[10px] rounded-none border border-neutral-300"
+                     >
+                       CANCELAR
+                     </Button>
+                   )}
+                   <Button 
+                     type="submit" 
+                     className="flex-[2] h-12 bg-primary hover:bg-primary/90 text-white font-normal uppercase tracking-widest shadow-md rounded-none" 
+                     disabled={isGeneratingName}
+                   >
+                     <Send className="mr-2 h-4 w-4" /> {activeView === 'edit-station' ? 'ACTUALIZAR DATOS' : 'GUARDAR PUNTO'}
+                   </Button>
+                </div>
               </div>
             </form>
           </CardContent>
