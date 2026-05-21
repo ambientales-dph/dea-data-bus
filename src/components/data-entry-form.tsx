@@ -133,55 +133,41 @@ function DataExplorer({
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="border-b border-neutral-200 pb-4">
-        <h2 className="text-[11px] font-normal uppercase tracking-[0.2em] text-black flex items-center gap-2">
-          <Database className="h-4 w-4" /> Explorador de Datos
+    <div className="space-y-4 animate-in fade-in duration-500">
+      <div className="border-b border-neutral-200 pb-2">
+        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-black flex items-center gap-2">
+          <Database className="h-3.5 w-3.5" /> Explorador
         </h2>
-        <div className="flex gap-4 mt-2">
-          <div className="flex flex-col">
-            <span className="text-[14px] font-normal text-black">{stations.length}</span>
-            <span className="text-[8px] uppercase text-neutral-500 tracking-tighter">Estaciones</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[14px] font-normal text-black">{reports.length}</span>
-            <span className="text-[8px] uppercase text-neutral-500 tracking-tighter">Reportes</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[14px] font-normal text-black">{samples.length}</span>
-            <span className="text-[8px] uppercase text-neutral-500 tracking-tighter">Analitos</span>
-          </div>
-        </div>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-250px)] pr-4">
-        <div className="space-y-1">
+      <ScrollArea className="h-[calc(100vh-220px)] pr-2">
+        <div className="space-y-0">
           {stations.length === 0 ? (
             <div className="py-20 text-center opacity-40">
-              <MapPin className="h-10 w-10 mx-auto mb-3" />
-              <p className="text-[9px] uppercase tracking-widest">Sin datos registrados</p>
+              <MapPin className="h-8 w-8 mx-auto mb-2" />
+              <p className="text-[8px] uppercase tracking-widest">Sin datos</p>
             </div>
           ) : (
-            <Accordion type="multiple" className="w-full space-y-4">
+            <Accordion type="multiple" className="w-full">
               {Object.entries(stationsByBasin).map(([basinCode, basinStations]) => (
                 <AccordionItem key={basinCode} value={`basin-${basinCode}`} className="border-none">
-                  <AccordionTrigger className="py-2 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group">
+                  <AccordionTrigger className="py-1 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors">
                     <div className="flex items-center gap-2">
-                      <Waves className="h-3.5 w-3.5 text-neutral-400 group-hover:text-primary transition-colors" />
-                      <span className="text-[11px] text-black uppercase font-bold tracking-widest group-hover:text-primary transition-colors">
+                      <Waves className="h-3 w-3 text-neutral-400 group-hover:text-primary transition-colors" />
+                      <span className="text-[11px] text-black uppercase font-black tracking-widest group-hover:text-primary transition-colors">
                         {basinNames[basinCode] || basinCode}
                       </span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pb-0 pt-1 pl-2">
-                    <Accordion type="multiple" className="w-full space-y-2">
+                  <AccordionContent className="pb-0 pt-0 pl-3 border-l border-neutral-100 ml-2">
+                    <Accordion type="multiple" className="w-full">
                       {basinStations.map((station: any) => {
                         const stationReports = getReportsByStation(station.id);
                         return (
                           <AccordionItem key={station.id} value={station.id} className="border-none">
-                            <AccordionTrigger className="py-1.5 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group">
+                            <AccordionTrigger className="py-0.5 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors">
                               <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-primary shrink-0" />
+                                <div className="w-1.5 h-1.5 bg-primary shrink-0" />
                                 <span 
                                   role="button"
                                   tabIndex={0}
@@ -195,25 +181,25 @@ function DataExplorer({
                                       basinCode: station.basinCode
                                     });
                                   }}
-                                  className="text-[12px] text-black font-normal truncate text-left hover:underline underline-offset-4 decoration-primary/30 group-hover:text-primary transition-colors cursor-pointer focus:outline-none"
+                                  className="text-[11px] text-black font-normal truncate text-left hover:underline underline-offset-4 decoration-primary/30 group-hover:text-primary transition-colors cursor-pointer focus:outline-none"
                                 >
                                   {station.name}
                                 </span>
                               </div>
                             </AccordionTrigger>
 
-                            <AccordionContent className="pb-0 pl-4 border-l-2 border-neutral-100 ml-3 mt-1">
+                            <AccordionContent className="pb-0 pl-4 border-l border-neutral-100 ml-2.5">
                               {stationReports.length === 0 ? (
-                                <p className="text-[9px] uppercase text-neutral-400 italic py-2">Sin reportes</p>
+                                <p className="text-[8px] uppercase text-neutral-300 italic py-1">Sin reportes</p>
                               ) : (
-                                <Accordion type="multiple" className="w-full space-y-1">
+                                <Accordion type="multiple" className="w-full">
                                   {stationReports.map((report: any) => {
                                     const planillas = getPlanillasByReport(report.id);
                                     return (
                                       <AccordionItem key={report.id} value={report.id} className="border-none">
-                                        <AccordionTrigger className="py-1 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group">
+                                        <AccordionTrigger className="py-0.5 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors">
                                           <div className="flex items-center gap-2">
-                                            <FileText className="h-3 w-3 text-neutral-400 group-hover:text-primary shrink-0" />
+                                            <FileText className="h-2.5 w-2.5 text-neutral-400 group-hover:text-primary shrink-0" />
                                             <span 
                                               role="button"
                                               tabIndex={0}
@@ -228,26 +214,26 @@ function DataExplorer({
                                           </div>
                                         </AccordionTrigger>
                                         
-                                        <AccordionContent className="pb-2 pl-6">
+                                        <AccordionContent className="pb-1 pl-4 border-l border-neutral-100 ml-3">
                                           {planillas.length > 0 ? (
-                                            <div className="space-y-1 py-1 border-l border-neutral-100 pl-3">
+                                            <div className="space-y-0.5">
                                               {planillas.map((p) => (
                                                 <div 
                                                   role="button"
                                                   tabIndex={0}
                                                   key={p.formId} 
                                                   onClick={() => onSelectPlanilla(station, report.id, p.formId, p.medium, p.timestamp)}
-                                                  className="flex items-center gap-2 text-[9px] text-black uppercase hover:text-primary transition-colors group w-full text-left py-1 cursor-pointer focus:outline-none"
+                                                  className="flex items-center gap-1.5 text-[9px] text-black uppercase hover:text-primary transition-colors group w-full text-left py-0.5 cursor-pointer focus:outline-none"
                                                 >
-                                                  <div className="w-1 h-1 rounded-full bg-primary shrink-0" />
-                                                  <span className="hover:underline underline-offset-2">
-                                                    {mediumLabel(p.medium)} • {formatDateShort(p.timestamp)} • {p.formId.substring(0, 4)}
+                                                  <div className="w-1 h-1 rounded-full bg-primary/40 shrink-0 group-hover:bg-primary" />
+                                                  <span className="hover:underline underline-offset-2 truncate">
+                                                    {mediumLabel(p.medium)} • {formatDateShort(p.timestamp)}
                                                   </span>
                                                 </div>
                                               ))}
                                             </div>
                                           ) : (
-                                            <p className="text-[8px] text-neutral-300 uppercase italic pl-3">Sin planillas</p>
+                                            <p className="text-[8px] text-neutral-300 uppercase italic">Sin planillas</p>
                                           )}
                                         </AccordionContent>
                                       </AccordionItem>
