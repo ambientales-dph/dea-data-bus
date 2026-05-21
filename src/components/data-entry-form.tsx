@@ -663,14 +663,6 @@ export function DataEntryForm({
 
   const handleStartReport = async (formId: string) => {
     if (!selectedPoint?.stationId || !user) return;
-    if (!selectedProject) {
-      toast({
-        variant: "destructive",
-        title: "Atención",
-        description: "Por favor, seleccioná un proyecto antes de iniciar el reporte.",
-      });
-      return;
-    }
 
     setIsStartingReport(true);
 
@@ -703,7 +695,7 @@ export function DataEntryForm({
       const reportData = {
         oid,
         stationId: selectedPoint.stationId,
-        trelloCardName: selectedProject,
+        trelloCardName: selectedProject || '',
         createdAt: serverTimestamp(),
         createdByEmail: user.email,
         status: 'open',
@@ -856,9 +848,9 @@ export function DataEntryForm({
           <CardHeader className="pb-4">
             <CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight">
               <Briefcase className="h-5 w-5 text-black" />
-              1. Seleccionar Proyecto
+              1. Seleccionar Proyecto (Opcional)
             </CardTitle>
-            <CardDescription className="text-xs text-neutral-600">Asociá este nuevo reporte a un proyecto activo de Trello.</CardDescription>
+            <CardDescription className="text-xs text-neutral-600">Asociá este nuevo reporte a un proyecto activo de Trello o continuá sin proyecto.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
@@ -902,7 +894,6 @@ export function DataEntryForm({
             </div>
             <Button 
               className="w-full h-12 text-sm font-normal uppercase tracking-widest bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" 
-              disabled={!selectedProject} 
               onClick={() => setActiveView('select-template')}
             >
               Siguiente: Elegir Planilla <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
