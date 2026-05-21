@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, Clock, User } from 'lucide-react';
+import { Loader2, Check, CheckCircle2, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface SurfaceWaterData {
@@ -241,9 +241,15 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                     />
                     <button 
                       onClick={() => saveIndividualParam(param.name, param.cat)} 
-                      className={cn("p-1 transition-colors", savedFields[param.name] ? "text-green-600" : "text-neutral-300 hover:text-primary")}
+                      className={cn("p-1 transition-colors", savedFields[param.name] ? "text-green-600" : "text-black hover:text-primary")}
                     >
-                      {savingFields[param.name] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                      {savingFields[param.name] ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : savedFields[param.name] ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
                     </button>
                   </div>
                 </div>

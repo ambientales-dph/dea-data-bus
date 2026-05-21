@@ -249,8 +249,14 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
             </div>
             <div className="flex items-center gap-2">
               <input type="number" step="any" className={inputClass} value={formData.cotaBrocal ?? ""} onChange={(e) => handleInputChange("cotaBrocal", e.target.value)} />
-              <button onClick={() => saveIndividualParam('cotaBrocal', 'Cota Brocal', 'Geometría')} className={cn("p-1", savedFields['cotaBrocal'] ? "text-green-600" : "text-neutral-300")}>
-                {savingFields['cotaBrocal'] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+              <button onClick={() => saveIndividualParam('cotaBrocal', 'Cota Brocal', 'Geometría')} className={cn("p-1 transition-colors", savedFields['cotaBrocal'] ? "text-green-600" : "text-black")}>
+                {savingFields['cotaBrocal'] ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : savedFields['cotaBrocal'] ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : (
+                  <Check className="h-3.5 w-3.5" />
+                )}
               </button>
             </div>
           </div>
@@ -271,8 +277,14 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
               </div>
               <div className="flex items-center gap-2">
                 <input type="number" step="any" className={inputClass} value={(formData as any)[field.key] ?? ""} onChange={(e) => handleInputChange(field.key as any, e.target.value)} />
-                <button onClick={() => saveIndividualParam(field.key as any, field.name, field.type)} className={cn("p-1", savedFields[field.key] ? "text-green-600" : "text-neutral-300")}>
-                  {savingFields[field.key] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                <button onClick={() => saveIndividualParam(field.key as any, field.name, field.type)} className={cn("p-1 transition-colors", savedFields[field.key] ? "text-green-600" : "text-black")}>
+                  {savingFields[field.key] ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : savedFields[field.key] ? (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -294,8 +306,14 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
               </div>
               <div className="flex items-center gap-2">
                 <input type="number" step="any" className={inputClass} value={(formData as any)[field.key] ?? ""} onChange={(e) => handleInputChange(field.key as any, e.target.value)} />
-                <button onClick={() => saveIndividualParam(field.key as any, field.name, field.type)} className={cn("p-1", savedFields[field.key] ? "text-green-600" : "text-neutral-300")}>
-                  {savingFields[field.key] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                <button onClick={() => saveIndividualParam(field.key as any, field.name, field.type)} className={cn("p-1 transition-colors", savedFields[field.key] ? "text-green-600" : "text-black")}>
+                  {savingFields[field.key] ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : savedFields[field.key] ? (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -309,8 +327,14 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
           </div>
           <div className="flex items-center gap-4">
             <span className="text-xl font-black text-white font-code">{cotaAgua !== null ? `${cotaAgua} m` : "—"}</span>
-            <button onClick={() => saveIndividualParam('cotaAgua', 'Cota de Agua', 'Cálculo')} className={cn("p-1", savedFields['cotaAgua'] ? "text-green-400" : "text-neutral-600")}>
-              {savingFields['cotaAgua'] ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+            <button onClick={() => saveIndividualParam('cotaAgua', 'Cota de Agua', 'Cálculo')} className={cn("p-1 transition-colors", savedFields['cotaAgua'] ? "text-green-400" : "text-white")}>
+              {savingFields['cotaAgua'] ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : savedFields['cotaAgua'] ? (
+                <CheckCircle2 className="h-5 w-5" />
+              ) : (
+                <Check className="h-5 w-5" />
+              )}
             </button>
           </div>
         </div>
