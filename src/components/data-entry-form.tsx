@@ -79,7 +79,7 @@ function DataExplorer({
     return groups;
   }, [stations]);
 
-  const basinNames = useMemo(() => {
+  const basinNamesMap = useMemo(() => {
     const map: Record<string, string> = {};
     BASIN_CODES_DATA.features.forEach(f => {
       map[f.properties.CODIGO] = f.properties.nombre_2 || f.properties.NOMBRE || f.properties.CODIGO;
@@ -135,22 +135,22 @@ function DataExplorer({
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="space-y-4">
-        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-black flex items-center gap-2">
-          <Database className="h-4 w-4 text-black" /> EXPLORADOR DE DATOS
+        <h2 className="text-[10px] font-normal uppercase tracking-[0.2em] text-black flex items-center gap-2">
+          EXPLORADOR DE DATOS
         </h2>
         
         <div className="flex items-start gap-12 px-1">
           <div className="flex flex-col">
             <span className="text-3xl font-normal text-black leading-none">{stations.length}</span>
-            <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-1.5">Estaciones</span>
+            <span className="text-[8px] font-normal uppercase tracking-wider text-neutral-400 mt-1.5">Estaciones</span>
           </div>
           <div className="flex flex-col">
             <span className="text-3xl font-normal text-black leading-none">{reports.length}</span>
-            <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-1.5">Reportes</span>
+            <span className="text-[8px] font-normal uppercase tracking-wider text-neutral-400 mt-1.5">Reportes</span>
           </div>
           <div className="flex flex-col">
             <span className="text-3xl font-normal text-black leading-none">{samples.length}</span>
-            <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-1.5">Parámetros</span>
+            <span className="text-[8px] font-normal uppercase tracking-wider text-neutral-400 mt-1.5">Parámetros</span>
           </div>
         </div>
         
@@ -171,8 +171,8 @@ function DataExplorer({
                   <AccordionTrigger className="py-1 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors">
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] text-black uppercase font-normal tracking-widest group-hover:text-primary transition-colors text-left">
-                        {basinNames[basinCode] 
-                          ? (basinCode === 'S/C' ? basinNames[basinCode] : `${basinNames[basinCode]} ${basinCode}`)
+                        {basinNamesMap[basinCode] 
+                          ? (basinCode === 'S/C' ? basinNamesMap[basinCode] : `${basinNamesMap[basinCode]} ${basinCode}`)
                           : basinCode}
                       </span>
                     </div>
