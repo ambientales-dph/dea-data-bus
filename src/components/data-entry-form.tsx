@@ -134,7 +134,6 @@ function DataExplorer({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header con contadores técnicos */}
       <div className="space-y-4">
         <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-black flex items-center gap-2">
           <Database className="h-4 w-4 text-black" /> EXPLORADOR DE DATOS
@@ -171,9 +170,10 @@ function DataExplorer({
                 <AccordionItem key={basinCode} value={`basin-${basinCode}`} className="border-none">
                   <AccordionTrigger className="py-1 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors">
                     <div className="flex items-center gap-2">
-                      <Waves className="h-3 w-3 text-neutral-400 group-hover:text-primary transition-colors" />
-                      <span className="text-[11px] text-black uppercase font-black tracking-widest group-hover:text-primary transition-colors">
-                        {basinNames[basinCode] || basinCode}
+                      <span className="text-[11px] text-black uppercase font-normal tracking-widest group-hover:text-primary transition-colors">
+                        {basinNames[basinCode] && basinNames[basinCode] !== basinCode 
+                          ? `${basinNames[basinCode]} ${basinCode}` 
+                          : basinCode}
                       </span>
                     </div>
                   </AccordionTrigger>
