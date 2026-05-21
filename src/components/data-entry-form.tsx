@@ -1106,14 +1106,14 @@ export function DataEntryForm({
           <Separator className="bg-neutral-200" />
           <div className="grid grid-cols-1 gap-2 pt-1">
             <Button 
-              className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" 
+              variant="outline"
+              className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 border-neutral-300 bg-neutral-100 text-black hover:bg-neutral-200 shadow-sm rounded-none" 
               onClick={() => setActiveView('consult')}
             >
               <Search className="h-6 w-6" /> REPORTES
             </Button>
             <Button 
-              variant="outline" 
-              className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 border-black text-black hover:bg-neutral-50 shadow-sm rounded-none" 
+              className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" 
               onClick={() => {
                 setCurrentReportId(null);
                 setActiveView('select-project');
