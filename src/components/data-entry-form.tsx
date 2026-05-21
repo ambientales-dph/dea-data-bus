@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation, FolderOpen, Pencil } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation, FolderOpen, Pencil, Settings } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -25,9 +25,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { MONITORING_TEMPLATES, BASIN_CODES_DATA } from '@/app/lib/monitoring-constants';
 
-/**
- * Helper para verificar si un punto está dentro de un polígono (Ray Casting Algorithm)
- */
 function isPointInPoly(pt: [number, number], poly: [number, number][][]) {
   for (let i = 0; i < poly.length; i++) {
     let inside = false;
@@ -344,6 +341,24 @@ export function DataEntryForm({
   }, [db, user, currentReportId]);
   const { data: currentReportSamples } = useCollection(currentReportSamplesQuery);
 
+  const reportRef = useMemo(() => {
+    if (!db || !currentReportId) return null;
+    return doc(db, 'reports', currentReportId);
+  }, [db, currentReportId]);
+  const { data: currentReportData } = useDoc(reportRef);
+
+  const [reportEditDesc, setReportEditDesc] = useState('');
+
+  useEffect(() => {
+    if (currentReportData) {
+      if (currentReportData.trelloCardName && !selectedProject) {
+        setSelectedProject(currentReportData.trelloCardName);
+        setProjectSearch(currentReportData.trelloCardName);
+      }
+      setReportEditDesc(currentReportData.description || '');
+    }
+  }, [currentReportData]);
+
   const existingPlanillas = useMemo(() => {
     const planillasMap = new Map<string, { formId: string, medium: string, userEmail?: string, timestamp?: any }>();
     currentReportSamples.forEach((s: any) => {
@@ -474,7 +489,6 @@ export function DataEntryForm({
     defaultValues: { name: '', description: '' },
   });
 
-  // Update form values when station data changes
   useEffect(() => {
     if (stationDetails) {
       stationForm.reset({
@@ -756,6 +770,7 @@ export function DataEntryForm({
         oid,
         stationId: selectedPoint.stationId,
         trelloCardName: selectedProject || '',
+        description: reportEditDesc || '',
         createdAt: serverTimestamp(),
         createdByEmail: user.email,
         status: 'open',
@@ -784,6 +799,19 @@ export function DataEntryForm({
     } finally {
       setIsStartingReport(false);
     }
+  };
+
+  const handleSaveReportEdits = async () => {
+    if (!reportRef) return;
+    const updateData = {
+      trelloCardName: selectedProject || '',
+      description: reportEditDesc || '',
+    };
+    updateDoc(reportRef, updateData)
+      .then(() => {
+        toast({ title: "Reporte actualizado", description: "Cambios guardados con éxito." });
+      })
+      .catch(console.error);
   };
 
   const handleViewReportDetails = (reportId: string) => {
@@ -823,8 +851,8 @@ export function DataEntryForm({
     };
     onPointUpdate(point);
     lastPointKeyRef.current = `${point.lat}-${point.lon}-${point.stationId}`;
-    setViewingReportId(reportId);
-    setActiveView('report-view');
+    setCurrentReportId(reportId);
+    setActiveView('select-template');
   };
 
   const handleExplorerSelectPlanilla = (station: any, reportId: string, formId: string, medium: string, timestamp: any) => {
@@ -974,13 +1002,60 @@ export function DataEntryForm({
           <CardHeader className="pb-4">
             <CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight">
               <LayoutList className="h-5 w-5 text-black" />
-              {currentReportId ? 'Gestión de Planillas' : '2. Elegir Planilla de Carga'}
+              {currentReportId ? `Reporte: ${currentReportData?.oid || 'Cargando...'}` : '2. Elegir Planilla de Carga'}
             </CardTitle>
             <CardDescription className="text-xs text-neutral-600">
-              {currentReportId ? 'Iniciá una nueva planilla vacía o editá las registradas.' : 'Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.'}
+              {currentReportId ? 'Gestión de planillas y edición de datos del reporte.' : 'Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {currentReportId && (
+              <Accordion type="single" collapsible className="w-full border rounded-none overflow-hidden">
+                <AccordionItem value="edit-report" className="border-none">
+                  <AccordionTrigger className="px-4 py-2 hover:bg-neutral-50 hover:no-underline text-xs font-bold uppercase text-black">
+                    <div className="flex items-center gap-2"><Settings className="h-4 w-4" /> Ajustes del Reporte</div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 py-3 bg-neutral-50 border-t space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] uppercase font-normal text-black">Proyecto Asociado</Label>
+                      <Select 
+                        value={selectedProject} 
+                        onValueChange={(val) => {
+                          setSelectedProject(val);
+                          setProjectSearch(val);
+                        }}
+                      >
+                        <SelectTrigger className="h-10 text-xs rounded-none bg-white">
+                          <SelectValue placeholder="Sin proyecto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sin-proyecto" className="text-xs">Sin Proyecto</SelectItem>
+                          {trelloProjects.map((p) => (
+                            <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] uppercase font-normal text-black">Descripción / Notas</Label>
+                      <Textarea 
+                        placeholder="Notas sobre el monitoreo..."
+                        className="text-xs rounded-none min-h-[80px] bg-white"
+                        value={reportEditDesc}
+                        onChange={(e) => setReportEditDesc(e.target.value)}
+                      />
+                    </div>
+                    <Button 
+                      className="w-full h-10 bg-black text-white rounded-none text-[10px] font-normal uppercase tracking-widest"
+                      onClick={handleSaveReportEdits}
+                    >
+                      Guardar Ajustes
+                    </Button>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
+
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Nueva Planilla</Label>
               <div className="flex gap-2">

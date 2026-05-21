@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -18,7 +19,6 @@ interface ReportListProps {
 export function ReportList({ stationId, onViewReport, onOpenReport }: ReportListProps) {
   const db = useFirestore();
 
-  // Consulta de reportes de la estación
   const reportsQuery = useMemo(() => {
     return query(
       collection(db, 'reports'),
@@ -28,7 +28,6 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
 
   const { data: reports, loading: reportsLoading } = useCollection(reportsQuery);
 
-  // Consulta de todos los analitos de la estación para contar por reporte
   const samplesQuery = useMemo(() => {
     return query(
       collection(db, 'samples'),
@@ -38,7 +37,6 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
 
   const { data: allSamples } = useCollection(samplesQuery);
 
-  // Mapear cantidad de analitos por reporte
   const analyteCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     allSamples.forEach((sample: any) => {
@@ -50,7 +48,6 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
     return counts;
   }, [allSamples]);
 
-  // Ordenamiento en memoria
   const sortedReports = useMemo(() => {
     return [...reports].sort((a: any, b: any) => {
       const timeA = a.createdAt?.toMillis?.() || (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
@@ -103,7 +100,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                 <TableHead className="text-[9px] uppercase font-bold px-3">Fecha</TableHead>
                 <TableHead className="text-[9px] uppercase font-bold px-3">OID</TableHead>
                 <TableHead className="text-[9px] uppercase font-bold px-3">Proyecto</TableHead>
-                <TableHead className="w-28 px-3 text-right"></TableHead>
+                <TableHead className="w-16 px-3 text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -163,26 +160,15 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                           size="icon" 
                           className="h-6 w-6 text-foreground hover:bg-primary/10"
                           onClick={() => onOpenReport(report.id)}
-                          title="Abrir para cargar datos"
+                          title="Gestionar Planillas y Datos del Reporte"
                         >
-                          <Plus className="h-3 w-3" />
+                          <FileSearch className="h-3 w-3" />
                         </Button>
-                        <div className="flex items-center gap-0.5">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-foreground hover:bg-primary/10"
-                            onClick={() => onViewReport(report.id)}
-                            title="Ver detalles"
-                          >
-                            <FileSearch className="h-3 w-3" />
-                          </Button>
-                          <div 
-                            className="flex items-center px-0.5 text-[9px] font-black text-foreground min-w-[14px] justify-center" 
-                            title="Muestreos"
-                          >
-                            {analyteCounts[report.id] || 0}
-                          </div>
+                        <div 
+                          className="flex items-center px-0.5 text-[9px] font-black text-foreground min-w-[14px] justify-center" 
+                          title="Cantidad de parámetros"
+                        >
+                          {analyteCounts[report.id] || 0}
                         </div>
                       </div>
                     </TableCell>
