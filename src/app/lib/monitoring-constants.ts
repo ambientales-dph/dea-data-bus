@@ -34,9 +34,10 @@ export const MONITORING_TEMPLATES = [
 export const BASIN_CODES_DATA = {
   "type": "FeatureCollection",
   "features": [
-    { "type": "Feature", "properties": { "CODIGO": "MAI", "NOMBRE": "Maipu" }, "geometry": { "type": "Point", "coordinates": [-57.88, -36.86] } },
-    { "type": "Feature", "properties": { "CODIGO": "SAL", "NOMBRE": "Salado" }, "geometry": { "type": "Point", "coordinates": [-59.98, -35.74] } },
-    { "type": "Feature", "properties": { "CODIGO": "Luj", "NOMBRE": "Lujan" }, "geometry": { "type": "Point", "coordinates": [-58.92, -34.45] } },
-    { "type": "Feature", "properties": { "CODIGO": "REC", "NOMBRE": "Reconquista" }, "geometry": { "type": "Point", "coordinates": [-58.62, -34.48] } }
+    { "type": "Feature", "properties": { "CODIGO": "MAI", "nombre_2": "Maipu" }, "geometry": { "type": "Point", "coordinates": [-57.88, -36.86] } },
+    { "type": "Feature", "properties": { "CODIGO": "SAL", "nombre_2": "Salado" }, "geometry": { "type": "Point", "coordinates": [-59.98, -35.74] } },
+    { "type": "Feature", "properties": { "CODIGO": "Luj", "nombre_2": "Lujan" }, "geometry": { "type": "Point", "coordinates": [-58.92, -34.45] } },
+    { "type": "Feature", "properties": { "CODIGO": "REC", "nombre_2": "Reconquista" }, "geometry": { "type": "Point", "coordinates": [-58.62, -34.48] } },
+    { "type": "Feature", "properties": { "CODIGO": "RPM", "nombre_2": "Vertiente Río de La Plata Intermedia" }, "geometry": { "type": "Point", "coordinates": [-58.00, -34.70] } }
   ]
 };

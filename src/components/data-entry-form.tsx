@@ -82,7 +82,8 @@ function DataExplorer({
   const basinNames = useMemo(() => {
     const map: Record<string, string> = {};
     BASIN_CODES_DATA.features.forEach(f => {
-      map[f.properties.CODIGO] = f.properties.NOMBRE;
+      // Priorizar nombre_2 como solicitó el usuario
+      map[f.properties.CODIGO] = f.properties.nombre_2 || f.properties.NOMBRE || f.properties.CODIGO;
     });
     map['S/C'] = 'Otras Ubicaciones';
     return map;
@@ -171,9 +172,9 @@ function DataExplorer({
                   <AccordionTrigger className="py-1 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors">
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] text-black uppercase font-normal tracking-widest group-hover:text-primary transition-colors">
-                        {basinNames[basinCode] && basinNames[basinCode] !== basinCode 
+                        {basinNames[basinCode] && basinCode !== 'S/C'
                           ? `${basinNames[basinCode]} ${basinCode}` 
-                          : basinCode}
+                          : basinNames[basinCode]}
                       </span>
                     </div>
                   </AccordionTrigger>
