@@ -133,21 +133,32 @@ function DataExplorer({
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="border-b border-neutral-200 pb-2">
-        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-black flex items-center justify-between w-full">
-          <div className="flex items-center gap-2">
-            <Database className="h-3.5 w-3.5" /> Explorador
-          </div>
-          <div className="flex items-center gap-3 font-normal normal-case tracking-normal text-neutral-400">
-            <span title="Estaciones">{stations.length} Est.</span>
-            <span title="Reportes">{reports.length} Rep.</span>
-            <span title="Parámetros">{samples.length} Par.</span>
-          </div>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Header con contadores técnicos */}
+      <div className="space-y-4">
+        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-black flex items-center gap-2">
+          <Database className="h-4 w-4 text-black" /> EXPLORADOR DE DATOS
         </h2>
+        
+        <div className="flex items-start gap-12 px-1">
+          <div className="flex flex-col">
+            <span className="text-3xl font-normal text-black leading-none">{stations.length}</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-1.5">Estaciones</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-3xl font-normal text-black leading-none">{reports.length}</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-1.5">Reportes</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-3xl font-normal text-black leading-none">{samples.length}</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-1.5">Parámetros</span>
+          </div>
+        </div>
+        
+        <Separator className="bg-neutral-200 h-[1px]" />
       </div>
 
-      <ScrollArea className="h-[calc(100vh-220px)] pr-2">
+      <ScrollArea className="h-[calc(100vh-280px)] pr-2">
         <div className="space-y-0">
           {stations.length === 0 ? (
             <div className="py-20 text-center opacity-40">
@@ -1018,7 +1029,7 @@ export function DataEntryForm({
                       {...stationForm.register('name')} 
                       className="text-black font-body text-[12px] h-8 border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" 
                     />
-                    {isGeneratingName && <div className="absolute right-0 top-2"><Loader2 className="h-3 w-3 animate-spin text-neutral-400" /></div>}
+                    {isGeneratingName && <div className="absolute right-0 top-2"><Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" /></div>}
                   </div>
                 </div>
 
@@ -1091,4 +1102,3 @@ export function DataEntryForm({
     </div>
   );
 }
-
