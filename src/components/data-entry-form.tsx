@@ -82,7 +82,9 @@ function DataExplorer({
   const basinNamesMap = useMemo(() => {
     const map: Record<string, string> = {};
     BASIN_CODES_DATA.features.forEach(f => {
-      map[f.properties.CODIGO] = f.properties.nombre_2 || f.properties.NOMBRE || f.properties.CODIGO;
+      const codigo = f.properties.CODIGO;
+      const nombre = f.properties.nombre_2 || f.properties.NOMBRE || codigo;
+      map[codigo] = nombre;
     });
     map['S/C'] = 'Otras Ubicaciones';
     return map;
@@ -168,7 +170,7 @@ function DataExplorer({
             <Accordion type="multiple" className="w-full">
               {Object.entries(stationsByBasin).map(([basinCode, basinStations]) => (
                 <AccordionItem key={basinCode} value={`basin-${basinCode}`} className="border-none">
-                  <AccordionTrigger className="py-1 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors">
+                  <AccordionTrigger className="py-1 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:hidden">
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] text-black uppercase font-normal tracking-widest group-hover:text-primary transition-colors text-left">
                         {basinNamesMap[basinCode] 
@@ -183,7 +185,7 @@ function DataExplorer({
                         const stationReports = getReportsByStation(station.id);
                         return (
                           <AccordionItem key={station.id} value={station.id} className="border-none">
-                            <AccordionTrigger className="py-0.5 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors">
+                            <AccordionTrigger className="py-0.5 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:hidden">
                               <div className="flex items-center gap-2">
                                 <div className="w-1.5 h-1.5 bg-primary shrink-0" />
                                 <span 
@@ -215,7 +217,7 @@ function DataExplorer({
                                     const planillas = getPlanillasByReport(report.id);
                                     return (
                                       <AccordionItem key={report.id} value={report.id} className="border-none">
-                                        <AccordionTrigger className="py-0.5 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors">
+                                        <AccordionTrigger className="py-0.5 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:hidden">
                                           <div className="flex items-center gap-2">
                                             <FileText className="h-2.5 w-2.5 text-neutral-400 group-hover:text-primary shrink-0" />
                                             <span 
