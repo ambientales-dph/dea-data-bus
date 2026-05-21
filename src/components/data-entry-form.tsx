@@ -59,6 +59,7 @@ function DataExplorer({
   onSelectPlanilla: (station: any, reportId: string, formId: string, medium: string, timestamp: any) => void
 }) {
   const db = useFirestore();
+  const [dynamicBasinNames, setDynamicBasinNames] = useState<Record<string, string>>({});
 
   const stationsQuery = useMemo(() => query(collection(db, 'stations'), orderBy('name', 'asc')), [db]);
   const { data: stations, loading: stationsLoading } = useCollection(stationsQuery);
@@ -69,26 +70,50 @@ function DataExplorer({
   const samplesQuery = useMemo(() => query(collection(db, 'samples')), [db]);
   const { data: samples, loading: samplesLoading } = useCollection(samplesQuery);
 
+  // Carga dinámica de los nombres de las cuencas desde el JSON público
+  useEffect(() => {
+    fetch('/data/codigos_cuencas.json')
+      .then(res => res.json())
+      .then(data => {
+        const map: Record<string, string> = {};
+        if (data.features) {
+          data.features.forEach((f: any) => {
+            const code = f.properties.CODIGO;
+            const name = f.properties.nombre_2 || f.properties.NOMBRE || code;
+            map[code] = name;
+          });
+        }
+        setDynamicBasinNames(map);
+      })
+      .catch(err => {
+        console.error("Error cargando cuencas dinámicas:", err);
+      });
+  }, []);
+
+  const getBasinCodeFromStationName = (name: string) => {
+    // Patrón: EM + Código (2-4 letras) + 4 dígitos
+    const match = name.match(/^EM([A-Za-z]{2,4})\d{4}$/);
+    return match ? match[1] : null;
+  };
+
   const stationsByBasin = useMemo(() => {
     const groups: Record<string, any[]> = {};
     stations.forEach(s => {
-      const bCode = s.basinCode || 'S/C';
+      // Prioridad: Deducción por nombre -> Campo basinCode -> Sin Clasificar
+      let bCode = getBasinCodeFromStationName(s.name || '');
+      if (!bCode) bCode = s.basinCode || 'S/C';
+      
       if (!groups[bCode]) groups[bCode] = [];
       groups[bCode].push(s);
     });
     return groups;
   }, [stations]);
 
-  const basinNamesMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    BASIN_CODES_DATA.features.forEach(f => {
-      const codigo = f.properties.CODIGO;
-      const nombre = f.properties.nombre_2 || f.properties.NOMBRE || codigo;
-      map[codigo] = nombre;
-    });
-    map['S/C'] = 'Otras Ubicaciones';
-    return map;
-  }, []);
+  const getBasinLabel = (code: string) => {
+    if (code === 'S/C') return 'Otras Ubicaciones';
+    const name = dynamicBasinNames[code];
+    return name ? `${name} ${code}`.toUpperCase() : code.toUpperCase();
+  };
 
   if (stationsLoading || reportsLoading || samplesLoading) {
     return (
@@ -173,9 +198,7 @@ function DataExplorer({
                   <AccordionTrigger className="py-1 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:hidden">
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] text-black uppercase font-normal tracking-widest group-hover:text-primary transition-colors text-left">
-                        {basinNamesMap[basinCode] 
-                          ? (basinCode === 'S/C' ? basinNamesMap[basinCode] : `${basinNamesMap[basinCode]} ${basinCode}`)
-                          : basinCode}
+                        {getBasinLabel(basinCode)}
                       </span>
                     </div>
                   </AccordionTrigger>
