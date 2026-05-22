@@ -1,13 +1,13 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, query, where } from 'firebase/firestore';
 import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/image-processing';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
@@ -30,6 +30,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
   const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
+  const [gallery, setGallery] = useState<any[]>([]);
+  const [isFetchingGallery, setIsFetchingGallery] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -98,23 +100,16 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       return;
     }
 
-    // Iniciamos carga: Agregamos el ID a la lista de spinners activos
     setUploadingIds(prev => [...prev, photoId]);
 
     try {
       const safeReportId = reportId?.trim() || 'unnamed_report';
       const safeFormId = formId?.trim() || 'unnamed_form';
-      
-      // 1. Referencia al storage
       const storageRef = ref(storage, `reports/${safeReportId}/${safeFormId}/${fileName}`);
 
-      // 2. Subida directa (Promise based - más robusto ante colisiones de UI)
       const snapshot = await uploadBytes(storageRef, file);
-      
-      // 3. Obtener URL de descarga
       const downloadUrl = await getDownloadURL(snapshot.ref);
       
-      // 4. Registro en Firestore (Samples)
       const photoData = {
         reportId,
         formId,
@@ -130,28 +125,23 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
       await addDoc(collection(db, 'samples'), photoData);
 
-      // 5. Marcar como editado el reporte
       await updateDoc(doc(db, 'reports', reportId), { 
         editors: arrayUnion(user.email) 
       }).catch(() => {});
       
-      // 6. Limpieza de almacenamiento local
       await offlineStorage.removePhoto(photoId);
       if (localPhoto?.id === photoId) setLocalPhoto(null);
       setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
 
       toast({ title: "Sincronizado", description: "Foto registrada en la base de datos." });
     } catch (error: any) {
-      // LOG DETALLADO PARA F12
       console.error('Error detallado al subir:', error);
-      
       toast({ 
         variant: "destructive", 
         title: "Error de subida", 
         description: `Error al subir: ${error.message || "No se pudo completar la transferencia."}` 
       });
     } finally {
-      // BLOQUE CRÍTICO: Siempre libera el spinner, pase lo que pase
       setUploadingIds(prev => prev.filter(id => id !== photoId));
     }
   };
@@ -160,6 +150,43 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     await offlineStorage.removePhoto(id);
     if (localPhoto?.id === id) setLocalPhoto(null);
     setPendingPhotos(prev => prev.filter(p => p.id !== id));
+  };
+
+  const fetchGallery = async () => {
+    if (!db || !reportId || !formId) return;
+    
+    setIsFetchingGallery(true);
+    try {
+      const q = query(
+        collection(db, 'samples'),
+        where('reportId', '==', reportId),
+        where('formId', '==', formId),
+        where('analyte', '==', 'Evidencia Visual')
+      );
+      
+      const snapshot = await getDocs(q);
+      const docsMapped = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      setGallery(docsMapped);
+      if (docsMapped.length === 0) {
+        toast({
+          title: "Galería vacía",
+          description: "No se encontraron fotos guardadas para esta planilla.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error al buscar galería:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo cargar la galería de fotos.",
+      });
+    } finally {
+      setIsFetchingGallery(false);
+    }
   };
 
   if (authLoading) return null;
@@ -276,6 +303,46 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
               })}
             </div>
           </div>
+        </div>
+
+        <Separator className="my-4" />
+        
+        <div className="space-y-4">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={fetchGallery}
+            disabled={isFetchingGallery}
+            className="w-full h-10 border-neutral-300 text-black font-black uppercase tracking-widest text-[10px] rounded-none hover:bg-neutral-50"
+          >
+            {isFetchingGallery ? (
+              <>
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                Buscando...
+              </>
+            ) : (
+              <>
+                <ChevronRight className="mr-2 h-3.5 w-3.5" />
+                Ver fotos guardadas
+              </>
+            )}
+          </Button>
+
+          {gallery.length > 0 && (
+            <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              {gallery.map((photo) => (
+                <Card key={photo.id} className="overflow-hidden rounded-none border-neutral-200 shadow-sm group">
+                  <div className="aspect-video relative bg-neutral-100">
+                    <img 
+                      src={photo.value} 
+                      alt="Evidencia Guardada" 
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         <input 
