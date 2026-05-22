@@ -315,36 +315,59 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
   const handleBulkDelete = async () => {
     if (!db || !storage || selectedIds.length === 0) return;
-    if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente ${selectedIds.length} fotos? Esta acción no se puede deshacer.`)) return;
+    
+    const confirmMessage = selectedIds.length === 1 
+      ? "¿Estás seguro de que deseas eliminar permanentemente esta foto?" 
+      : `¿Estás seguro de que deseas eliminar permanentemente estas ${selectedIds.length} fotos?`;
+
+    if (!confirm(confirmMessage)) return;
 
     setIsDeleting(true);
     let successCount = 0;
 
     try {
+      // Usamos un bucle para manejar cada eliminación de forma atómica
       for (const id of selectedIds) {
         const photo = gallery.find(p => p.id === id);
         if (!photo) continue;
 
-        try {
-          if (photo.storagePath) {
+        // 1. Intentar borrar archivo físico de Storage
+        if (photo.storagePath) {
+          try {
             const fileRef = ref(storage, photo.storagePath);
-            await deleteObject(fileRef).catch(e => {
-              console.warn(`Archivo físico no hallado en Storage para id ${id}, procediendo a borrar registro.`, e);
-            });
+            await deleteObject(fileRef);
+          } catch (storageErr: any) {
+            // Si el archivo no existe en Storage (404), ignoramos el error para poder limpiar Firestore
+            if (storageErr.code !== 'storage/object-not-found') {
+              console.warn(`Error al borrar de Storage (${id}):`, storageErr.message);
+            }
           }
+        }
+
+        // 2. Borrar documento de Firestore (Paso crítico)
+        try {
           await deleteDoc(doc(db, 'samples', id));
           successCount++;
-        } catch (err) {
-          console.error(`Error crítico eliminando foto ${id}:`, err);
+        } catch (firestoreErr: any) {
+          console.error(`Error al borrar de Firestore (${id}):`, firestoreErr.message);
         }
       }
 
+      // Actualizar estados locales solo con los que realmente se borraron
       setGallery(prev => prev.filter(p => !selectedIds.includes(p.id)));
       setSelectedIds([]);
-      toast({ title: "Operación finalizada", description: `Se eliminaron ${successCount} registros de la base de datos.` });
+      
+      toast({ 
+        title: "Operación finalizada", 
+        description: `Se eliminaron ${successCount} registros exitosamente.` 
+      });
     } catch (error: any) {
-      console.error("Error en eliminación masiva:", error);
-      toast({ variant: "destructive", title: "Error", description: "Ocurrió un error al intentar eliminar las fotos." });
+      console.error("Error crítico en eliminación masiva:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: "No se pudieron completar todas las eliminaciones." 
+      });
     } finally {
       setIsDeleting(false);
     }
