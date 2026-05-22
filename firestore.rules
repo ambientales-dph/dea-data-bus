@@ -2,19 +2,24 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Sincronización de reglas para asegurar acceso autenticado
+    // Reglas globales para asegurar acceso autenticado en todas las colecciones principales
+    
     match /stations/{stationId} {
       allow read, write: if request.auth != null;
     }
+    
     match /reports/{reportId} {
       allow read, write: if request.auth != null;
     }
+    
     match /samples/{sampleId} {
       allow read, write: if request.auth != null;
     }
+    
     match /custom_templates/{templateId} {
       allow read, write: if request.auth != null;
     }
+    
     match /presence/{userId} {
       allow read, write: if request.auth != null;
     }

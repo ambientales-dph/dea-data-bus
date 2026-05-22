@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -45,12 +46,15 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
 
   const reportRef = useMemo(() => doc(db, 'reports', reportId), [db, reportId]);
 
-  // Consulta de analitos específicos de ESTA planilla (formId)
-  const samplesQuery = useMemo(() => 
-    query(collection(db, 'samples'), 
-    where('reportId', '==', reportId),
-    where('formId', '==', formId)
-  ), [db, reportId, formId]);
+  const samplesQuery = useMemo(() => {
+    if (!db || !user || !reportId || !formId) return null;
+    return query(
+      collection(db, 'samples'), 
+      where('reportId', '==', reportId),
+      where('formId', '==', formId)
+    );
+  }, [db, user, reportId, formId]);
+
   const { data: samplesData } = useCollection(samplesQuery);
 
   useEffect(() => {
@@ -72,7 +76,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
       setPlanillaValues({});
       setMetadata({ user: user?.email || '', timestamp: null });
     }
-  }, [samplesData]);
+  }, [samplesData, user]);
 
   useEffect(() => {
     if (!templateId || !db) return;
@@ -161,7 +165,6 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     });
   };
 
-  // Lógica para detectar el componente técnico adecuado
   const lowerTemplateId = templateId?.toLowerCase() || '';
   const lowerTemplateName = template?.nombre?.toLowerCase() || template?.name?.toLowerCase() || '';
 

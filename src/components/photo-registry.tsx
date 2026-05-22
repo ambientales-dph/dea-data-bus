@@ -7,7 +7,7 @@ import { collection, addDoc, serverTimestamp, query, where, orderBy } from 'fire
 import { useFirestore, useStorage, useUser, useCollection } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera, Image as ImageIcon, Loader2, Trash2, CloudOff, Cloud, RefreshCw, X } from 'lucide-react';
+import { Camera, Image as ImageIcon, Loader2, Trash2, CloudOff, Cloud, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/image-processing';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
@@ -31,9 +31,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Consulta de fotos ya subidas (en la colección samples)
   const photosQuery = useMemo(() => {
-    if (!db || !reportId || !formId) return null;
+    if (!db || !user || !reportId || !formId) return null;
     return query(
       collection(db, 'samples'),
       where('reportId', '==', reportId),
@@ -41,7 +40,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       where('parameterType', '==', 'Fotografía'),
       orderBy('timestamp', 'desc')
     );
-  }, [db, reportId, formId]);
+  }, [db, user, reportId, formId]);
 
   const { data: uploadedPhotos, loading: loadingPhotos } = useCollection(photosQuery);
 
@@ -50,7 +49,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
     
-    // Cargar fotos pendientes de IndexedDB
     const loadPending = async () => {
       const pending = await offlineStorage.getPendingPhotos(formId);
       setPendingPhotos(pending);
@@ -73,16 +71,13 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
     setIsProcessing(true);
     try {
-      // 1. Compresión
       const compressed = await compressImage(file);
       const fileName = `${Date.now()}_${file.name}`;
       const photoId = crypto.randomUUID();
 
       if (navigator.onLine) {
-        // 2a. Subida Online Directa
         await uploadAndRegister(compressed, fileName, photoId);
       } else {
-        // 2b. Guardado Offline
         const offlinePhoto: OfflinePhoto = {
           id: photoId,
           reportId,
@@ -116,13 +111,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const uploadAndRegister = async (file: Blob, fileName: string, id: string) => {
     if (!user || !storage || !db) return;
 
-    // A. Subida a Storage
     const storagePath = `reports/${reportId}/${formId}/${fileName}`;
     const storageRef = ref(storage, storagePath);
     const uploadResult = await uploadBytes(storageRef, file);
     const downloadUrl = await getDownloadURL(uploadResult.ref);
 
-    // B. Registro en Firestore (colección samples plana)
     const photoDoc = {
       reportId,
       formId,
@@ -138,7 +131,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
     await addDoc(collection(db, 'samples'), photoDoc);
     
-    // C. Limpiar si venía de offline
     await offlineStorage.removePhoto(id);
     setPendingPhotos(prev => prev.filter(p => p.id !== id));
     
@@ -212,7 +204,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {/* Botón de Captura */}
           <button 
             onClick={handleCaptureClick}
             disabled={isProcessing}
@@ -231,7 +222,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
             )}
           </button>
 
-          {/* Fotos Pendientes (Offline) */}
           {pendingPhotos.map(photo => (
             <div key={photo.id} className="aspect-square relative border border-amber-200 bg-amber-50/30">
               <img 
@@ -252,7 +242,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
             </div>
           ))}
 
-          {/* Fotos Subidas (Online) */}
           {uploadedPhotos?.map((photo: any) => (
             <div key={photo.id} className="aspect-square relative border border-neutral-200 group overflow-hidden">
               <img 
@@ -277,7 +266,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           ))}
         </div>
 
-        {/* Input Oculto Nativo */}
         <input 
           type="file" 
           ref={fileInputRef}
@@ -287,7 +275,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           className="hidden" 
         />
         
-        {loadingPhotos && uploadedPhotos.length === 0 && (
+        {loadingPhotos && uploadedPhotos?.length === 0 && (
           <div className="flex justify-center py-4">
             <Loader2 className="h-4 w-4 animate-spin text-neutral-300" />
           </div>
