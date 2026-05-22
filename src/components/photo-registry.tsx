@@ -98,6 +98,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       return;
     }
 
+    // Iniciamos carga: Agregamos el ID a la lista de spinners activos
     setUploadingIds(prev => [...prev, photoId]);
 
     try {
@@ -141,14 +142,16 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
       toast({ title: "Sincronizado", description: "Foto registrada en la base de datos." });
     } catch (error: any) {
-      console.error('Error en handleUpload:', error);
+      // LOG DETALLADO PARA F12
+      console.error('Error detallado al subir:', error);
+      
       toast({ 
         variant: "destructive", 
         title: "Error de subida", 
-        description: error.message || "No se pudo completar la transferencia." 
+        description: `Error al subir: ${error.message || "No se pudo completar la transferencia."}` 
       });
     } finally {
-      // ESTE BLOQUE ES SAGRADO: Siempre libera el spinner
+      // BLOQUE CRÍTICO: Siempre libera el spinner, pase lo que pase
       setUploadingIds(prev => prev.filter(id => id !== photoId));
     }
   };
