@@ -326,41 +326,37 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     let successCount = 0;
 
     try {
-      // Usamos un bucle para manejar cada eliminación de forma atómica
       for (const id of selectedIds) {
         const photo = gallery.find(p => p.id === id);
         if (!photo) continue;
 
-        // 1. Intentar borrar archivo físico de Storage
+        // 1. Borrado físico en Storage (best effort)
         if (photo.storagePath) {
           try {
             const fileRef = ref(storage, photo.storagePath);
             await deleteObject(fileRef);
           } catch (storageErr: any) {
-            // Si el archivo no existe en Storage (404), ignoramos el error para poder limpiar Firestore
+            // Si el archivo no está en Storage, no bloqueamos el borrado de Firestore
             if (storageErr.code !== 'storage/object-not-found') {
-              console.warn(`Error al borrar de Storage (${id}):`, storageErr.message);
+              console.warn(`Error en Storage para ${id}:`, storageErr.message);
             }
           }
         }
 
-        // 2. Borrar documento de Firestore (Paso crítico)
+        // 2. Borrado del registro en Firestore (Innegociable)
         try {
           await deleteDoc(doc(db, 'samples', id));
           successCount++;
         } catch (firestoreErr: any) {
-          console.error(`Error al borrar de Firestore (${id}):`, firestoreErr.message);
+          console.error(`Error en Firestore para ${id}:`, firestoreErr.message);
         }
       }
 
-      // Actualizar estados locales solo con los que realmente se borraron
+      // Actualizar estados locales de forma segura
       setGallery(prev => prev.filter(p => !selectedIds.includes(p.id)));
       setSelectedIds([]);
       
-      toast({ 
-        title: "Operación finalizada", 
-        description: `Se eliminaron ${successCount} registros exitosamente.` 
-      });
+      toast({ title: "Eliminación completa", description: `Se borraron ${successCount} fotos exitosamente.` });
     } catch (error: any) {
       console.error("Error crítico en eliminación masiva:", error);
       toast({ 
