@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -31,9 +30,10 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
 
   const stationRef = useMemo(() => {
-    if (!db || !stationId) return null;
+    if (!db || !stationId || stationId.trim() === '') return null;
     return doc(db, 'stations', stationId);
   }, [db, stationId]);
+  
   const { data: stationData } = useDoc(stationRef);
 
   const sections = [
@@ -125,7 +125,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
     };
 
     fetchExistingData();
-  }, [db, reportId, formId]);
+  }, [db, reportId, formId, user?.email]);
 
   const handleInputChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));

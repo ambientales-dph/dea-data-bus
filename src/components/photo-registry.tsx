@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -387,10 +386,13 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
   if (authLoading) return null;
 
+  const btnBase = "flex flex-col items-center justify-center p-3 bg-white hover:bg-neutral-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed";
+  const btnLabel = "text-[9px] font-black uppercase text-center leading-tight mt-1.5";
+
   return (
-    <Card className="border-t-4 border-t-accent shadow-md overflow-hidden rounded-none mt-6">
+    <Card className="border-t-4 border-t-accent shadow-none rounded-none mt-6 border-x-black border-b-black">
       <CardContent className="p-4 space-y-4">
-        <div className="flex items-center justify-between border-b pb-2">
+        <div className="flex items-center justify-between border-b border-black pb-2">
           <div className="flex items-center gap-2">
             <Camera className="h-4 w-4 text-black" />
             <h3 className="text-[11px] font-black uppercase tracking-widest text-black font-headline">Evidencia Visual</h3>
@@ -398,200 +400,113 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           <div className="flex items-center gap-2">
             {isLocating && (
               <div className="flex items-center gap-1 text-[9px] font-bold text-primary animate-pulse">
-                <MapPin className="h-3 w-3" /> Obteniendo ubicación...
+                <MapPin className="h-3 w-3" /> GPS...
               </div>
             )}
             {pendingPhotos.length > 0 && (
-              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-600 rounded-sm">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-neutral-100 border border-black text-black rounded-none">
                 <CloudOff className="h-3 w-3" />
-                <span className="text-[9px] font-black uppercase">{pendingPhotos.length} Pendientes</span>
+                <span className="text-[8px] font-black uppercase">{pendingPhotos.length} Pendientes</span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            {!localPhoto ? (
-              <button 
-                onClick={handleCaptureClick}
-                disabled={isProcessing}
-                className={cn(
-                  "w-full aspect-video flex flex-col items-center justify-center border-2 border-dashed rounded-none transition-all group",
-                  isProcessing ? "bg-neutral-50 cursor-not-allowed" : "border-neutral-300 hover:bg-neutral-50"
-                )}
-              >
-                {isProcessing ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    <span className="text-[9px] font-bold uppercase text-primary">Procesando...</span>
-                  </div>
-                ) : (
-                  <>
-                    <Camera className="h-8 w-8 text-neutral-400 group-hover:text-primary mb-2" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Tomar Fotografía</span>
-                  </>
-                )}
-              </button>
-            ) : (
-              <div className="aspect-video relative border-2 border-primary bg-neutral-100 overflow-hidden group">
-                <img src={localPhoto.preview} alt="Vista previa" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="destructive" 
-                    disabled={uploadingIds.includes(localPhoto.id)}
-                    className="h-8 rounded-none uppercase text-[10px] font-black"
-                    onClick={() => removePhoto(localPhoto.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Borrar
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    className="h-8 bg-green-600 hover:bg-green-700 rounded-none uppercase text-[10px] font-black text-white"
-                    onClick={() => handleUpload(localPhoto.id, localPhoto.file, `${localPhoto.id}.jpg`)}
-                    disabled={uploadingIds.includes(localPhoto.id)}
-                  >
-                    {uploadingIds.includes(localPhoto.id) ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                    ) : (
-                      <Upload className="h-3.5 w-3.5 mr-1" />
-                    )}
-                    Subir
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+        <div className="grid grid-cols-3 gap-0 border border-black divide-x divide-black overflow-hidden bg-black">
+          <button 
+            onClick={handleCaptureClick}
+            disabled={isProcessing}
+            className={btnBase}
+          >
+            {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+            <span className={btnLabel}>Cámara / Galería</span>
+          </button>
+          
+          <button 
+            onClick={fetchGallery}
+            disabled={isFetchingGallery}
+            className={btnBase}
+          >
+            {isFetchingGallery ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
+            <span className={btnLabel}>Ver colección</span>
+          </button>
 
-          <div className="space-y-3">
-            <h4 className="text-[9px] font-black uppercase text-neutral-400 tracking-widest flex items-center gap-1.5">
-              <ImageIcon className="h-3 w-3" /> Cola de sincronización:
-            </h4>
-            
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {pendingPhotos.length === 0 && (
-                <div className="col-span-full py-8 border border-dashed border-neutral-200 flex flex-col items-center justify-center opacity-30">
-                  <span className="text-[8px] font-bold uppercase">Sin archivos</span>
+          <button 
+            onClick={handleGISExport}
+            disabled={isExporting || gallery.length === 0}
+            className={btnBase}
+          >
+            {isExporting ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapIcon className="h-5 w-5" />}
+            <span className={btnLabel}>GIS</span>
+          </button>
+        </div>
+
+        {/* Status areas - only show if there's content */}
+        {(localPhoto || pendingPhotos.length > 0) && (
+          <div className="space-y-3 pt-2">
+            <h4 className="text-[9px] font-black uppercase text-neutral-400 tracking-widest">Cola de Envío</h4>
+            <div className="grid grid-cols-4 gap-2">
+              {localPhoto && (
+                <div className="relative aspect-square border border-black bg-neutral-100 group">
+                  <img src={localPhoto.preview} alt="Cargando" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                    <button onClick={() => removePhoto(localPhoto.id)} className="p-1 bg-white text-black"><Trash2 className="h-3 w-3" /></button>
+                    <button onClick={() => handleUpload(localPhoto.id, localPhoto.file, `${localPhoto.id}.jpg`)} className="p-1 bg-white text-primary">
+                      {uploadingIds.includes(localPhoto.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                    </button>
+                  </div>
                 </div>
               )}
-              
-              {pendingPhotos.map(photo => {
-                const isUploading = uploadingIds.includes(photo.id);
-                if (localPhoto?.id === photo.id) return null;
-
-                return (
-                  <div key={photo.id} className="relative aspect-square border-2 border-amber-200 bg-amber-50 group overflow-hidden">
-                    <img 
-                      src={URL.createObjectURL(photo.file)} 
-                      alt="Pendiente" 
-                      className="w-full h-full object-cover opacity-60" 
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all">
-                      {isUploading ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-white" />
-                      ) : (
-                        <div className="flex gap-1">
-                           <button onClick={() => handleUpload(photo.id, photo.file, photo.fileName)} className="p-1.5 bg-white text-primary rounded-none shadow-md">
-                            <Upload className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => removePhoto(photo.id)} className="p-1.5 bg-white text-destructive rounded-none shadow-md">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+              {pendingPhotos.filter(p => p.id !== localPhoto?.id).map(photo => (
+                <div key={photo.id} className="relative aspect-square border border-neutral-300 bg-neutral-50 group">
+                  <img src={URL.createObjectURL(photo.file)} alt="Pendiente" className="w-full h-full object-cover opacity-60" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {uploadingIds.includes(photo.id) ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-black" />
+                    ) : (
+                      <button onClick={() => handleUpload(photo.id, photo.file, photo.fileName)} className="p-1 bg-white border border-black text-black">
+                        <Upload className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
-        <Separator className="my-4" />
-        
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={fetchGallery}
-              disabled={isFetchingGallery}
-              className="h-10 border-neutral-300 text-black font-black uppercase tracking-widest text-[10px] rounded-none hover:bg-neutral-50"
-            >
-              {isFetchingGallery ? (
-                <>
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  Buscando...
-                </>
-              ) : (
-                <>
-                  <ChevronRight className="mr-2 h-3.5 w-3.5" />
-                  Ver fotos guardadas
-                </>
-              )}
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleGISExport}
-              disabled={isExporting}
-              className="h-10 border-primary/30 text-primary font-black uppercase tracking-widest text-[10px] rounded-none hover:bg-primary/5"
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  Exportando...
-                </>
-              ) : (
-                <>
-                  <MapIcon className="mr-2 h-3.5 w-3.5" />
-                  Exportar paquete GIS (ZIP)
-                </>
-              )}
-            </Button>
-          </div>
-
-          {gallery.length > 0 && (
-            <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+        {gallery.length > 0 && (
+          <div className="space-y-3 pt-2 animate-in fade-in duration-300">
+            <Separator className="bg-neutral-200" />
+            <h4 className="text-[9px] font-black uppercase text-black tracking-widest">Colección Cargada</h4>
+            <div className="grid grid-cols-2 gap-4">
               {gallery.map((photo) => (
-                <Card key={photo.id} className="overflow-hidden rounded-none border-neutral-200 shadow-sm group">
-                  <div className="aspect-video relative bg-neutral-100">
-                    <img 
-                      src={photo.value} 
-                      alt="Evidencia Guardada" 
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    />
-                    
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div key={photo.id} className="border border-black bg-white group relative overflow-hidden">
+                  <div className="aspect-video bg-neutral-100">
+                    <img src={photo.value} alt="Evidencia" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
                       <Button 
-                        size="sm"
+                        size="sm" 
                         variant="secondary"
                         disabled={downloadingIds.includes(photo.id)}
-                        className="h-8 rounded-none text-[9px] font-black uppercase tracking-widest"
+                        className="h-8 rounded-none text-[9px] font-black uppercase"
                         onClick={() => handleDownloadWithWatermark(photo)}
                       >
-                        {downloadingIds.includes(photo.id) ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                        ) : (
-                          <Download className="h-3.5 w-3.5 mr-1.5" />
-                        )}
+                        {downloadingIds.includes(photo.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
                         Descargar
                       </Button>
                     </div>
-
-                    {photo.latitude && photo.longitude && (
-                      <div className="absolute bottom-1 right-1 bg-black/50 p-0.5 rounded text-[8px] text-white flex items-center gap-0.5">
-                        <MapPin className="h-2 w-2" /> GPS OK
-                      </div>
-                    )}
                   </div>
-                </Card>
+                  {photo.latitude && (
+                    <div className="absolute top-1 left-1 bg-black text-white px-1 py-0.5 text-[7px] font-bold flex items-center gap-0.5">
+                      <MapPin className="h-2 w-2" /> GPS
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <input 
           type="file" 
