@@ -6,12 +6,13 @@ import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, update
 import { useFirestore, useStorage, useUser, useCollection } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera, Image as ImageIcon, Loader2, Trash2, CloudOff, Cloud, RefreshCw } from 'lucide-react';
+import { Camera, Image as ImageIcon, Loader2, Trash2, CloudOff, RefreshCw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/image-processing';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface PhotoRegistryProps {
   reportId: string;
@@ -31,9 +32,12 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Bloqueo estricto de la consulta hasta que la auth esté lista
+  /**
+   * PATRÓN OBLIGATORIO: Falsy Query.
+   * La consulta se mantiene como null hasta que todas las dependencias
+   * (auth, IDs de reporte y planilla) están listas.
+   */
   const photosQuery = useMemo(() => {
-    // Si estamos cargando auth o no hay usuario, devolvemos null para pausar el hook useCollection
     if (!db || authLoading || !user || !reportId || !formId) return null;
     
     return query(
@@ -45,7 +49,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     );
   }, [db, user, authLoading, reportId, formId]);
 
-  const { data: uploadedPhotos, loading: loadingPhotos } = useCollection(photosQuery);
+  const { data: uploadedPhotos, loading: loadingPhotos, error: queryError } = useCollection(photosQuery);
 
   useEffect(() => {
     const handleStatus = () => setIsOnline(navigator.onLine);
@@ -64,7 +68,10 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     };
   }, [formId]);
 
-  // 2. Early Return: Si la auth está cargando, mostramos un estado neutro
+  /**
+   * Early Return para la UI.
+   * Evita renderizar botones o grillas antes de la validación.
+   */
   if (authLoading) {
     return (
       <div className="mt-6 space-y-4">
@@ -148,12 +155,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       userEmail: user.email
     };
 
-    // No bloqueamos la UI esperando Firestore
-    addDoc(collection(db, 'samples'), photoDoc)
-      .then(() => {
-        updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
-      })
-      .catch(console.error);
+    await addDoc(collection(db, 'samples'), photoDoc);
+    await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
     
     await offlineStorage.removePhoto(id);
     setPendingPhotos(prev => prev.filter(p => p.id !== id));
@@ -226,6 +229,16 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
             )}
           </div>
         </div>
+
+        {queryError && (
+          <Alert variant="destructive" className="py-2 rounded-none">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle className="text-[10px] uppercase font-bold">Error de Galería</AlertTitle>
+            <AlertDescription className="text-[9px]">
+              No se pudieron cargar las fotos existentes (Permisos insuficientes).
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <button 
