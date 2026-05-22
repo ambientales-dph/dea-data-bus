@@ -7,7 +7,7 @@ import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight } from 'lucide-react';
+import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/image-processing';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
@@ -27,6 +27,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const { toast } = useToast();
   
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
   const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
@@ -56,7 +57,17 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
     setIsProcessing(true);
     try {
-      const compressed = await compressImage(file);
+      // Compresión con preservación de EXIF según lo solicitado
+      const options = {
+        maxSizeMB: 0.2,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+        preserveExif: true, // Habilitado para preservar datos internos si existen
+      };
+      
+      const imageCompression = (await import('browser-image-compression')).default;
+      const compressed = await imageCompression(file, options);
+      
       const photoId = crypto.randomUUID();
       const previewUrl = URL.createObjectURL(compressed);
       
@@ -94,6 +105,19 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     }
   };
 
+  const getCoordinates = (): Promise<{ lat: number | null; lon: number | null }> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        return resolve({ lat: null, lon: null });
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+        () => resolve({ lat: null, lon: null }),
+        { timeout: 5000, enableHighAccuracy: true }
+      );
+    });
+  };
+
   const handleUpload = async (photoId: string, file: Blob, fileName: string) => {
     if (!user || !storage || !db) {
       toast({ variant: "destructive", title: "Error", description: "Servicios de Firebase no disponibles." });
@@ -103,6 +127,12 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     setUploadingIds(prev => [...prev, photoId]);
 
     try {
+      // 1. Obtener ubicación GPS antes de subir
+      setIsLocating(true);
+      const coords = await getCoordinates();
+      setIsLocating(false);
+
+      // 2. Subir a Storage
       const safeReportId = reportId?.trim() || 'unnamed_report';
       const safeFormId = formId?.trim() || 'unnamed_form';
       const storageRef = ref(storage, `reports/${safeReportId}/${safeFormId}/${fileName}`);
@@ -110,6 +140,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       const snapshot = await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(snapshot.ref);
       
+      // 3. Payload robusto para Firestore con metadatos
       const photoData = {
         reportId,
         formId,
@@ -120,7 +151,13 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         value: downloadUrl,
         timestamp: serverTimestamp(),
         userId: user.uid,
-        userEmail: user.email
+        userEmail: user.email,
+        // Nuevos metadatos solicitados
+        latitude: coords.lat,
+        longitude: coords.lon,
+        authorId: user.uid,
+        authorEmail: user.email,
+        capturedAt: serverTimestamp(),
       };
 
       await addDoc(collection(db, 'samples'), photoData);
@@ -133,7 +170,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       if (localPhoto?.id === photoId) setLocalPhoto(null);
       setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
 
-      toast({ title: "Sincronizado", description: "Foto registrada en la base de datos." });
+      toast({ title: "Sincronizado", description: "Foto y metadatos registrados con éxito." });
     } catch (error: any) {
       console.error('Error detallado al subir:', error);
       toast({ 
@@ -142,6 +179,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         description: `Error al subir: ${error.message || "No se pudo completar la transferencia."}` 
       });
     } finally {
+      setIsLocating(false);
       setUploadingIds(prev => prev.filter(id => id !== photoId));
     }
   };
@@ -199,12 +237,19 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
             <Camera className="h-4 w-4 text-black" />
             <h3 className="text-[11px] font-black uppercase tracking-widest text-black font-headline">Evidencia Visual</h3>
           </div>
-          {pendingPhotos.length > 0 && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-600 rounded-sm">
-              <CloudOff className="h-3 w-3" />
-              <span className="text-[9px] font-black uppercase">{pendingPhotos.length} Pendientes</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {isLocating && (
+              <div className="flex items-center gap-1 text-[9px] font-bold text-primary animate-pulse">
+                <MapPin className="h-3 w-3" /> Obteniendo ubicación...
+              </div>
+            )}
+            {pendingPhotos.length > 0 && (
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-600 rounded-sm">
+                <CloudOff className="h-3 w-3" />
+                <span className="text-[9px] font-black uppercase">{pendingPhotos.length} Pendientes</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -338,6 +383,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
                       alt="Evidencia Guardada" 
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
+                    {photo.latitude && photo.longitude && (
+                      <div className="absolute bottom-1 right-1 bg-black/50 p-0.5 rounded text-[8px] text-white flex items-center gap-0.5">
+                        <MapPin className="h-2 w-2" /> GPS OK
+                      </div>
+                    )}
                   </div>
                 </Card>
               ))}
