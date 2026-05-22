@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -6,6 +7,7 @@ import { useFirestore, useUser, useDoc, errorEmitter, FirestorePermissionError }
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, Info, Check, Send, ArrowLeft, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PhotoRegistry } from './photo-registry';
 
 export interface FreatimetroData {
   idPozo: string;
@@ -221,7 +223,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const sectionHeaderClass = "flex items-center bg-neutral-100 px-3 py-1.5 border-y border-neutral-400 mt-2 first:mt-0";
 
   return (
-    <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
       <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-2 flex justify-between items-center">
         <div>
           <h1 className="text-xs font-black uppercase tracking-tight text-black font-headline">Freatímetros • FTA-001</h1>
@@ -253,7 +255,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
                 {savingFields['cotaBrocal'] ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : savedFields['cotaBrocal'] ? (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div>
                 ) : (
                   <Check className="h-3.5 w-3.5" />
                 )}
@@ -281,7 +283,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
                   {savingFields[field.key] ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : savedFields[field.key] ? (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div>
                   ) : (
                     <Check className="h-3.5 w-3.5" />
                   )}
@@ -310,7 +312,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
                   {savingFields[field.key] ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : savedFields[field.key] ? (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div>
                   ) : (
                     <Check className="h-3.5 w-3.5" />
                   )}
@@ -331,12 +333,21 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
               {savingFields['cotaAgua'] ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : savedFields['cotaAgua'] ? (
-                <CheckCircle2 className="h-5 w-5" />
+                <div className="rounded-full bg-green-500 p-1"><Check className="h-3 w-3 text-white" /></div>
               ) : (
                 <Check className="h-5 w-5" />
               )}
             </button>
           </div>
+        </div>
+
+        <div className="px-3 py-4">
+          <PhotoRegistry 
+            reportId={reportId} 
+            formId={formId} 
+            stationId={stationId} 
+            medium="agua_subterranea" 
+          />
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -6,6 +7,7 @@ import { useFirestore, useUser, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Check, CheckCircle2, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PhotoRegistry } from './photo-registry';
 
 export interface SurfaceWaterData {
   [key: string]: string | number | null;
@@ -204,7 +206,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   const sectionHeaderClass = "flex items-center bg-neutral-100 px-3 py-1.5 border-y border-neutral-400 mt-2 first:mt-0";
 
   return (
-    <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
       <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-2 flex justify-between items-center">
         <div>
           <h1 className="text-xs font-black uppercase tracking-tight text-black font-headline">Agua Superficial • AS-001</h1>
@@ -246,7 +248,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                       {savingFields[param.name] ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : savedFields[param.name] ? (
-                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div>
                       ) : (
                         <Check className="h-3.5 w-3.5" />
                       )}
@@ -257,6 +259,15 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
             </div>
           </div>
         ))}
+
+        <div className="px-3 py-4">
+          <PhotoRegistry 
+            reportId={reportId} 
+            formId={formId} 
+            stationId={stationId} 
+            medium="agua_superficial" 
+          />
+        </div>
       </div>
 
       <div className="bg-white p-4">

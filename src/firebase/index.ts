@@ -1,8 +1,10 @@
+
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { firebaseConfig } from './config';
 
 /**
@@ -12,6 +14,7 @@ export function initializeFirebase(): {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
+  storage: FirebaseStorage;
 } {
   const firebaseApp = getApps().length > 0 
     ? getApp() 
@@ -19,21 +22,20 @@ export function initializeFirebase(): {
     
   const firestore = getFirestore(firebaseApp);
   const auth = getAuth(firebaseApp);
+  const storage = getStorage(firebaseApp);
 
   // Habilitar persistencia offline solo en el cliente
   if (typeof window !== 'undefined') {
     enableMultiTabIndexedDbPersistence(firestore).catch((err) => {
       if (err.code === 'failed-precondition') {
-        // Múltiples pestañas abiertas, la persistencia solo puede habilitarse en una.
         console.warn('Persistencia de Firestore: falló precondición (múltiples pestañas).');
       } else if (err.code === 'unimplemented') {
-        // El navegador no soporta la persistencia.
         console.warn('Persistencia de Firestore: el navegador no soporta IndexedDB.');
       }
     });
   }
 
-  return { firebaseApp, firestore, auth };
+  return { firebaseApp, firestore, auth, storage };
 }
 
 export * from './provider';
