@@ -314,7 +314,16 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   };
 
   const handleBulkDelete = async () => {
-    if (!db || !storage || selectedIds.length === 0) return;
+    if (!user?.email || !db || !storage) {
+      toast({
+        variant: "destructive",
+        title: "Error de sesión",
+        description: "Debes estar autenticado para realizar esta acción.",
+      });
+      return;
+    }
+
+    if (selectedIds.length === 0) return;
     
     const confirmMessage = selectedIds.length === 1 
       ? "¿Estás seguro de que deseas eliminar permanentemente esta foto?" 
@@ -324,22 +333,29 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
     setIsDeleting(true);
     let successCount = 0;
+    let omittedCount = 0;
+    const deletedIds: string[] = [];
 
     try {
       for (const id of selectedIds) {
         const photo = gallery.find(p => p.id === id);
         if (!photo) continue;
 
-        // 1. Borrado físico en Storage (best effort)
-        if (photo.storagePath) {
-          try {
-            const fileRef = ref(storage, photo.storagePath);
-            await deleteObject(fileRef);
-          } catch (storageErr: any) {
-            // Si el archivo no está en Storage, no bloqueamos el borrado de Firestore
-            if (storageErr.code !== 'storage/object-not-found') {
-              console.warn(`Error en Storage para ${id}:`, storageErr.message);
-            }
+        // Regla de autoría: Solo el autor original puede eliminar su evidencia
+        const isAuthor = photo.authorEmail === user.email || photo.userEmail === user.email;
+        if (!isAuthor) {
+          omittedCount++;
+          continue;
+        }
+
+        // 1. Borrado físico en Storage usando la URL pública (photo.value)
+        try {
+          const fileRef = ref(storage, photo.value);
+          await deleteObject(fileRef);
+        } catch (storageErr: any) {
+          // Si el archivo no está en Storage (404), no bloqueamos el borrado del documento
+          if (storageErr.code !== 'storage/object-not-found') {
+            console.warn(`Error en Storage para la foto ${id}:`, storageErr.message);
           }
         }
 
@@ -347,22 +363,31 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         try {
           await deleteDoc(doc(db, 'samples', id));
           successCount++;
+          deletedIds.push(id);
         } catch (firestoreErr: any) {
-          console.error(`Error en Firestore para ${id}:`, firestoreErr.message);
+          console.error(`Error en Firestore para la foto ${id}:`, firestoreErr.message);
         }
       }
 
-      // Actualizar estados locales de forma segura
-      setGallery(prev => prev.filter(p => !selectedIds.includes(p.id)));
-      setSelectedIds([]);
+      // Actualizar estados locales filtrando solo lo que se borró exitosamente
+      setGallery(prev => prev.filter(p => !deletedIds.includes(p.id)));
+      setSelectedIds(prev => prev.filter(id => !deletedIds.includes(id)));
       
-      toast({ title: "Eliminación completa", description: `Se borraron ${successCount} fotos exitosamente.` });
+      if (omittedCount > 0) {
+        toast({
+          variant: "destructive",
+          title: "Acción restringida",
+          description: `Se borraron ${successCount} fotos. ${omittedCount} fotos de otros técnicos fueron omitidas.`,
+        });
+      } else if (successCount > 0) {
+        toast({ title: "Eliminación completa", description: `Se borraron ${successCount} fotos exitosamente.` });
+      }
     } catch (error: any) {
       console.error("Error crítico en eliminación masiva:", error);
       toast({ 
         variant: "destructive", 
         title: "Error", 
-        description: "No se pudieron completar todas las eliminaciones." 
+        description: "Ocurrió un error inesperado. Revisar consola (F12)." 
       });
     } finally {
       setIsDeleting(false);
