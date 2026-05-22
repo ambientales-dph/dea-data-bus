@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -7,11 +8,11 @@ import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight, MapPin, Download } from 'lucide-react';
+import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight, MapPin, Download, FileArchive, Map as MapIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { compressImage } from '@/lib/image-processing';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
+import JSZip from 'jszip';
 
 interface PhotoRegistryProps {
   reportId: string;
@@ -30,6 +31,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const [isLocating, setIsLocating] = useState(false);
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
   const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
@@ -304,6 +306,85 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     }
   };
 
+  const handleGISExport = async () => {
+    if (!db || !reportId || !formId) return;
+    
+    setIsExporting(true);
+    try {
+      const q = query(
+        collection(db, 'samples'),
+        where('reportId', '==', reportId),
+        where('formId', '==', formId),
+        where('analyte', '==', 'Evidencia Visual')
+      );
+      
+      const snapshot = await getDocs(q);
+      const photos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+
+      if (photos.length === 0) {
+        toast({ title: "Exportación vacía", description: "No hay fotos registradas para exportar." });
+        return;
+      }
+
+      const zip = new JSZip();
+      const photosFolder = zip.folder('fotos')!;
+      
+      const csvData = [['id', 'lat', 'lon', 'fecha', 'author', 'ruta_foto']];
+      
+      toast({ title: "Procesando paquete", description: `Compilando ${photos.length} archivos...` });
+
+      for (let i = 0; i < photos.length; i++) {
+        const p = photos[i];
+        try {
+          const response = await fetch(p.value);
+          if (!response.ok) throw new Error(`Error descargando foto ${i}`);
+          const blob = await response.blob();
+          
+          const fileName = `foto_${i}.jpg`;
+          photosFolder.file(fileName, blob);
+
+          const date = p.capturedAt?.toDate?.() || (p.timestamp?.toDate?.()) || new Date();
+          const dateStr = date.toISOString();
+          
+          csvData.push([
+            p.id,
+            (p.latitude || '').toString(),
+            (p.longitude || '').toString(),
+            dateStr,
+            p.authorEmail || '',
+            `fotos/${fileName}`
+          ]);
+        } catch (err) {
+          console.error(`Error procesando foto ${i}:`, err);
+        }
+      }
+
+      const csvContent = csvData.map(row => row.join(',')).join('\n');
+      zip.file('puntos_muestreo.csv', csvContent);
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `RELEVAMIENTO_DEA_${formId.substring(0, 8)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: "Exportación completa", description: "Paquete GIS generado con éxito." });
+    } catch (error: any) {
+      console.error("Error en exportación GIS:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo generar el paquete GIS."
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (authLoading) return null;
 
   return (
@@ -429,26 +510,48 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
         <Separator className="my-4" />
         
-        <div className="space-y-4">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={fetchGallery}
-            disabled={isFetchingGallery}
-            className="w-full h-10 border-neutral-300 text-black font-black uppercase tracking-widest text-[10px] rounded-none hover:bg-neutral-50"
-          >
-            {isFetchingGallery ? (
-              <>
-                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                Buscando...
-              </>
-            ) : (
-              <>
-                <ChevronRight className="mr-2 h-3.5 w-3.5" />
-                Ver fotos guardadas
-              </>
-            )}
-          </Button>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={fetchGallery}
+              disabled={isFetchingGallery}
+              className="h-10 border-neutral-300 text-black font-black uppercase tracking-widest text-[10px] rounded-none hover:bg-neutral-50"
+            >
+              {isFetchingGallery ? (
+                <>
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  Buscando...
+                </>
+              ) : (
+                <>
+                  <ChevronRight className="mr-2 h-3.5 w-3.5" />
+                  Ver fotos guardadas
+                </>
+              )}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleGISExport}
+              disabled={isExporting}
+              className="h-10 border-primary/30 text-primary font-black uppercase tracking-widest text-[10px] rounded-none hover:bg-primary/5"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  Exportando...
+                </>
+              ) : (
+                <>
+                  <MapIcon className="mr-2 h-3.5 w-3.5" />
+                  Exportar paquete GIS (ZIP)
+                </>
+              )}
+            </Button>
+          </div>
 
           {gallery.length > 0 && (
             <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
