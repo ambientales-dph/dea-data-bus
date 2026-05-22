@@ -33,6 +33,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
   // Consulta de fotos ya subidas (en la colección samples)
   const photosQuery = useMemo(() => {
+    if (!db || !reportId || !formId) return null;
     return query(
       collection(db, 'samples'),
       where('reportId', '==', reportId),
@@ -113,7 +114,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   };
 
   const uploadAndRegister = async (file: Blob, fileName: string, id: string) => {
-    if (!user) return;
+    if (!user || !storage || !db) return;
 
     // A. Subida a Storage
     const storagePath = `reports/${reportId}/${formId}/${fileName}`;
@@ -252,7 +253,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           ))}
 
           {/* Fotos Subidas (Online) */}
-          {uploadedPhotos.map((photo: any) => (
+          {uploadedPhotos?.map((photo: any) => (
             <div key={photo.id} className="aspect-square relative border border-neutral-200 group overflow-hidden">
               <img 
                 src={photo.value} 
@@ -291,7 +292,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
             <Loader2 className="h-4 w-4 animate-spin text-neutral-300" />
           </div>
         )}
-      </div>
+      </CardContent>
     </Card>
   );
 }
