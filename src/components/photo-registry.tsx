@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, query, where } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, query, where, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight, MapPin, Download, FileArchive, Map as MapIcon } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight, MapPin, Download, FileArchive, Map as MapIcon, CheckSquare, Square } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
@@ -30,10 +31,12 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const [isLocating, setIsLocating] = useState(false);
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isFetchingGallery, setIsFetchingGallery] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,6 +150,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         parameterType: "Fotografía",
         analyte: "Evidencia Visual",
         value: downloadUrl,
+        storagePath: snapshot.ref.fullPath,
         timestamp: serverTimestamp(),
         userId: user.uid,
         userEmail: user.email,
@@ -206,6 +210,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       }));
       
       setGallery(docsMapped);
+      setSelectedIds([]);
       if (docsMapped.length === 0) {
         toast({
           title: "Galería vacía",
@@ -291,8 +296,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 'image/jpeg', 0.90);
-
-      toast({ title: "Descarga iniciada", description: "La foto con marca de agua se está descargando." });
     } catch (error: any) {
       console.error("Error en descarga:", error);
       toast({
@@ -302,6 +305,55 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       });
     } finally {
       setDownloadingIds(prev => prev.filter(id => id !== photo.id));
+    }
+  };
+
+  const handleBulkDownload = async () => {
+    const selectedPhotos = gallery.filter(p => selectedIds.includes(p.id));
+    for (const photo of selectedPhotos) {
+      await handleDownloadWithWatermark(photo);
+    }
+    toast({ title: "Descargas iniciadas", description: `${selectedPhotos.length} fotos procesadas.` });
+  };
+
+  const handleBulkDelete = async () => {
+    if (!db || !storage || selectedIds.length === 0) return;
+    if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente ${selectedIds.length} fotos? Esta acción no se puede deshacer.`)) return;
+
+    setIsDeleting(true);
+    let successCount = 0;
+
+    try {
+      for (const id of selectedIds) {
+        const photo = gallery.find(p => p.id === id);
+        if (!photo) continue;
+
+        try {
+          // 1. Eliminar archivo físico de Storage
+          if (photo.storagePath) {
+            const fileRef = ref(storage, photo.storagePath);
+            await deleteObject(fileRef);
+          } else if (photo.value) {
+            const fileRef = ref(storage, photo.value);
+            await deleteObject(fileRef);
+          }
+
+          // 2. Eliminar documento de Firestore
+          await deleteDoc(doc(db, 'samples', id));
+          successCount++;
+        } catch (err) {
+          console.error(`Error eliminando foto ${id}:`, err);
+        }
+      }
+
+      setGallery(prev => prev.filter(p => !selectedIds.includes(p.id)));
+      setSelectedIds([]);
+      toast({ title: "Eliminación completa", description: `Se eliminaron ${successCount} fotos con éxito.` });
+    } catch (error: any) {
+      console.error("Error en eliminación masiva:", error);
+      toast({ variant: "destructive", title: "Error", description: "Ocurrió un error al intentar eliminar las fotos." });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -384,6 +436,12 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
   if (authLoading) return null;
 
   const btnBase = "flex flex-col items-center justify-center p-3 bg-white hover:bg-neutral-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed";
@@ -413,35 +471,22 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         </div>
 
         <div className="grid grid-cols-3 gap-0 border border-black divide-x divide-black overflow-hidden bg-black">
-          <button 
-            onClick={handleCaptureClick}
-            disabled={isProcessing}
-            className={btnBase}
-          >
+          <button onClick={handleCaptureClick} disabled={isProcessing} className={btnBase}>
             {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
             <span className={btnLabel}>Cámara / Galería</span>
           </button>
           
-          <button 
-            onClick={fetchGallery}
-            disabled={isFetchingGallery}
-            className={btnBase}
-          >
+          <button onClick={fetchGallery} disabled={isFetchingGallery} className={btnBase}>
             {isFetchingGallery ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
             <span className={btnLabel}>Ver colección</span>
           </button>
 
-          <button 
-            onClick={handleGISExport}
-            disabled={isExporting || gallery.length === 0}
-            className={btnBase}
-          >
+          <button onClick={handleGISExport} disabled={isExporting || gallery.length === 0} className={btnBase}>
             {isExporting ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapIcon className="h-5 w-5" />}
             <span className={btnLabel}>GIS</span>
           </button>
         </div>
 
-        {/* Status areas - only show if there's content */}
         {(localPhoto || pendingPhotos.length > 0) && (
           <div className="space-y-3 pt-2">
             <h4 className="text-[9px] font-black uppercase text-neutral-400 tracking-widest">Cola de Envío</h4>
@@ -478,23 +523,51 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         {gallery.length > 0 && (
           <div className="space-y-3 pt-2 animate-in fade-in duration-300">
             <Separator className="bg-neutral-200" />
-            <h4 className="text-[9px] font-black uppercase text-black tracking-widest">Colección Cargada</h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-[9px] font-black uppercase text-black tracking-widest">Colección Cargada</h4>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-1 animate-in fade-in slide-in-from-right-1">
+                  <span className="text-[9px] font-black mr-2 uppercase">{selectedIds.length} seleccionadas</span>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 bg-primary text-white hover:bg-primary/90"
+                    onClick={handleBulkDownload}
+                    disabled={downloadingIds.length > 0}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 bg-destructive text-white hover:bg-destructive/90"
+                    onClick={handleBulkDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              )}
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               {gallery.map((photo) => (
-                <div key={photo.id} className="border border-black bg-white group relative overflow-hidden">
-                  <div className="aspect-video bg-neutral-100">
+                <div 
+                  key={photo.id} 
+                  className={cn(
+                    "border border-black bg-white group relative overflow-hidden transition-all",
+                    selectedIds.includes(photo.id) ? "ring-2 ring-primary ring-offset-1" : ""
+                  )}
+                >
+                  <div className="aspect-video bg-neutral-100 cursor-pointer" onClick={() => toggleSelect(photo.id)}>
                     <img src={photo.value} alt="Evidencia" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
-                      <Button 
-                        size="sm" 
-                        variant="secondary"
-                        disabled={downloadingIds.includes(photo.id)}
-                        className="h-8 rounded-none text-[9px] font-black uppercase"
-                        onClick={() => handleDownloadWithWatermark(photo)}
-                      >
-                        {downloadingIds.includes(photo.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
-                        Descargar
-                      </Button>
+                    <div className="absolute top-1 right-1 z-20">
+                      <div className={cn(
+                        "p-0.5 border border-black transition-colors",
+                        selectedIds.includes(photo.id) ? "bg-primary text-white" : "bg-white/80 text-black"
+                      )}>
+                        {selectedIds.includes(photo.id) ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+                      </div>
                     </div>
                   </div>
                   {photo.latitude && (
