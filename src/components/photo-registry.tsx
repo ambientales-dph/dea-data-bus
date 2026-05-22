@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { useFirestore, useStorage, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/image-processing';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
@@ -26,7 +26,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const { user, loading: authLoading } = useUser();
   const { toast } = useToast();
   
-  const [isCompressing, setIsCompressing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
   const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
@@ -52,7 +52,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    setIsCompressing(true);
+    setIsProcessing(true);
     try {
       const compressed = await compressImage(file);
       const photoId = crypto.randomUUID();
@@ -84,74 +84,72 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo procesar la imagen.",
+        description: "No se pudo procesar la imagen localmente.",
       });
     } finally {
-      setIsCompressing(false);
+      setIsProcessing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleUpload = async (photoId: string, file: Blob, fileName: string) => {
-    if (!user || !storage || !db) return;
+    if (!user || !storage || !db) {
+      toast({ variant: "destructive", title: "Error", description: "Servicios de Firebase no disponibles." });
+      return;
+    }
 
     setUploadingIds(prev => [...prev, photoId]);
 
     try {
       const safeReportId = reportId?.trim() || 'unnamed_report';
       const safeFormId = formId?.trim() || 'unnamed_form';
-      const storagePath = `reports/${safeReportId}/${safeFormId}/${fileName}`;
-      const storageRef = ref(storage, storagePath);
+      
+      // 1. Referencia al storage
+      const storageRef = ref(storage, `reports/${safeReportId}/${safeFormId}/${fileName}`);
 
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      // 2. Subida directa (Promise based - más robusto ante colisiones de UI)
+      const snapshot = await uploadBytes(storageRef, file);
+      
+      // 3. Obtener URL de descarga
+      const downloadUrl = await getDownloadURL(snapshot.ref);
+      
+      // 4. Registro en Firestore (Samples)
+      const photoData = {
+        reportId,
+        formId,
+        stationId,
+        medium,
+        parameterType: "Fotografía",
+        analyte: "Evidencia Visual",
+        value: downloadUrl,
+        timestamp: serverTimestamp(),
+        userId: user.uid,
+        userEmail: user.email
+      };
 
-      uploadTask.on('state_changed', 
-        null, 
-        (error) => {
-          console.error("Error en uploadTask:", error);
-          toast({ variant: "destructive", title: "Fallo de subida", description: error.message });
-          setUploadingIds(prev => prev.filter(id => id !== photoId));
-        }, 
-        async () => {
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          
-          const photoData = {
-            reportId,
-            formId,
-            stationId,
-            medium,
-            parameterType: "Fotografía",
-            analyte: "Evidencia Visual",
-            value: downloadUrl,
-            timestamp: serverTimestamp(),
-            userId: user.uid,
-            userEmail: user.email
-          };
+      await addDoc(collection(db, 'samples'), photoData);
 
-          addDoc(collection(db, 'samples'), photoData)
-            .catch(async (error) => {
-              const permissionError = new FirestorePermissionError({
-                path: 'samples',
-                operation: 'create',
-                requestResourceData: photoData,
-              });
-              errorEmitter.emit('permission-error', permissionError);
-            });
+      // 5. Marcar como editado el reporte
+      await updateDoc(doc(db, 'reports', reportId), { 
+        editors: arrayUnion(user.email) 
+      }).catch(() => {});
+      
+      // 6. Limpieza de almacenamiento local
+      await offlineStorage.removePhoto(photoId);
+      if (localPhoto?.id === photoId) setLocalPhoto(null);
+      setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
 
-          updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(() => {});
-          
-          await offlineStorage.removePhoto(photoId);
-          if (localPhoto?.id === photoId) setLocalPhoto(null);
-          setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
-          setUploadingIds(prev => prev.filter(id => id !== photoId));
-
-          toast({ title: "Sincronizado", description: "Foto guardada correctamente." });
-        }
-      );
+      toast({ title: "Sincronizado", description: "Foto registrada en la base de datos." });
     } catch (error: any) {
-      console.error('Error general en handleUpload:', error);
+      console.error('Error en handleUpload:', error);
+      toast({ 
+        variant: "destructive", 
+        title: "Error de subida", 
+        description: error.message || "No se pudo completar la transferencia." 
+      });
+    } finally {
+      // ESTE BLOQUE ES SAGRADO: Siempre libera el spinner
       setUploadingIds(prev => prev.filter(id => id !== photoId));
-      toast({ variant: "destructive", title: "Error", description: error.message });
     }
   };
 
@@ -184,13 +182,13 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
             {!localPhoto ? (
               <button 
                 onClick={handleCaptureClick}
-                disabled={isCompressing}
+                disabled={isProcessing}
                 className={cn(
                   "w-full aspect-video flex flex-col items-center justify-center border-2 border-dashed rounded-none transition-all group",
-                  isCompressing ? "bg-neutral-50 cursor-not-allowed" : "border-neutral-300 hover:bg-neutral-50"
+                  isProcessing ? "bg-neutral-50 cursor-not-allowed" : "border-neutral-300 hover:bg-neutral-50"
                 )}
               >
-                {isCompressing ? (
+                {isProcessing ? (
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     <span className="text-[9px] font-bold uppercase text-primary">Procesando...</span>
