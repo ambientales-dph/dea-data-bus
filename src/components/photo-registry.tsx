@@ -7,7 +7,6 @@ import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight, MapPin, Download, FileArchive, Map as MapIcon, CheckSquare, Square } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
@@ -285,17 +284,20 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         currentY -= fontSize * 1.3;
       });
 
-      canvas.toBlob((blob) => {
-        if (!blob) throw new Error("Error al generar el archivo de imagen.");
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `FOTO_${formId}_${Date.now()}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 'image/jpeg', 0.90);
+      return new Promise<void>((resolve) => {
+        canvas.toBlob((blob) => {
+          if (!blob) return resolve();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `FOTO_${formId}_${Date.now()}.jpg`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          resolve();
+        }, 'image/jpeg', 0.90);
+      });
     } catch (error: any) {
       console.error("Error en descarga:", error);
       toast({
@@ -310,10 +312,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
   const handleBulkDownload = async () => {
     const selectedPhotos = gallery.filter(p => selectedIds.includes(p.id));
+    toast({ title: "Procesando descargas", description: `Preparando ${selectedPhotos.length} fotos con marca de agua...` });
+    
     for (const photo of selectedPhotos) {
       await handleDownloadWithWatermark(photo);
     }
-    toast({ title: "Descargas iniciadas", description: `${selectedPhotos.length} fotos procesadas.` });
   };
 
   const handleBulkDelete = async () => {
@@ -329,26 +332,26 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         if (!photo) continue;
 
         try {
-          // 1. Eliminar archivo físico de Storage
+          // 1. Intentar eliminar archivo físico de Storage
           if (photo.storagePath) {
             const fileRef = ref(storage, photo.storagePath);
-            await deleteObject(fileRef);
-          } else if (photo.value) {
-            const fileRef = ref(storage, photo.value);
-            await deleteObject(fileRef);
+            await deleteObject(fileRef).catch(e => {
+              console.warn(`Archivo físico no hallado en Storage para id ${id}, procediendo a borrar registro.`, e);
+            });
           }
 
-          // 2. Eliminar documento de Firestore
+          // 2. Eliminar documento de Firestore (esto es lo que limpia la galería)
           await deleteDoc(doc(db, 'samples', id));
           successCount++;
         } catch (err) {
-          console.error(`Error eliminando foto ${id}:`, err);
+          console.error(`Error crítico eliminando foto ${id}:`, err);
         }
       }
 
+      // Actualizar galería local filtrando las borradas
       setGallery(prev => prev.filter(p => !selectedIds.includes(p.id)));
       setSelectedIds([]);
-      toast({ title: "Eliminación completa", description: `Se eliminaron ${successCount} fotos con éxito.` });
+      toast({ title: "Operación finalizada", description: `Se eliminaron ${successCount} registros de la base de datos.` });
     } catch (error: any) {
       console.error("Error en eliminación masiva:", error);
       toast({ variant: "destructive", title: "Error", description: "Ocurrió un error al intentar eliminar las fotos." });
