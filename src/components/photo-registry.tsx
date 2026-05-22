@@ -7,7 +7,7 @@ import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight, MapPin, Download, FileArchive, Map as MapIcon, CheckSquare, Square } from 'lucide-react';
+import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight, MapPin, Download, FileArchive, Map as MapIcon, CheckSquare, Square, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingKMZ, setIsExportingKMZ] = useState(false);
   const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
@@ -332,15 +333,12 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         if (!photo) continue;
 
         try {
-          // 1. Intentar eliminar archivo físico de Storage
           if (photo.storagePath) {
             const fileRef = ref(storage, photo.storagePath);
             await deleteObject(fileRef).catch(e => {
               console.warn(`Archivo físico no hallado en Storage para id ${id}, procediendo a borrar registro.`, e);
             });
           }
-
-          // 2. Eliminar documento de Firestore (esto es lo que limpia la galería)
           await deleteDoc(doc(db, 'samples', id));
           successCount++;
         } catch (err) {
@@ -348,7 +346,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         }
       }
 
-      // Actualizar galería local filtrando las borradas
       setGallery(prev => prev.filter(p => !selectedIds.includes(p.id)));
       setSelectedIds([]);
       toast({ title: "Operación finalizada", description: `Se eliminaron ${successCount} registros de la base de datos.` });
@@ -382,7 +379,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
       const zip = new JSZip();
       const photosFolder = zip.folder('fotos')!;
-      
       const csvData = [['id', 'lat', 'lon', 'fecha', 'author', 'ruta_foto']];
       
       toast({ title: "Procesando paquete", description: `Compilando ${photos.length} archivos...` });
@@ -393,7 +389,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           const response = await fetch(p.value);
           if (!response.ok) throw new Error(`Error descargando foto ${i}`);
           const blob = await response.blob();
-          
           const fileName = `foto_${i}.jpg`;
           photosFolder.file(fileName, blob);
 
@@ -439,6 +434,111 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     }
   };
 
+  const handleKMZExport = async () => {
+    if (!db || !reportId || !formId) return;
+    
+    setIsExportingKMZ(true);
+    try {
+      const q = query(
+        collection(db, 'samples'),
+        where('reportId', '==', reportId),
+        where('formId', '==', formId),
+        where('analyte', '==', 'Evidencia Visual')
+      );
+      
+      const snapshot = await getDocs(q);
+      const photos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+
+      if (photos.length === 0) {
+        toast({ title: "Exportación vacía", description: "No hay fotos registradas para exportar KMZ." });
+        return;
+      }
+
+      const zip = new JSZip();
+      const photosFolder = zip.folder('fotos')!;
+      
+      let kmlPlacemarks = '';
+      
+      toast({ title: "Generando KMZ", description: `Procesando ${photos.length} fotos para Google Earth...` });
+
+      for (let i = 0; i < photos.length; i++) {
+        const p = photos[i];
+        try {
+          const response = await fetch(p.value);
+          if (!response.ok) throw new Error(`Error descargando foto ${i}`);
+          const blob = await response.blob();
+          const fileName = `foto_${i}.jpg`;
+          photosFolder.file(fileName, blob);
+
+          const date = p.capturedAt?.toDate?.() || (p.timestamp?.toDate?.()) || new Date();
+          const dateStr = date.toLocaleString('es-AR');
+          const lat = p.latitude || 0;
+          const lon = p.longitude || 0;
+
+          kmlPlacemarks += `
+      <Placemark>
+        <name>Foto ${i + 1} - ${formId.substring(0, 8)}</name>
+        <description>
+          <![CDATA[
+            <div style="font-family: 'Encode Sans', sans-serif; min-width: 350px;">
+              <h3 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Evidencia DEA Data Bus</h3>
+              <img src="fotos/${fileName}" width="350" style="display: block; margin-bottom: 10px; border: 1px solid #000;" />
+              <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                <tr><td style="font-weight: bold; width: 30%;">Técnico:</td><td>${p.authorEmail || p.userEmail || 'N/D'}</td></tr>
+                <tr><td style="font-weight: bold;">Fecha:</td><td>${dateStr}</td></tr>
+                <tr><td style="font-weight: bold;">GPS:</td><td>${lat.toFixed(6)}, ${lon.toFixed(6)}</td></tr>
+                <tr><td style="font-weight: bold;">Planilla:</td><td>${formId}</td></tr>
+              </table>
+            </div>
+          ]]>
+        </description>
+        <Point>
+          <coordinates>${lon},${lat},0</coordinates>
+        </Point>
+      </Placemark>`;
+        } catch (err) {
+          console.error(`Error procesando foto ${i} para KMZ:`, err);
+        }
+      }
+
+      const kmlString = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Relevamiento DEA - ${formId.substring(0, 8)}</name>
+    <open>1</open>
+    ${kmlPlacemarks}
+  </Document>
+</kml>`;
+
+      zip.file('doc.kml', kmlString);
+
+      const content = await zip.generateAsync({ 
+        type: 'blob', 
+        mimeType: 'application/vnd.google-earth.kmz' 
+      });
+      
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `RELEVAMIENTO_DEA_${formId.substring(0, 8)}.kmz`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: "KMZ Generado", description: "Paquete listo para Google Earth." });
+    } catch (error: any) {
+      console.error("Error en exportación KMZ:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo generar el paquete KMZ."
+      });
+    } finally {
+      setIsExportingKMZ(false);
+    }
+  };
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -473,20 +573,25 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-0 border border-black divide-x divide-black overflow-hidden bg-black">
+        <div className="grid grid-cols-4 gap-0 border border-black divide-x divide-black overflow-hidden bg-black">
           <button onClick={handleCaptureClick} disabled={isProcessing} className={btnBase}>
             {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-            <span className={btnLabel}>Cámara / Galería</span>
+            <span className={btnLabel}>Cámara</span>
           </button>
           
           <button onClick={fetchGallery} disabled={isFetchingGallery} className={btnBase}>
             {isFetchingGallery ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
-            <span className={btnLabel}>Ver colección</span>
+            <span className={btnLabel}>Colección</span>
           </button>
 
           <button onClick={handleGISExport} disabled={isExporting || gallery.length === 0} className={btnBase}>
             {isExporting ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapIcon className="h-5 w-5" />}
-            <span className={btnLabel}>GIS</span>
+            <span className={btnLabel}>GIS (CSV)</span>
+          </button>
+
+          <button onClick={handleKMZExport} disabled={isExportingKMZ || gallery.length === 0} className={btnBase}>
+            {isExportingKMZ ? <Loader2 className="h-5 w-5 animate-spin" /> : <Globe className="h-5 w-5" />}
+            <span className={btnLabel}>KMZ (KML)</span>
           </button>
         </div>
 
@@ -578,6 +683,16 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
                       <MapPin className="h-2 w-2" /> GPS
                     </div>
                   )}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadWithWatermark(photo);
+                    }}
+                    disabled={downloadingIds.includes(photo.id)}
+                    className="absolute bottom-1 right-1 bg-white/90 p-1 text-black border border-black hover:bg-black hover:text-white transition-colors z-20"
+                  >
+                    {downloadingIds.includes(photo.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                  </button>
                 </div>
               ))}
             </div>
