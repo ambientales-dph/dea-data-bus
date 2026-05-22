@@ -2,10 +2,16 @@
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
+import { getFirestore, Firestore, enableMultiTabIndexedDbPersistence, terminate } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { firebaseConfig } from './config';
+
+let firebaseApp: FirebaseApp;
+let firestore: Firestore;
+let auth: Auth;
+let storage: FirebaseStorage;
+let persistenceStarted = false;
 
 /**
  * Inicializa Firebase de forma segura como un singleton y habilita persistencia offline.
@@ -16,23 +22,29 @@ export function initializeFirebase(): {
   auth: Auth;
   storage: FirebaseStorage;
 } {
-  const firebaseApp = getApps().length > 0 
-    ? getApp() 
-    : initializeApp(firebaseConfig);
-    
-  const firestore = getFirestore(firebaseApp);
-  const auth = getAuth(firebaseApp);
-  const storage = getStorage(firebaseApp);
+  if (!firebaseApp) {
+    firebaseApp = getApps().length > 0 
+      ? getApp() 
+      : initializeApp(firebaseConfig);
+      
+    firestore = getFirestore(firebaseApp);
+    auth = getAuth(firebaseApp);
+    storage = getStorage(firebaseApp);
 
-  // Habilitar persistencia offline solo en el cliente
-  if (typeof window !== 'undefined') {
-    enableMultiTabIndexedDbPersistence(firestore).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('Persistencia de Firestore: falló precondición (múltiples pestañas).');
-      } else if (err.code === 'unimplemented') {
-        console.warn('Persistencia de Firestore: el navegador no soporta IndexedDB.');
-      }
-    });
+    // Habilitar persistencia offline solo en el cliente y una sola vez
+    if (typeof window !== 'undefined' && !persistenceStarted) {
+      persistenceStarted = true;
+      enableMultiTabIndexedDbPersistence(firestore).catch((err) => {
+        if (err.code === 'failed-precondition') {
+          // Probablemente múltiples pestañas abiertas, lo cual está bien con MultiTab
+          console.warn('Persistencia de Firestore: falló precondición (múltiples pestañas).');
+        } else if (err.code === 'unimplemented') {
+          console.warn('Persistencia de Firestore: el navegador no soporta IndexedDB.');
+        } else {
+          console.error('Error habilitando persistencia:', err);
+        }
+      });
+    }
   }
 
   return { firebaseApp, firestore, auth, storage };
