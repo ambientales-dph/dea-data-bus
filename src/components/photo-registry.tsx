@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp, query, where, orderBy } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useFirestore, useStorage, useUser, useCollection } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/image-processing';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface PhotoRegistryProps {
   reportId: string;
@@ -23,7 +23,7 @@ interface PhotoRegistryProps {
 export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegistryProps) {
   const db = useFirestore();
   const storage = useStorage();
-  const { user } = useUser();
+  const { user, loading: authLoading } = useUser();
   const { toast } = useToast();
   
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,8 +31,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 1. Bloqueo estricto de la consulta hasta que la auth esté lista
   const photosQuery = useMemo(() => {
-    if (!db || !user || !reportId || !formId) return null;
+    // Si estamos cargando auth o no hay usuario, devolvemos null para pausar el hook useCollection
+    if (!db || authLoading || !user || !reportId || !formId) return null;
+    
     return query(
       collection(db, 'samples'),
       where('reportId', '==', reportId),
@@ -40,7 +43,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       where('parameterType', '==', 'Fotografía'),
       orderBy('timestamp', 'desc')
     );
-  }, [db, user, reportId, formId]);
+  }, [db, user, authLoading, reportId, formId]);
 
   const { data: uploadedPhotos, loading: loadingPhotos } = useCollection(photosQuery);
 
@@ -60,6 +63,22 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       window.removeEventListener('offline', handleStatus);
     };
   }, [formId]);
+
+  // 2. Early Return: Si la auth está cargando, mostramos un estado neutro
+  if (authLoading) {
+    return (
+      <div className="mt-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4 rounded-full" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <Skeleton className="aspect-square w-full" />
+          <Skeleton className="aspect-square w-full" />
+        </div>
+      </div>
+    );
+  }
 
   const handleCaptureClick = () => {
     fileInputRef.current?.click();
@@ -129,7 +148,12 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       userEmail: user.email
     };
 
-    await addDoc(collection(db, 'samples'), photoDoc);
+    // No bloqueamos la UI esperando Firestore
+    addDoc(collection(db, 'samples'), photoDoc)
+      .then(() => {
+        updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
+      })
+      .catch(console.error);
     
     await offlineStorage.removePhoto(id);
     setPendingPhotos(prev => prev.filter(p => p.id !== id));
@@ -242,28 +266,34 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
             </div>
           ))}
 
-          {uploadedPhotos?.map((photo: any) => (
-            <div key={photo.id} className="aspect-square relative border border-neutral-200 group overflow-hidden">
-              <img 
-                src={photo.value} 
-                alt="Evidencia" 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-              />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1">
-                <p className="text-[7px] text-white uppercase font-bold truncate">
-                  {photo.userEmail?.split('@')[0]} • {new Date(photo.timestamp?.toMillis?.() || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                </p>
+          {loadingPhotos ? (
+             <div className="aspect-square flex items-center justify-center bg-muted/20">
+               <Loader2 className="h-4 w-4 animate-spin text-neutral-300" />
+             </div>
+          ) : (
+            uploadedPhotos?.map((photo: any) => (
+              <div key={photo.id} className="aspect-square relative border border-neutral-200 group overflow-hidden">
+                <img 
+                  src={photo.value} 
+                  alt="Evidencia" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1">
+                  <p className="text-[7px] text-white uppercase font-bold truncate">
+                    {photo.userEmail?.split('@')[0]} • {new Date(photo.timestamp?.toMillis?.() || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  </p>
+                </div>
+                <a 
+                  href={photo.value} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity"
+                >
+                  <ImageIcon className="h-5 w-5 text-white" />
+                </a>
               </div>
-              <a 
-                href={photo.value} 
-                target="_blank" 
-                rel="noreferrer"
-                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity"
-              >
-                <ImageIcon className="h-5 w-5 text-white" />
-              </a>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         <input 
@@ -274,12 +304,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           onChange={handleFileChange}
           className="hidden" 
         />
-        
-        {loadingPhotos && uploadedPhotos?.length === 0 && (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-4 w-4 animate-spin text-neutral-300" />
-          </div>
-        )}
       </CardContent>
     </Card>
   );
