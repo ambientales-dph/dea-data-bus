@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -174,7 +173,7 @@ function DataExplorer({
           </div>
           <div className="flex flex-col">
             <span className="text-3xl font-normal text-black leading-none">{samples.length}</span>
-            <span className="text-[8px] font-normal uppercase tracking-wider text-neutral-400 mt-1.5">Parámetros</span>
+            <span className="text-[8px] font-normal uppercase tracking-wider text-neutral-400 mt-1.5">Registros</span>
           </div>
         </div>
         
