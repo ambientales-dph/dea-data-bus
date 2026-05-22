@@ -12,6 +12,16 @@ import { useToast } from '@/hooks/use-toast';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
 import JSZip from 'jszip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PhotoRegistryProps {
   reportId: string;
@@ -31,6 +41,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingKMZ, setIsExportingKMZ] = useState(false);
   const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string } | null>(null);
@@ -313,30 +324,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     }
   };
 
-  const handleBulkDelete = async (e?: React.MouseEvent) => {
-    // Chivatos de depuración solicitados
-    console.log("1. Botón de papelera presionado.");
-    console.log("2. IDs seleccionados:", selectedIds);
-    console.log("3. Variables de entorno:", { db: !!db, storage: !!storage, user: user?.email });
-
-    if (e) e.preventDefault();
-
-    if (!db || !storage || !user?.email || selectedIds.length === 0) {
-      console.error("4. ERROR: Faltan dependencias o no hay fotos seleccionadas. Abortando.");
-      toast({ 
-        variant: "destructive", 
-        title: "Error", 
-        description: "No hay fotos seleccionadas o falta conexión." 
-      });
-      return;
-    }
-
-    const confirmMessage = selectedIds.length === 1 
-      ? "¿Estás seguro de que deseas eliminar permanentemente esta foto?" 
-      : `¿Estás seguro de que deseas eliminar permanentemente estas ${selectedIds.length} fotos?`;
-
-    if (!confirm(confirmMessage)) return;
-
+  const executeDelete = async () => {
+    console.log("5. Ejecutando eliminación confirmada.");
     setIsDeleting(true);
     let successCount = 0;
     let omittedCount = 0;
@@ -347,17 +336,15 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         const photo = gallery.find(p => p.id === id);
         if (!photo) continue;
 
-        // Regla de autoría: Solo el autor original puede eliminar su evidencia
-        const isAuthor = photo.authorEmail === user.email || photo.userEmail === user.email;
+        const isAuthor = photo.authorEmail === user?.email || photo.userEmail === user?.email;
         if (!isAuthor) {
           console.warn(`Omitiendo foto ${id}: No tienes permisos de autor.`);
           omittedCount++;
           continue;
         }
 
-        // 1. Borrado físico en Storage usando la URL pública (photo.value)
         try {
-          const fileRef = ref(storage, photo.value);
+          const fileRef = ref(storage!, photo.value);
           await deleteObject(fileRef);
         } catch (storageErr: any) {
           if (storageErr.code !== 'storage/object-not-found') {
@@ -365,9 +352,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           }
         }
 
-        // 2. Borrado del registro en Firestore (Innegociable)
         try {
-          await deleteDoc(doc(db, 'samples', id));
+          await deleteDoc(doc(db!, 'samples', id));
           successCount++;
           deletedIds.push(id);
         } catch (firestoreErr: any) {
@@ -375,7 +361,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         }
       }
 
-      // Actualizar estados locales filtrando solo lo que se borró exitosamente
       setGallery(prev => prev.filter(p => !deletedIds.includes(p.id)));
       setSelectedIds(prev => prev.filter(id => !deletedIds.includes(id)));
       
@@ -390,14 +375,30 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       }
     } catch (error: any) {
       console.error("Error crítico en eliminación masiva:", error);
+      toast({ variant: "destructive", title: "Error", description: "Ocurrió un error inesperado." });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
+  const handleBulkDelete = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    console.log("1. Botón de papelera presionado.");
+    console.log("2. IDs seleccionados:", selectedIds);
+    console.log("3. Variables de entorno:", { db: !!db, storage: !!storage, user: user?.email });
+
+    if (!db || !storage || !user?.email || selectedIds.length === 0) {
+      console.error("4. ERROR: Faltan dependencias o no hay fotos seleccionadas. Abortando.");
       toast({ 
         variant: "destructive", 
         title: "Error", 
-        description: "Ocurrió un error inesperado. Revisar consola (F12)." 
+        description: "No hay fotos seleccionadas o falta conexión." 
       });
-    } finally {
-      setIsDeleting(false);
+      return;
     }
+
+    setShowDeleteModal(true);
   };
 
   const handleGISExport = async () => {
@@ -595,151 +596,175 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const btnLabel = "text-[9px] font-black uppercase text-center leading-tight mt-1.5";
 
   return (
-    <Card className="border-t-4 border-t-accent shadow-none rounded-none mt-6 border-x-black border-b-black">
-      <CardContent className="p-4 space-y-4">
-        <div className="flex items-center justify-between border-b border-black pb-2">
-          <div className="flex items-center gap-2">
-            <Camera className="h-4 w-4 text-black" />
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-black font-headline">Evidencia Visual</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            {isLocating && (
-              <div className="flex items-center gap-1 text-[9px] font-bold text-primary animate-pulse">
-                <MapPin className="h-3 w-3" /> GPS...
-              </div>
-            )}
-            {pendingPhotos.length > 0 && (
-              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-neutral-100 border border-black text-black rounded-none">
-                <CloudOff className="h-3 w-3" />
-                <span className="text-[8px] font-black uppercase">{pendingPhotos.length} Pendientes</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-4 gap-0 border border-black divide-x divide-black overflow-hidden bg-black">
-          <button onClick={handleCaptureClick} disabled={isProcessing} className={btnBase}>
-            {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-            <span className={btnLabel}>Cámara</span>
-          </button>
-          
-          <button onClick={fetchGallery} disabled={isFetchingGallery} className={btnBase}>
-            {isFetchingGallery ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
-            <span className={btnLabel}>Colección</span>
-          </button>
-
-          <button onClick={handleGISExport} disabled={isExporting || gallery.length === 0} className={btnBase}>
-            {isExporting ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapIcon className="h-5 w-5" />}
-            <span className={btnLabel}>GIS (CSV)</span>
-          </button>
-
-          <button onClick={handleKMZExport} disabled={isExportingKMZ || gallery.length === 0} className={btnBase}>
-            {isExportingKMZ ? <Loader2 className="h-5 w-5 animate-spin" /> : <Globe className="h-5 w-5" />}
-            <span className={btnLabel}>KMZ (KML)</span>
-          </button>
-        </div>
-
-        {(localPhoto || pendingPhotos.length > 0) && (
-          <div className="space-y-3 pt-2">
-            <h4 className="text-[9px] font-black uppercase text-neutral-400 tracking-widest">Cola de Envío</h4>
-            <div className="grid grid-cols-4 gap-2">
-              {localPhoto && (
-                <div className="relative aspect-square border border-black bg-neutral-100 group">
-                  <img src={localPhoto.preview} alt="Cargando" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                    <button onClick={() => removePhoto(localPhoto.id)} className="p-1 bg-white text-black"><Trash2 className="h-3 w-3" /></button>
-                    <button onClick={() => handleUpload(localPhoto.id, localPhoto.file, `${localPhoto.id}.jpg`)} className="p-1 bg-white text-primary">
-                      {uploadingIds.includes(localPhoto.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                    </button>
-                  </div>
+    <>
+      <Card className="border-t-4 border-t-accent shadow-none rounded-none mt-6 border-x-black border-b-black">
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center justify-between border-b border-black pb-2">
+            <div className="flex items-center gap-2">
+              <Camera className="h-4 w-4 text-black" />
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-black font-headline">Evidencia Visual</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              {isLocating && (
+                <div className="flex items-center gap-1 text-[9px] font-bold text-primary animate-pulse">
+                  <MapPin className="h-3 w-3" /> GPS...
                 </div>
               )}
-              {pendingPhotos.filter(p => p.id !== localPhoto?.id).map(photo => (
-                <div key={photo.id} className="relative aspect-square border border-neutral-300 bg-neutral-50 group">
-                  <img src={URL.createObjectURL(photo.file)} alt="Pendiente" className="w-full h-full object-cover opacity-60" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    {uploadingIds.includes(photo.id) ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-black" />
-                    ) : (
-                      <button onClick={() => handleUpload(photo.id, photo.file, photo.fileName)} className="p-1 bg-white border border-black text-black">
-                        <Upload className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
+              {pendingPhotos.length > 0 && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-neutral-100 border border-black text-black rounded-none">
+                  <CloudOff className="h-3 w-3" />
+                  <span className="text-[8px] font-black uppercase">{pendingPhotos.length} Pendientes</span>
                 </div>
-              ))}
+              )}
             </div>
           </div>
-        )}
 
-        {gallery.length > 0 && (
-          <div className="space-y-3 pt-2 animate-in fade-in duration-300">
-            <Separator className="bg-neutral-200" />
-            <div className="flex items-center justify-between">
-              <h4 className="text-[9px] font-black uppercase text-black tracking-widest">Colección Cargada</h4>
-              <div className="flex items-center gap-1">
-                <span className="text-[9px] font-black mr-2 uppercase">{selectedIds.length} seleccionadas</span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={cn(
-                    "h-7 w-7 bg-primary text-white hover:bg-primary/90 transition-all",
-                    selectedIds.length === 0 && "opacity-20 grayscale pointer-events-none"
-                  )}
-                  onClick={handleBulkDownload}
-                  disabled={downloadingIds.length > 0 || selectedIds.length === 0}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={cn(
-                    "h-7 w-7 bg-destructive text-white hover:bg-destructive/90 transition-all",
-                    selectedIds.length === 0 && "opacity-20 grayscale pointer-events-none"
-                  )}
-                  onClick={(e) => handleBulkDelete(e)}
-                  disabled={isDeleting || selectedIds.length === 0}
-                >
-                  {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                </Button>
+          <div className="grid grid-cols-4 gap-0 border border-black divide-x divide-black overflow-hidden bg-black">
+            <button onClick={handleCaptureClick} disabled={isProcessing} className={btnBase}>
+              {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+              <span className={btnLabel}>Cámara</span>
+            </button>
+            
+            <button onClick={fetchGallery} disabled={isFetchingGallery} className={btnBase}>
+              {isFetchingGallery ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
+              <span className={btnLabel}>Colección</span>
+            </button>
+
+            <button onClick={handleGISExport} disabled={isExporting || gallery.length === 0} className={btnBase}>
+              {isExporting ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapIcon className="h-5 w-5" />}
+              <span className={btnLabel}>GIS (CSV)</span>
+            </button>
+
+            <button onClick={handleKMZExport} disabled={isExportingKMZ || gallery.length === 0} className={btnBase}>
+              {isExportingKMZ ? <Loader2 className="h-5 w-5 animate-spin" /> : <Globe className="h-5 w-5" />}
+              <span className={btnLabel}>KMZ (KML)</span>
+            </button>
+          </div>
+
+          {(localPhoto || pendingPhotos.length > 0) && (
+            <div className="space-y-3 pt-2">
+              <h4 className="text-[9px] font-black uppercase text-neutral-400 tracking-widest">Cola de Envío</h4>
+              <div className="grid grid-cols-4 gap-2">
+                {localPhoto && (
+                  <div className="relative aspect-square border border-black bg-neutral-100 group">
+                    <img src={localPhoto.preview} alt="Cargando" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                      <button onClick={() => removePhoto(localPhoto.id)} className="p-1 bg-white text-black"><Trash2 className="h-3 w-3" /></button>
+                      <button onClick={() => handleUpload(localPhoto.id, localPhoto.file, `${localPhoto.id}.jpg`)} className="p-1 bg-white text-primary">
+                        {uploadingIds.includes(localPhoto.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {pendingPhotos.filter(p => p.id !== localPhoto?.id).map(photo => (
+                  <div key={photo.id} className="relative aspect-square border border-neutral-300 bg-neutral-50 group">
+                    <img src={URL.createObjectURL(photo.file)} alt="Pendiente" className="w-full h-full object-cover opacity-60" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      {uploadingIds.includes(photo.id) ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-black" />
+                      ) : (
+                        <button onClick={() => handleUpload(photo.id, photo.file, photo.fileName)} className="p-1 bg-white border border-black text-black">
+                          <Upload className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              {gallery.map((photo) => (
-                <div 
-                  key={photo.id} 
-                  onClick={() => toggleSelect(photo.id)}
-                  className={cn(
-                    "border border-black bg-white group relative overflow-hidden transition-all cursor-pointer aspect-video",
-                    selectedIds.includes(photo.id) ? "ring-2 ring-primary ring-offset-1 z-10 scale-[1.02]" : "hover:scale-[1.01]"
-                  )}
-                >
-                  <img src={photo.value} alt="Evidencia" className="w-full h-full object-cover" />
-                  {photo.latitude && (
-                    <div className="absolute top-1 left-1 bg-black text-white px-1 py-0.5 text-[7px] font-bold flex items-center gap-0.5">
-                      <MapPin className="h-2 w-2" /> GPS
-                    </div>
-                  )}
-                  {selectedIds.includes(photo.id) && (
-                    <div className="absolute inset-0 bg-primary/10 pointer-events-none" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          )}
 
-        <input 
-          type="file" 
-          ref={fileInputRef}
-          accept="image/*" 
-          capture="environment" 
-          onChange={handleFileChange}
-          className="hidden" 
-        />
-      </CardContent>
-    </Card>
+          {gallery.length > 0 && (
+            <div className="space-y-3 pt-2 animate-in fade-in duration-300">
+              <Separator className="bg-neutral-200" />
+              <div className="flex items-center justify-between">
+                <h4 className="text-[9px] font-black uppercase text-black tracking-widest">Colección Cargada</h4>
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] font-black mr-2 uppercase">{selectedIds.length} seleccionadas</span>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={cn(
+                      "h-7 w-7 bg-primary text-white hover:bg-primary/90 transition-all",
+                      selectedIds.length === 0 && "opacity-20 grayscale pointer-events-none"
+                    )}
+                    onClick={handleBulkDownload}
+                    disabled={downloadingIds.length > 0 || selectedIds.length === 0}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={cn(
+                      "h-7 w-7 bg-destructive text-white hover:bg-destructive/90 transition-all",
+                      selectedIds.length === 0 && "opacity-20 grayscale pointer-events-none"
+                    )}
+                    onClick={handleBulkDelete}
+                    disabled={isDeleting || selectedIds.length === 0}
+                  >
+                    {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {gallery.map((photo) => (
+                  <div 
+                    key={photo.id} 
+                    onClick={() => toggleSelect(photo.id)}
+                    className={cn(
+                      "border border-black bg-white group relative overflow-hidden transition-all cursor-pointer aspect-video",
+                      selectedIds.includes(photo.id) ? "ring-2 ring-primary ring-offset-1 z-10 scale-[1.02]" : "hover:scale-[1.01]"
+                    )}
+                  >
+                    <img src={photo.value} alt="Evidencia" className="w-full h-full object-cover" />
+                    {photo.latitude && (
+                      <div className="absolute top-1 left-1 bg-black text-white px-1 py-0.5 text-[7px] font-bold flex items-center gap-0.5">
+                        <MapPin className="h-2 w-2" /> GPS
+                      </div>
+                    )}
+                    {selectedIds.includes(photo.id) && (
+                      <div className="absolute inset-0 bg-primary/10 pointer-events-none" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <input 
+            type="file" 
+            ref={fileInputRef}
+            accept="image/*" 
+            capture="environment" 
+            onChange={handleFileChange}
+            className="hidden" 
+          />
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <AlertDialogContent className="border-t-4 border-t-destructive rounded-none">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm font-black uppercase tracking-tight">Confirmar Eliminación</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs font-medium text-muted-foreground">
+              ¿Estás seguro de que deseas eliminar permanentemente las {selectedIds.length} fotos seleccionadas? Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-2 mt-4">
+            <AlertDialogCancel className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest rounded-none border-black m-0">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={executeDelete}
+              className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest rounded-none bg-destructive hover:bg-destructive/90 text-white m-0"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
