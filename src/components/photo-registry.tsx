@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -49,7 +50,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   }, [formId]);
 
   const handleCaptureClick = () => {
-    if (isCompressing) return;
     fileInputRef.current?.click();
   };
 
@@ -100,34 +100,27 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
   /**
    * Sube una foto específica a Firebase Storage y registra la URL en Firestore.
-   * Incluye un timeout de 30 segundos para evitar spinners infinitos.
    */
   const handleUpload = async (photoId: string, file: Blob, fileName: string) => {
     if (!user || !storage || !db) {
-      toast({ variant: "destructive", title: "Servicios no disponibles", description: "Verificá tu sesión." });
+      toast({ variant: "destructive", title: "Error", description: "Servicios de Firebase no inicializados." });
       return;
     }
 
     setUploadingIds(prev => new Set(prev).add(photoId));
 
     try {
-      // Sanitización de IDs para la ruta
-      const safeReportId = reportId?.trim() || 'unknown_report';
-      const safeFormId = formId?.trim() || 'unknown_form';
+      // 1. Preparar la ruta en Storage
+      const safeReportId = reportId?.trim() || 'unnamed_report';
+      const safeFormId = formId?.trim() || 'unnamed_form';
       const storagePath = `reports/${safeReportId}/${safeFormId}/${fileName}`;
       const storageRef = ref(storage, storagePath);
 
-      // Wrapper con timeout para la subida
-      const uploadTask = uploadBytes(storageRef, file);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('TIMEOUT')), 30000)
-      );
-
-      // 1. Subir al Storage (con límite de tiempo)
-      const uploadResult = (await Promise.race([uploadTask, timeoutPromise])) as any;
+      // 2. Ejecutar la subida (Sin timeout manual para permitir reintentos del SDK)
+      const uploadResult = await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(uploadResult.ref);
 
-      // 2. Registrar en Firestore (Colección plana samples)
+      // 3. Registrar en Firestore
       const photoData = {
         reportId,
         formId,
@@ -155,7 +148,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         editors: arrayUnion(user.email) 
       }).catch(() => {});
 
-      // 3. Limpieza de almacenamiento local tras éxito
+      // 4. Limpieza exitosa
       await offlineStorage.removePhoto(photoId);
       
       if (localPhoto?.id === photoId) setLocalPhoto(null);
@@ -163,19 +156,21 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
       toast({
         title: "Sincronizado",
-        description: "La fotografía se subió correctamente.",
+        description: "Fotografía guardada con éxito.",
       });
 
     } catch (error: any) {
-      console.error('Fallo en subida:', error);
-      const message = error.message === 'TIMEOUT' 
-        ? "La subida tardó demasiado. Intentá de nuevo con mejor señal." 
-        : "Error de red o permisos al subir la imagen.";
+      console.error('Fallo en subida Storage:', error);
       
+      let errorMsg = "Ocurrió un error inesperado al subir la imagen.";
+      if (error.code === 'storage/unauthorized') errorMsg = "No tenés permisos para escribir en Storage.";
+      if (error.code === 'storage/canceled') errorMsg = "La subida fue cancelada.";
+      if (error.message) errorMsg = `Error: ${error.message}`;
+
       toast({
         variant: "destructive",
         title: "Error de subida",
-        description: message,
+        description: errorMsg,
       });
     } finally {
       setUploadingIds(prev => {
@@ -212,7 +207,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* ÁREA DE CAPTURA ACTUAL */}
           <div className="space-y-2">
             {!localPhoto ? (
               <button 
@@ -268,7 +262,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
             )}
           </div>
 
-          {/* LISTADO DE PENDIENTES / COLA DE ENVÍO */}
           <div className="space-y-3">
             <h4 className="text-[9px] font-black uppercase text-neutral-400 tracking-widest flex items-center gap-1.5">
               <ImageIcon className="h-3 w-3" /> Fotos en cola de envío:
@@ -330,7 +323,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         <div className="flex items-start gap-2 p-2 bg-neutral-50 border border-neutral-200 mt-2">
           <AlertCircle className="h-3 w-3 text-neutral-400 shrink-0 mt-0.5" />
           <p className="text-[8px] italic text-neutral-500 leading-tight">
-            Optimizamos cada foto a 1024px para ahorrar datos. Si la subida demora más de 30s, el proceso se cancelará para evitar bloqueos. Podrás reintentar cuando tengas mejor señal.
+            Optimizamos cada foto a 1024px para ahorrar datos. El registro es offline-first: las fotos se guardan en el dispositivo y se sincronizan cuando vos lo indiques.
           </p>
         </div>
 
