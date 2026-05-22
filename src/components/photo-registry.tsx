@@ -313,18 +313,24 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (!user?.email || !db || !storage) {
-      toast({
-        variant: "destructive",
-        title: "Error de sesión",
-        description: "Debes estar autenticado para realizar esta acción.",
+  const handleBulkDelete = async (e?: React.MouseEvent) => {
+    // Chivatos de depuración solicitados
+    console.log("1. Botón de papelera presionado.");
+    console.log("2. IDs seleccionados:", selectedIds);
+    console.log("3. Variables de entorno:", { db: !!db, storage: !!storage, user: user?.email });
+
+    if (e) e.preventDefault();
+
+    if (!db || !storage || !user?.email || selectedIds.length === 0) {
+      console.error("4. ERROR: Faltan dependencias o no hay fotos seleccionadas. Abortando.");
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: "No hay fotos seleccionadas o falta conexión." 
       });
       return;
     }
 
-    if (selectedIds.length === 0) return;
-    
     const confirmMessage = selectedIds.length === 1 
       ? "¿Estás seguro de que deseas eliminar permanentemente esta foto?" 
       : `¿Estás seguro de que deseas eliminar permanentemente estas ${selectedIds.length} fotos?`;
@@ -344,6 +350,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         // Regla de autoría: Solo el autor original puede eliminar su evidencia
         const isAuthor = photo.authorEmail === user.email || photo.userEmail === user.email;
         if (!isAuthor) {
+          console.warn(`Omitiendo foto ${id}: No tienes permisos de autor.`);
           omittedCount++;
           continue;
         }
@@ -353,7 +360,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           const fileRef = ref(storage, photo.value);
           await deleteObject(fileRef);
         } catch (storageErr: any) {
-          // Si el archivo no está en Storage (404), no bloqueamos el borrado del documento
           if (storageErr.code !== 'storage/object-not-found') {
             console.warn(`Error en Storage para la foto ${id}:`, storageErr.message);
           }
@@ -577,6 +583,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   };
 
   const toggleSelect = (id: string) => {
+    console.log("Foto clickeada:", id);
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
@@ -691,7 +698,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
                     "h-7 w-7 bg-destructive text-white hover:bg-destructive/90 transition-all",
                     selectedIds.length === 0 && "opacity-20 grayscale pointer-events-none"
                   )}
-                  onClick={handleBulkDelete}
+                  onClick={(e) => handleBulkDelete(e)}
                   disabled={isDeleting || selectedIds.length === 0}
                 >
                   {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
