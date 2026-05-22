@@ -61,7 +61,10 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
   const hasSetInitialId = useRef(false);
 
-  const stationRef = useMemo(() => doc(db, 'stations', stationId), [db, stationId]);
+  const stationRef = useMemo(() => {
+    if (!db || !stationId) return null;
+    return doc(db, 'stations', stationId);
+  }, [db, stationId]);
   const { data: stationData } = useDoc(stationRef);
 
   const analyteToKeyMap: Record<string, keyof FreatimetroData> = {

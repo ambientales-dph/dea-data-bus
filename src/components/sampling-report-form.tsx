@@ -44,7 +44,10 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   const [isSavingPlanilla, setIsSavingPlanilla] = useState(false);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
 
-  const reportRef = useMemo(() => doc(db, 'reports', reportId), [db, reportId]);
+  const reportRef = useMemo(() => {
+    if (!db || !reportId) return null;
+    return doc(db, 'reports', reportId);
+  }, [db, reportId]);
 
   const samplesQuery = useMemo(() => {
     if (!db || !user || !reportId || !formId) return null;
@@ -143,7 +146,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
         }
       }
 
-      if (savedCount > 0 && user.email) await updateDoc(reportRef, { editors: arrayUnion(user.email) });
+      if (savedCount > 0 && user.email && reportRef) await updateDoc(reportRef, { editors: arrayUnion(user.email) });
       toast({ title: "Planilla sincronizada", description: `${savedCount} parámetros guardados.` });
     } catch (e) {
       console.error(e);

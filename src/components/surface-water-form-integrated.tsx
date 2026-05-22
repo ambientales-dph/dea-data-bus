@@ -30,7 +30,10 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
 
-  const stationRef = useMemo(() => doc(db, 'stations', stationId), [db, stationId]);
+  const stationRef = useMemo(() => {
+    if (!db || !stationId) return null;
+    return doc(db, 'stations', stationId);
+  }, [db, stationId]);
   const { data: stationData } = useDoc(stationRef);
 
   const sections = [
