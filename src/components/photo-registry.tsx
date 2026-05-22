@@ -1,18 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { useFirestore, useStorage, useUser, useCollection } from '@/firebase';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { useFirestore, useStorage, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera, Image as ImageIcon, Loader2, Trash2, CloudOff, RefreshCw, AlertCircle } from 'lucide-react';
+import { Camera, Loader2, CheckCircle2, X, Upload, Trash2, CloudOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/image-processing';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface PhotoRegistryProps {
   reportId: string;
@@ -21,6 +19,13 @@ interface PhotoRegistryProps {
   medium: string;
 }
 
+/**
+ * Módulo de Registro Fotográfico (Unidireccional).
+ * 
+ * Este componente no consulta la base de datos. Solo permite capturar,
+ * comprimir y subir evidencias visuales a Firestore Storage y registrar 
+ * el analito en la colección 'samples'.
+ */
 export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegistryProps) {
   const db = useFirestore();
   const storage = useStorage();
@@ -28,64 +33,18 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const { toast } = useToast();
   
   const [isProcessing, setIsProcessing] = useState(false);
+  const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
-  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /**
-   * PATRÓN OBLIGATORIO: Falsy Query.
-   * La consulta se mantiene como null hasta que todas las dependencias
-   * (auth, IDs de reporte y planilla) están listas.
-   */
-  const photosQuery = useMemo(() => {
-    if (!db || authLoading || !user || !reportId || !formId) return null;
-    
-    return query(
-      collection(db, 'samples'),
-      where('reportId', '==', reportId),
-      where('formId', '==', formId),
-      where('parameterType', '==', 'Fotografía'),
-      orderBy('timestamp', 'desc')
-    );
-  }, [db, user, authLoading, reportId, formId]);
-
-  const { data: uploadedPhotos, loading: loadingPhotos, error: queryError } = useCollection(photosQuery);
-
+  // Cargar fotos guardadas localmente (offline) al iniciar
   useEffect(() => {
-    const handleStatus = () => setIsOnline(navigator.onLine);
-    window.addEventListener('online', handleStatus);
-    window.addEventListener('offline', handleStatus);
-    
     const loadPending = async () => {
       const pending = await offlineStorage.getPendingPhotos(formId);
       setPendingPhotos(pending);
     };
     loadPending();
-
-    return () => {
-      window.removeEventListener('online', handleStatus);
-      window.removeEventListener('offline', handleStatus);
-    };
   }, [formId]);
-
-  /**
-   * Early Return para la UI.
-   * Evita renderizar botones o grillas antes de la validación.
-   */
-  if (authLoading) {
-    return (
-      <div className="mt-6 space-y-4">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-4 rounded-full" />
-          <Skeleton className="h-3 w-32" />
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <Skeleton className="aspect-square w-full" />
-          <Skeleton className="aspect-square w-full" />
-        </div>
-      </div>
-    );
-  }
 
   const handleCaptureClick = () => {
     fileInputRef.current?.click();
@@ -98,31 +57,30 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     setIsProcessing(true);
     try {
       const compressed = await compressImage(file);
-      const fileName = `${Date.now()}_${file.name}`;
       const photoId = crypto.randomUUID();
+      
+      const photoObj = {
+        id: photoId,
+        file: compressed as File,
+        preview: URL.createObjectURL(compressed)
+      };
 
-      if (navigator.onLine) {
-        await uploadAndRegister(compressed, fileName, photoId);
-      } else {
-        const offlinePhoto: OfflinePhoto = {
-          id: photoId,
-          reportId,
-          formId,
-          stationId,
-          medium,
-          file: compressed,
-          fileName,
-          timestamp: Date.now()
-        };
-        await offlineStorage.savePhoto(offlinePhoto);
-        setPendingPhotos(prev => [...prev, offlinePhoto]);
-        toast({
-          title: "Modo Offline",
-          description: "Foto guardada localmente. Se subirá cuando recuperes señal.",
-        });
-      }
+      setLocalPhoto(photoObj);
+      
+      // Guardar también en almacenamiento local por si el usuario cierra la app antes de sincronizar
+      await offlineStorage.savePhoto({
+        id: photoId,
+        reportId,
+        formId,
+        stationId,
+        medium,
+        file: compressed,
+        fileName: `${photoId}.jpg`,
+        timestamp: Date.now()
+      });
+
     } catch (error) {
-      console.error('Error en proceso de foto:', error);
+      console.error('Error procesando imagen:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -134,180 +92,166 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     }
   };
 
-  const uploadAndRegister = async (file: Blob, fileName: string, id: string) => {
+  const handleUpload = async (photoId: string, file: Blob, fileName: string) => {
     if (!user || !storage || !db) return;
 
+    setIsProcessing(true);
     const storagePath = `reports/${reportId}/${formId}/${fileName}`;
     const storageRef = ref(storage, storagePath);
-    const uploadResult = await uploadBytes(storageRef, file);
-    const downloadUrl = await getDownloadURL(uploadResult.ref);
 
-    const photoDoc = {
-      reportId,
-      formId,
-      stationId,
-      medium,
-      parameterType: "Fotografía",
-      analyte: "Evidencia Visual",
-      value: downloadUrl,
-      timestamp: serverTimestamp(),
-      userId: user.uid,
-      userEmail: user.email
-    };
+    try {
+      // 1. Subir al Storage
+      const uploadResult = await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(uploadResult.ref);
 
-    await addDoc(collection(db, 'samples'), photoDoc);
-    await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
-    
-    await offlineStorage.removePhoto(id);
-    setPendingPhotos(prev => prev.filter(p => p.id !== id));
-    
-    toast({
-      title: "Foto sincronizada",
-      description: "La evidencia visual se guardó correctamente.",
-    });
-  };
+      // 2. Registrar en Firestore (Colección Samples - Registro Plano)
+      const photoData = {
+        reportId,
+        formId,
+        stationId,
+        medium,
+        parameterType: "Fotografía",
+        analyte: "Evidencia Visual",
+        value: downloadUrl,
+        timestamp: serverTimestamp(),
+        userId: user.uid,
+        userEmail: user.email
+      };
 
-  const syncPending = async () => {
-    if (!navigator.onLine || pendingPhotos.length === 0) return;
-    
-    setIsProcessing(true);
-    let successCount = 0;
-    
-    for (const photo of pendingPhotos) {
-      try {
-        await uploadAndRegister(photo.file, photo.fileName, photo.id);
-        successCount++;
-      } catch (e) {
-        console.error('Fallo sincronización de foto:', photo.id, e);
-      }
+      // No usamos await aquí para seguir el flujo optimista del SDK de Firestore
+      addDoc(collection(db, 'samples'), photoData)
+        .catch(async (error) => {
+          const permissionError = new FirestorePermissionError({
+            path: 'samples',
+            operation: 'create',
+            requestResourceData: photoData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        });
+
+      // Registrar también la actividad en el reporte
+      updateDoc(doc(db, 'reports', reportId), { 
+        editors: arrayUnion(user.email) 
+      }).catch(() => {});
+
+      // 3. Limpiar estados
+      await offlineStorage.removePhoto(photoId);
+      if (localPhoto?.id === photoId) setLocalPhoto(null);
+      setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
+
+      toast({
+        title: "Foto sincronizada",
+        description: "La evidencia se subió correctamente.",
+      });
+
+    } catch (error: any) {
+      console.error('Fallo en subida:', error);
+      toast({
+        variant: "destructive",
+        title: "Error de sincronización",
+        description: "Verificá tu conexión a internet e intentá de nuevo.",
+      });
+    } finally {
+      setIsProcessing(false);
     }
-    
-    setIsProcessing(false);
-    if (successCount > 0) {
-      toast({ title: "Sincronización completa", description: `${successCount} fotos subidas.` });
-    }
   };
 
-  const removePending = async (id: string) => {
+  const removePhoto = async (id: string) => {
     await offlineStorage.removePhoto(id);
+    if (localPhoto?.id === id) setLocalPhoto(null);
     setPendingPhotos(prev => prev.filter(p => p.id !== id));
-    toast({ description: "Foto pendiente eliminada." });
+    toast({ description: "Captura eliminada." });
   };
+
+  if (authLoading) return null;
 
   return (
     <Card className="border-t-4 border-t-accent shadow-md overflow-hidden rounded-none mt-6">
       <CardContent className="p-4 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b pb-2">
           <div className="flex items-center gap-2">
             <Camera className="h-4 w-4 text-black" />
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-black font-headline">Registro Fotográfico</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-widest text-black font-headline">Evidencia Visual</h3>
           </div>
-          
-          <div className="flex items-center gap-2">
-            {!isOnline && pendingPhotos.length > 0 && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-7 text-[9px] font-bold uppercase border-amber-500 text-amber-600 bg-amber-50 rounded-none"
-                onClick={() => toast({ title: "Sin señal", description: "Buscá conexión para subir las fotos." })}
-              >
-                <CloudOff className="h-3 w-3 mr-1" /> {pendingPhotos.length} Pendientes
-              </Button>
-            )}
-            
-            {isOnline && pendingPhotos.length > 0 && (
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="h-7 text-[9px] font-bold uppercase bg-primary/10 text-primary hover:bg-primary/20 rounded-none"
-                onClick={syncPending}
-                disabled={isProcessing}
-              >
-                {isProcessing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-                Sincronizar {pendingPhotos.length}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {queryError && (
-          <Alert variant="destructive" className="py-2 rounded-none">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle className="text-[10px] uppercase font-bold">Error de Galería</AlertTitle>
-            <AlertDescription className="text-[9px]">
-              No se pudieron cargar las fotos existentes (Permisos insuficientes).
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <button 
-            onClick={handleCaptureClick}
-            disabled={isProcessing}
-            className={cn(
-              "aspect-square flex flex-col items-center justify-center border-2 border-dashed border-neutral-300 rounded-none hover:bg-neutral-50 hover:border-primary/50 transition-all group",
-              isProcessing && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            {isProcessing ? (
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            ) : (
-              <>
-                <Camera className="h-6 w-6 text-neutral-400 group-hover:text-primary mb-2" />
-                <span className="text-[9px] font-black uppercase tracking-tight text-neutral-500">Tomar Foto</span>
-              </>
-            )}
-          </button>
-
-          {pendingPhotos.map(photo => (
-            <div key={photo.id} className="aspect-square relative border border-amber-200 bg-amber-50/30">
-              <img 
-                src={URL.createObjectURL(photo.file)} 
-                alt="Pendiente" 
-                className="w-full h-full object-cover opacity-60 grayscale" 
-              />
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <CloudOff className="h-5 w-5 text-amber-600 mb-1" />
-                <span className="text-[8px] font-bold uppercase text-amber-600">Pendiente</span>
-              </div>
-              <button 
-                onClick={() => removePending(photo.id)}
-                className="absolute top-1 right-1 p-1 bg-white/80 rounded-none text-destructive hover:bg-white"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
+          {pendingPhotos.length > 0 && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-600 rounded-sm">
+              <CloudOff className="h-3 w-3" />
+              <span className="text-[9px] font-black uppercase">{pendingPhotos.length} Pendientes</span>
             </div>
-          ))}
-
-          {loadingPhotos ? (
-             <div className="aspect-square flex items-center justify-center bg-muted/20">
-               <Loader2 className="h-4 w-4 animate-spin text-neutral-300" />
-             </div>
-          ) : (
-            uploadedPhotos?.map((photo: any) => (
-              <div key={photo.id} className="aspect-square relative border border-neutral-200 group overflow-hidden">
-                <img 
-                  src={photo.value} 
-                  alt="Evidencia" 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                />
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1">
-                  <p className="text-[7px] text-white uppercase font-bold truncate">
-                    {photo.userEmail?.split('@')[0]} • {new Date(photo.timestamp?.toMillis?.() || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                  </p>
-                </div>
-                <a 
-                  href={photo.value} 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity"
-                >
-                  <ImageIcon className="h-5 w-5 text-white" />
-                </a>
-              </div>
-            ))
           )}
         </div>
+
+        {/* ÁREA DE CAPTURA / PREVIEW */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {!localPhoto ? (
+            <button 
+              onClick={handleCaptureClick}
+              disabled={isProcessing}
+              className="aspect-video flex flex-col items-center justify-center border-2 border-dashed border-neutral-300 rounded-none hover:bg-neutral-50 hover:border-primary/50 transition-all group"
+            >
+              {isProcessing ? (
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              ) : (
+                <>
+                  <Camera className="h-8 w-8 text-neutral-400 group-hover:text-primary mb-2" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Capturar Evidencia</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="aspect-video relative border-2 border-primary bg-neutral-100 overflow-hidden group">
+              <img src={localPhoto.preview} alt="Vista previa" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  className="h-8 rounded-none uppercase text-[10px] font-black"
+                  onClick={() => removePhoto(localPhoto.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Descartar
+                </Button>
+                <Button 
+                  size="sm" 
+                  className="h-8 bg-green-600 hover:bg-green-700 rounded-none uppercase text-[10px] font-black text-white"
+                  onClick={() => handleUpload(localPhoto.id, localPhoto.file, `${localPhoto.id}.jpg`)}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+                  Confirmar y Subir
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* LISTADO DE PENDIENTES (MODO OFFLINE) */}
+          {pendingPhotos.filter(p => p.id !== localPhoto?.id).length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[9px] font-black uppercase text-neutral-400 tracking-tighter">Fotos capturadas sin subir:</p>
+              <div className="flex flex-wrap gap-2">
+                {pendingPhotos.filter(p => p.id !== localPhoto?.id).map(photo => (
+                  <div key={photo.id} className="relative w-20 h-20 border-2 border-amber-300 bg-amber-50">
+                    <img 
+                      src={URL.createObjectURL(photo.file)} 
+                      alt="Pendiente" 
+                      className="w-full h-full object-cover opacity-50 grayscale" 
+                    />
+                    <button 
+                      onClick={() => handleUpload(photo.id, photo.file, photo.fileName)}
+                      className="absolute inset-0 flex items-center justify-center text-amber-700 hover:text-primary transition-colors"
+                      title="Intentar subir ahora"
+                    >
+                      <Upload className="h-5 w-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <p className="text-[8px] italic text-neutral-400 leading-tight">
+          * Las imágenes se comprimen automáticamente a 1024px para optimizar el almacenamiento y el uso de datos.
+        </p>
 
         <input 
           type="file" 
