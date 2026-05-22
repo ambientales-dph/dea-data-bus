@@ -7,7 +7,7 @@ import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight, MapPin } from 'lucide-react';
+import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, ChevronRight, MapPin, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/image-processing';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
@@ -29,6 +29,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
+  const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
   const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
@@ -57,12 +58,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
     setIsProcessing(true);
     try {
-      // Compresión con preservación de EXIF según lo solicitado
       const options = {
         maxSizeMB: 0.2,
         maxWidthOrHeight: 1024,
         useWebWorker: true,
-        preserveExif: true, // Habilitado para preservar datos internos si existen
+        preserveExif: true,
       };
       
       const imageCompression = (await import('browser-image-compression')).default;
@@ -127,12 +127,10 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     setUploadingIds(prev => [...prev, photoId]);
 
     try {
-      // 1. Obtener ubicación GPS antes de subir
       setIsLocating(true);
       const coords = await getCoordinates();
       setIsLocating(false);
 
-      // 2. Subir a Storage
       const safeReportId = reportId?.trim() || 'unnamed_report';
       const safeFormId = formId?.trim() || 'unnamed_form';
       const storageRef = ref(storage, `reports/${safeReportId}/${safeFormId}/${fileName}`);
@@ -140,7 +138,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       const snapshot = await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(snapshot.ref);
       
-      // 3. Payload robusto para Firestore con metadatos
       const photoData = {
         reportId,
         formId,
@@ -152,7 +149,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         timestamp: serverTimestamp(),
         userId: user.uid,
         userEmail: user.email,
-        // Nuevos metadatos solicitados
         latitude: coords.lat,
         longitude: coords.lon,
         authorId: user.uid,
@@ -224,6 +220,87 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       });
     } finally {
       setIsFetchingGallery(false);
+    }
+  };
+
+  const handleDownloadWithWatermark = async (photo: any) => {
+    if (downloadingIds.includes(photo.id)) return;
+
+    setDownloadingIds(prev => [...prev, photo.id]);
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = photo.value;
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error("No se pudo cargar la imagen del servidor."));
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error("No se pudo obtener el contexto del canvas.");
+
+      ctx.drawImage(img, 0, 0);
+
+      const fontSize = Math.max(12, Math.floor(canvas.width * 0.02));
+      ctx.font = `bold ${fontSize}px "Encode Sans", sans-serif`;
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+
+      const date = photo.capturedAt?.toDate?.() || (photo.timestamp?.toDate?.()) || new Date();
+      const dateStr = date.toLocaleString('es-AR', { 
+        day: '2-digit', month: '2-digit', year: 'numeric', 
+        hour: '2-digit', minute: '2-digit' 
+      });
+      const lat = photo.latitude?.toFixed(6) || 'N/D';
+      const lon = photo.longitude?.toFixed(6) || 'N/D';
+      
+      const watermarkLines = [
+        `DEA DATA BUS - DPH`,
+        `Técnico: ${photo.authorEmail || photo.userEmail || 'Desconocido'}`,
+        `GPS: ${lat}, ${lon}`,
+        `Fecha: ${dateStr}`
+      ];
+
+      const padding = fontSize;
+      let currentY = canvas.height - padding;
+      
+      watermarkLines.forEach((line) => {
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = fontSize / 4;
+        ctx.strokeText(line, canvas.width - padding, currentY);
+        
+        ctx.fillStyle = 'white';
+        ctx.fillText(line, canvas.width - padding, currentY);
+        
+        currentY -= fontSize * 1.3;
+      });
+
+      canvas.toBlob((blob) => {
+        if (!blob) throw new Error("Error al generar el archivo de imagen.");
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `FOTO_${formId}_${Date.now()}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/jpeg', 0.90);
+
+      toast({ title: "Descarga iniciada", description: "La foto con marca de agua se está descargando." });
+    } catch (error: any) {
+      console.error("Error en descarga:", error);
+      toast({
+        variant: "destructive",
+        title: "Error de descarga",
+        description: error.message || "Ocurrió un error al procesar la imagen."
+      });
+    } finally {
+      setDownloadingIds(prev => prev.filter(id => id !== photo.id));
     }
   };
 
@@ -383,6 +460,24 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
                       alt="Evidencia Guardada" 
                       className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
+                    
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Button 
+                        size="sm"
+                        variant="secondary"
+                        disabled={downloadingIds.includes(photo.id)}
+                        className="h-8 rounded-none text-[9px] font-black uppercase tracking-widest"
+                        onClick={() => handleDownloadWithWatermark(photo)}
+                      >
+                        {downloadingIds.includes(photo.id) ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        Descargar
+                      </Button>
+                    </div>
+
                     {photo.latitude && photo.longitude && (
                       <div className="absolute bottom-1 right-1 bg-black/50 p-0.5 rounded text-[8px] text-white flex items-center gap-0.5">
                         <MapPin className="h-2 w-2" /> GPS OK
