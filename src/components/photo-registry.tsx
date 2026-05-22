@@ -230,93 +230,86 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   };
 
   const handleDownloadWithWatermark = async (photo: any) => {
-    if (downloadingIds.includes(photo.id)) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = photo.value;
 
-    setDownloadingIds(prev => [...prev, photo.id]);
-    try {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = photo.value;
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error("No se pudo cargar la imagen del servidor."));
+    });
 
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = () => reject(new Error("No se pudo cargar la imagen del servidor."));
-      });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error("No se pudo obtener el contexto del canvas.");
 
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error("No se pudo obtener el contexto del canvas.");
+    ctx.drawImage(img, 0, 0);
 
-      ctx.drawImage(img, 0, 0);
+    const fontSize = Math.max(12, Math.floor(canvas.width * 0.02));
+    ctx.font = `bold ${fontSize}px "Encode Sans", sans-serif`;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
 
-      const fontSize = Math.max(12, Math.floor(canvas.width * 0.02));
-      ctx.font = `bold ${fontSize}px "Encode Sans", sans-serif`;
-      ctx.textAlign = "right";
-      ctx.textBaseline = "bottom";
+    const date = photo.capturedAt?.toDate?.() || (photo.timestamp?.toDate?.()) || new Date();
+    const dateStr = date.toLocaleString('es-AR', { 
+      day: '2-digit', month: '2-digit', year: 'numeric', 
+      hour: '2-digit', minute: '2-digit' 
+    });
+    const lat = photo.latitude?.toFixed(6) || 'N/D';
+    const lon = photo.longitude?.toFixed(6) || 'N/D';
+    
+    const watermarkLines = [
+      `DEA DATA BUS - DPH`,
+      `Técnico: ${photo.authorEmail || photo.userEmail || 'Desconocido'}`,
+      `GPS: ${lat}, ${lon}`,
+      `Fecha: ${dateStr}`
+    ];
 
-      const date = photo.capturedAt?.toDate?.() || (photo.timestamp?.toDate?.()) || new Date();
-      const dateStr = date.toLocaleString('es-AR', { 
-        day: '2-digit', month: '2-digit', year: 'numeric', 
-        hour: '2-digit', minute: '2-digit' 
-      });
-      const lat = photo.latitude?.toFixed(6) || 'N/D';
-      const lon = photo.longitude?.toFixed(6) || 'N/D';
+    const padding = fontSize;
+    let currentY = canvas.height - padding;
+    
+    watermarkLines.forEach((line) => {
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = fontSize / 4;
+      ctx.strokeText(line, canvas.width - padding, currentY);
       
-      const watermarkLines = [
-        `DEA DATA BUS - DPH`,
-        `Técnico: ${photo.authorEmail || photo.userEmail || 'Desconocido'}`,
-        `GPS: ${lat}, ${lon}`,
-        `Fecha: ${dateStr}`
-      ];
-
-      const padding = fontSize;
-      let currentY = canvas.height - padding;
+      ctx.fillStyle = 'white';
+      ctx.fillText(line, canvas.width - padding, currentY);
       
-      watermarkLines.forEach((line) => {
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = fontSize / 4;
-        ctx.strokeText(line, canvas.width - padding, currentY);
-        
-        ctx.fillStyle = 'white';
-        ctx.fillText(line, canvas.width - padding, currentY);
-        
-        currentY -= fontSize * 1.3;
-      });
+      currentY -= fontSize * 1.3;
+    });
 
-      return new Promise<void>((resolve) => {
-        canvas.toBlob((blob) => {
-          if (!blob) return resolve();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `FOTO_${formId}_${Date.now()}.jpg`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          resolve();
-        }, 'image/jpeg', 0.90);
-      });
-    } catch (error: any) {
-      console.error("Error en descarga:", error);
-      toast({
-        variant: "destructive",
-        title: "Error de descarga",
-        description: error.message || "Ocurrió un error al procesar la imagen."
-      });
-    } finally {
-      setDownloadingIds(prev => prev.filter(id => id !== photo.id));
-    }
+    return new Promise<void>((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) return resolve();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `FOTO_${formId}_${Date.now()}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        resolve();
+      }, 'image/jpeg', 0.90);
+    });
   };
 
   const handleBulkDownload = async () => {
     const selectedPhotos = gallery.filter(p => selectedIds.includes(p.id));
     toast({ title: "Procesando descargas", description: `Preparando ${selectedPhotos.length} fotos con marca de agua...` });
     
-    for (const photo of selectedPhotos) {
-      await handleDownloadWithWatermark(photo);
+    setDownloadingIds(prev => [...prev, ...selectedIds]);
+    try {
+      for (const photo of selectedPhotos) {
+        await handleDownloadWithWatermark(photo);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setDownloadingIds([]);
     }
   };
 
@@ -633,66 +626,54 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
             <Separator className="bg-neutral-200" />
             <div className="flex items-center justify-between">
               <h4 className="text-[9px] font-black uppercase text-black tracking-widest">Colección Cargada</h4>
-              {selectedIds.length > 0 && (
-                <div className="flex items-center gap-1 animate-in fade-in slide-in-from-right-1">
-                  <span className="text-[9px] font-black mr-2 uppercase">{selectedIds.length} seleccionadas</span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7 bg-primary text-white hover:bg-primary/90"
-                    onClick={handleBulkDownload}
-                    disabled={downloadingIds.length > 0}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7 bg-destructive text-white hover:bg-destructive/90"
-                    onClick={handleBulkDelete}
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              )}
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] font-black mr-2 uppercase">{selectedIds.length} seleccionadas</span>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn(
+                    "h-7 w-7 bg-primary text-white hover:bg-primary/90 transition-all",
+                    selectedIds.length === 0 && "opacity-20 grayscale pointer-events-none"
+                  )}
+                  onClick={handleBulkDownload}
+                  disabled={downloadingIds.length > 0 || selectedIds.length === 0}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn(
+                    "h-7 w-7 bg-destructive text-white hover:bg-destructive/90 transition-all",
+                    selectedIds.length === 0 && "opacity-20 grayscale pointer-events-none"
+                  )}
+                  onClick={handleBulkDelete}
+                  disabled={isDeleting || selectedIds.length === 0}
+                >
+                  {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               {gallery.map((photo) => (
                 <div 
                   key={photo.id} 
+                  onClick={() => toggleSelect(photo.id)}
                   className={cn(
-                    "border border-black bg-white group relative overflow-hidden transition-all",
-                    selectedIds.includes(photo.id) ? "ring-2 ring-primary ring-offset-1" : ""
+                    "border border-black bg-white group relative overflow-hidden transition-all cursor-pointer aspect-video",
+                    selectedIds.includes(photo.id) ? "ring-2 ring-primary ring-offset-1 z-10 scale-[1.02]" : "hover:scale-[1.01]"
                   )}
                 >
-                  <div className="aspect-video bg-neutral-100 cursor-pointer" onClick={() => toggleSelect(photo.id)}>
-                    <img src={photo.value} alt="Evidencia" className="w-full h-full object-cover" />
-                    <div className="absolute top-1 right-1 z-20">
-                      <div className={cn(
-                        "p-0.5 border border-black transition-colors",
-                        selectedIds.includes(photo.id) ? "bg-primary text-white" : "bg-white/80 text-black"
-                      )}>
-                        {selectedIds.includes(photo.id) ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
-                      </div>
-                    </div>
-                  </div>
+                  <img src={photo.value} alt="Evidencia" className="w-full h-full object-cover" />
                   {photo.latitude && (
                     <div className="absolute top-1 left-1 bg-black text-white px-1 py-0.5 text-[7px] font-bold flex items-center gap-0.5">
                       <MapPin className="h-2 w-2" /> GPS
                     </div>
                   )}
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownloadWithWatermark(photo);
-                    }}
-                    disabled={downloadingIds.includes(photo.id)}
-                    className="absolute bottom-1 right-1 bg-white/90 p-1 text-black border border-black hover:bg-black hover:text-white transition-colors z-20"
-                  >
-                    {downloadingIds.includes(photo.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                  </button>
+                  {selectedIds.includes(photo.id) && (
+                    <div className="absolute inset-0 bg-primary/10 pointer-events-none" />
+                  )}
                 </div>
               ))}
             </div>
