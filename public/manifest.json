@@ -1,0 +1,26 @@
+
+{
+  "name": "DEA Data Bus",
+  "short_name": "DEA Bus",
+  "description": "Plataforma de monitoreo hídrico y ambiental de la DPH",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f5f9",
+  "theme_color": "#327787",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/dea-pwa-192/192/192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://picsum.photos/seed/dea-pwa-512/512/512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"]
+}
