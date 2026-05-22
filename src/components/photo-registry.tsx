@@ -6,7 +6,7 @@ import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion } from 
 import { useFirestore, useStorage, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon } from 'lucide-react';
+import { Camera, Loader2, X, Upload, Trash2, CloudOff, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage } from '@/lib/image-processing';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
@@ -19,6 +19,10 @@ interface PhotoRegistryProps {
   medium: string;
 }
 
+/**
+ * Módulo de registro fotográfico.
+ * Permite capturar imágenes, comprimirlas y gestionarlas de forma offline-first.
+ */
 export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegistryProps) {
   const db = useFirestore();
   const storage = useStorage();
@@ -31,8 +35,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isAnyUploading = uploadingIds.size > 0;
-
+  // Cargar fotos pendientes del almacenamiento local al montar
   useEffect(() => {
     const loadPending = async () => {
       try {
@@ -46,7 +49,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   }, [formId]);
 
   const handleCaptureClick = () => {
-    if (isCompressing || isAnyUploading) return;
+    if (isCompressing) return;
     fileInputRef.current?.click();
   };
 
@@ -67,6 +70,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
       setLocalPhoto(photoObj);
       
+      // Guardar en IndexedDB para resiliencia offline inmediata
       await offlineStorage.savePhoto({
         id: photoId,
         reportId,
@@ -78,7 +82,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         timestamp: Date.now()
       });
 
-      // Actualizar lista de pendientes localmente
       const updatedPending = await offlineStorage.getPendingPhotos(formId);
       setPendingPhotos(updatedPending);
 
@@ -95,23 +98,36 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     }
   };
 
+  /**
+   * Sube una foto específica a Firebase Storage y registra la URL en Firestore.
+   * Incluye un timeout de 30 segundos para evitar spinners infinitos.
+   */
   const handleUpload = async (photoId: string, file: Blob, fileName: string) => {
     if (!user || !storage || !db) {
-      toast({ variant: "destructive", title: "Error", description: "Servicios no disponibles." });
+      toast({ variant: "destructive", title: "Servicios no disponibles", description: "Verificá tu sesión." });
       return;
     }
 
     setUploadingIds(prev => new Set(prev).add(photoId));
 
     try {
-      const storagePath = `reports/${reportId}/${formId}/${fileName}`;
+      // Sanitización de IDs para la ruta
+      const safeReportId = reportId?.trim() || 'unknown_report';
+      const safeFormId = formId?.trim() || 'unknown_form';
+      const storagePath = `reports/${safeReportId}/${safeFormId}/${fileName}`;
       const storageRef = ref(storage, storagePath);
 
-      // 1. Subir al Storage
-      const uploadResult = await uploadBytes(storageRef, file);
+      // Wrapper con timeout para la subida
+      const uploadTask = uploadBytes(storageRef, file);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('TIMEOUT')), 30000)
+      );
+
+      // 1. Subir al Storage (con límite de tiempo)
+      const uploadResult = (await Promise.race([uploadTask, timeoutPromise])) as any;
       const downloadUrl = await getDownloadURL(uploadResult.ref);
 
-      // 2. Registrar en Firestore (Optimista)
+      // 2. Registrar en Firestore (Colección plana samples)
       const photoData = {
         reportId,
         formId,
@@ -125,40 +141,41 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         userEmail: user.email
       };
 
-      addDoc(collection(db, 'samples'), photoData)
-        .catch(async (error) => {
-          const permissionError = new FirestorePermissionError({
-            path: 'samples',
-            operation: 'create',
-            requestResourceData: photoData,
-          });
-          errorEmitter.emit('permission-error', permissionError);
+      await addDoc(collection(db, 'samples'), photoData).catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: 'samples',
+          operation: 'create',
+          requestResourceData: photoData,
         });
+        errorEmitter.emit('permission-error', permissionError);
+      });
 
+      // Actualizar editores del reporte
       updateDoc(doc(db, 'reports', reportId), { 
         editors: arrayUnion(user.email) 
       }).catch(() => {});
 
-      // 3. Limpiar almacenamiento local
+      // 3. Limpieza de almacenamiento local tras éxito
       await offlineStorage.removePhoto(photoId);
       
-      if (localPhoto?.id === photoId) {
-        setLocalPhoto(null);
-      }
-      
+      if (localPhoto?.id === photoId) setLocalPhoto(null);
       setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
 
       toast({
-        title: "Éxito",
-        description: "Fotografía sincronizada correctamente.",
+        title: "Sincronizado",
+        description: "La fotografía se subió correctamente.",
       });
 
     } catch (error: any) {
       console.error('Fallo en subida:', error);
+      const message = error.message === 'TIMEOUT' 
+        ? "La subida tardó demasiado. Intentá de nuevo con mejor señal." 
+        : "Error de red o permisos al subir la imagen.";
+      
       toast({
         variant: "destructive",
         title: "Error de subida",
-        description: "Revisá tu conexión e intentá de nuevo.",
+        description: message,
       });
     } finally {
       setUploadingIds(prev => {
@@ -173,7 +190,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     await offlineStorage.removePhoto(id);
     if (localPhoto?.id === id) setLocalPhoto(null);
     setPendingPhotos(prev => prev.filter(p => p.id !== id));
-    toast({ description: "Captura eliminada." });
+    toast({ description: "Captura descartada." });
   };
 
   if (authLoading) return null;
@@ -195,15 +212,15 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* ÁREA DE CAPTURA / PREVIEW ACTUAL */}
+          {/* ÁREA DE CAPTURA ACTUAL */}
           <div className="space-y-2">
             {!localPhoto ? (
               <button 
                 onClick={handleCaptureClick}
-                disabled={isCompressing || isAnyUploading}
+                disabled={isCompressing}
                 className={cn(
                   "w-full aspect-video flex flex-col items-center justify-center border-2 border-dashed rounded-none transition-all group",
-                  isCompressing || isAnyUploading 
+                  isCompressing 
                     ? "bg-neutral-50 border-neutral-200 cursor-not-allowed" 
                     : "border-neutral-300 hover:bg-neutral-50 hover:border-primary/50"
                 )}
@@ -244,14 +261,14 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
                     ) : (
                       <Upload className="h-3.5 w-3.5 mr-1" />
                     )}
-                    Confirmar y Subir
+                    Subir Ahora
                   </Button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* LISTADO DE PENDIENTES */}
+          {/* LISTADO DE PENDIENTES / COLA DE ENVÍO */}
           <div className="space-y-3">
             <h4 className="text-[9px] font-black uppercase text-neutral-400 tracking-widest flex items-center gap-1.5">
               <ImageIcon className="h-3 w-3" /> Fotos en cola de envío:
@@ -280,21 +297,22 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all">
                       {isThisUploading ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                        <div className="flex flex-col items-center gap-1">
+                          <Loader2 className="h-5 w-5 animate-spin text-white" />
+                          <span className="text-[7px] text-white font-black uppercase">Subiendo...</span>
+                        </div>
                       ) : (
                         <div className="flex gap-1">
                            <button 
                             onClick={() => handleUpload(photo.id, photo.file, photo.fileName)}
-                            disabled={isAnyUploading}
-                            className="p-1.5 bg-white text-primary rounded-none shadow-md hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
+                            className="p-1.5 bg-white text-primary rounded-none shadow-md hover:bg-primary hover:text-white transition-colors"
                             title="Subir ahora"
                           >
                             <Upload className="h-4 w-4" />
                           </button>
                           <button 
                             onClick={() => removePhoto(photo.id)}
-                            disabled={isAnyUploading}
-                            className="p-1.5 bg-white text-destructive rounded-none shadow-md hover:bg-destructive hover:text-white transition-colors disabled:opacity-50"
+                            className="p-1.5 bg-white text-destructive rounded-none shadow-md hover:bg-destructive hover:text-white transition-colors"
                             title="Eliminar"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -309,9 +327,12 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           </div>
         </div>
 
-        <p className="text-[8px] italic text-neutral-400 leading-tight pt-2 border-t">
-          * Optimización: Reducción automática a 1024px. Las fotos se guardan localmente hasta que confirmes la subida con conexión.
-        </p>
+        <div className="flex items-start gap-2 p-2 bg-neutral-50 border border-neutral-200 mt-2">
+          <AlertCircle className="h-3 w-3 text-neutral-400 shrink-0 mt-0.5" />
+          <p className="text-[8px] italic text-neutral-500 leading-tight">
+            Optimizamos cada foto a 1024px para ahorrar datos. Si la subida demora más de 30s, el proceso se cancelará para evitar bloqueos. Podrás reintentar cuando tengas mejor señal.
+          </p>
+        </div>
 
         <input 
           type="file" 
