@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -77,7 +78,7 @@ export function ActivityLogDialog({ open, onOpenChange }: ActivityLogDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] h-[85vh] p-0 flex flex-col gap-0 border-t-4 border-t-primary overflow-hidden rounded-none">
+      <DialogContent className="max-w-5xl w-[95vw] h-[85vh] p-0 flex flex-col gap-0 border-t-4 border-t-primary overflow-hidden rounded-none outline-none">
         <DialogHeader className="p-4 bg-neutral-100 border-b shrink-0">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />

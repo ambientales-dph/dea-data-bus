@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -447,11 +448,23 @@ export default function Home() {
                   <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-2 py-1.5 border-b">
                     Mi Cuenta
                   </DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => setIsSettingsOpen(true)} className="text-xs font-medium cursor-pointer py-2.5">
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setIsSettingsOpen(true);
+                    }} 
+                    className="text-xs font-medium cursor-pointer py-2.5"
+                  >
                     <Settings className="mr-2 h-4 w-4 text-foreground" />
                     Configuración de Sesión
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setIsActivityLogOpen(true)} className="text-xs font-medium cursor-pointer py-2.5">
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setIsActivityLogOpen(true);
+                    }} 
+                    className="text-xs font-medium cursor-pointer py-2.5"
+                  >
                     <ClipboardList className="mr-2 h-4 w-4 text-foreground" />
                     Log de Registros
                   </DropdownMenuItem>
