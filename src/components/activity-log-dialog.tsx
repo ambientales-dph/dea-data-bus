@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, ClipboardList, User, Clock, FileText, Database } from 'lucide-react';
+import { Loader2, ClipboardList, User, Clock, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ActivityLogDialogProps {
@@ -137,7 +137,9 @@ export function ActivityLogDialog({ open, onOpenChange }: ActivityLogDialogProps
                         <TableCell className="px-3 py-1">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-medium text-neutral-500 uppercase">{sample.analyte}</span>
-                            <span className="text-[10px] font-black text-primary font-code">: {sample.value}</span>
+                            <span className="text-[10px] font-black text-primary font-code">
+                              : {sample.analyte === 'Evidencia Visual' ? 'FOTOGRAFÍA' : sample.value}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell className="px-3 py-1 text-[10px] font-bold text-neutral-600 truncate max-w-[120px]" title={sample.userEmail}>
