@@ -81,7 +81,8 @@ export function ActivityLogDialog({ open, onOpenChange }: ActivityLogDialogProps
       <DialogContent 
         onCloseAutoFocus={(e) => {
           e.preventDefault();
-          document.getElementById('user-menu-trigger')?.focus();
+          const trigger = document.getElementById('user-menu-trigger');
+          if (trigger) trigger.focus();
         }}
         className="max-w-5xl w-[95vw] h-[85vh] p-0 flex flex-col gap-0 border-t-4 border-t-primary overflow-hidden rounded-none outline-none"
       >

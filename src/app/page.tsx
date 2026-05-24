@@ -451,7 +451,6 @@ export default function Home() {
                   <DropdownMenuItem 
                     onSelect={(e) => {
                       e.preventDefault();
-                      // Pequeño delay para asegurar que el menú se cierre y devuelva foco antes de abrir el diálogo
                       setTimeout(() => setIsSettingsOpen(true), 100);
                     }} 
                     className="text-xs font-medium cursor-pointer py-2.5"
@@ -462,7 +461,6 @@ export default function Home() {
                   <DropdownMenuItem 
                     onSelect={(e) => {
                       e.preventDefault();
-                      // Pequeño delay para asegurar que el menú se cierre y devuelva foco antes de abrir el diálogo
                       setTimeout(() => setIsActivityLogOpen(true), 100);
                     }} 
                     className="text-xs font-medium cursor-pointer py-2.5"

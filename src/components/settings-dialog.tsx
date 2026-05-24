@@ -38,7 +38,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const handleClose = () => {
     onOpenChange(false);
     // Restauración manual de foco al cerrar el panel flotante
-    document.getElementById('user-menu-trigger')?.focus();
+    setTimeout(() => {
+      const trigger = document.getElementById('user-menu-trigger');
+      if (trigger) trigger.focus();
+    }, 50);
   };
 
   const handleSave = () => {
