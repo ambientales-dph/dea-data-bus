@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, Search, Loader2, Layers, Map as MapIcon, Satellite, MapPin, Database, X, FileText, Settings, User, Cloud, CloudOff } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, Search, Loader2, Layers, Map as MapIcon, Satellite, MapPin, Database, X, FileText, Settings, User, Cloud, CloudOff, ClipboardList } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { SettingsDialog } from '@/components/settings-dialog';
+import { ActivityLogDialog } from '@/components/activity-log-dialog';
 import { cn } from '@/lib/utils';
 
 export interface SelectedPoint {
@@ -58,6 +59,7 @@ export default function Home() {
   const [isResizing, setIsResizing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isActivityLogOpen, setIsActivityLogOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   
   const auth = useAuth();
@@ -304,6 +306,7 @@ export default function Home() {
     <AuthGuard>
       <PresenceManager selectedPoint={selectedPoint} />
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      <ActivityLogDialog open={isActivityLogOpen} onOpenChange={setIsActivityLogOpen} />
       <div className={cn(
         "flex h-screen w-full flex-col bg-background overflow-hidden",
         isResizing && "cursor-col-resize select-none"
@@ -440,13 +443,17 @@ export default function Home() {
                     </Avatar>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 shadow-2xl border-primary/10">
+                <DropdownMenuContent align="end" className="w-64 shadow-2xl border-primary/10">
                   <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-2 py-1.5 border-b">
                     Mi Cuenta
                   </DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setIsSettingsOpen(true)} className="text-xs font-medium cursor-pointer py-2.5">
                     <Settings className="mr-2 h-4 w-4 text-foreground" />
                     Configuración de Sesión
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsActivityLogOpen(true)} className="text-xs font-medium cursor-pointer py-2.5">
+                    <ClipboardList className="mr-2 h-4 w-4 text-foreground" />
+                    Log de Registros
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-xs font-medium cursor-pointer py-2.5 text-destructive focus:text-destructive focus:bg-destructive/5">
