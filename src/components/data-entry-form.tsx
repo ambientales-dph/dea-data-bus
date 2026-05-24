@@ -108,7 +108,7 @@ function DataExplorer({
   const getBasinLabel = (code: string) => {
     if (code === 'S/C') return 'Otras Ubicaciones';
     const name = dynamicBasinNames[code];
-    return name ? `${name} ${code}`.toUpperCase() : code.toUpperCase();
+    return name ? `${name} (${code})`.toUpperCase() : `(${code})`.toUpperCase();
   };
 
   if (stationsLoading || reportsLoading || samplesLoading) {
@@ -165,15 +165,15 @@ function DataExplorer({
         <div className="flex items-start gap-12 px-1">
           <div className="flex flex-col">
             <span className="text-3xl font-normal text-black leading-none">{stations.length}</span>
-            <span className="text-[8px] font-normal uppercase tracking-wider text-neutral-400 mt-1.5">Estaciones</span>
+            <span className="text-[8px] font-normal uppercase tracking-wider text-black mt-1.5">Estaciones</span>
           </div>
           <div className="flex flex-col">
             <span className="text-3xl font-normal text-black leading-none">{reports.length}</span>
-            <span className="text-[8px] font-normal uppercase tracking-wider text-neutral-400 mt-1.5">Reportes</span>
+            <span className="text-[8px] font-normal uppercase tracking-wider text-black mt-1.5">Reportes</span>
           </div>
           <div className="flex flex-col">
             <span className="text-3xl font-normal text-black leading-none">{samples.length}</span>
-            <span className="text-[8px] font-normal uppercase tracking-wider text-neutral-400 mt-1.5">Registros</span>
+            <span className="text-[8px] font-normal uppercase tracking-wider text-black mt-1.5">Registros</span>
           </div>
         </div>
         
