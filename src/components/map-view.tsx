@@ -510,7 +510,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         </div>
       )}
 
-      <div className="absolute bottom-6 right-6 z-40 flex flex-col gap-2">
+      <div className="absolute bottom-6 right-6 z-40 flex flex-row gap-1">
         <input 
           type="file" 
           ref={fileInputRef} 
@@ -522,15 +522,15 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         <Popover>
           <PopoverTrigger asChild>
             <Button 
-              variant="outline" 
+              variant="ghost" 
               size="icon" 
-              className="h-10 w-10 rounded-none bg-white border-black hover:bg-neutral-50 shadow-xl transition-all"
+              className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none transition-all"
               title="Capas Base"
             >
-              <Layers className="h-5 w-5 text-black" />
+              <Layers className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-48 p-2 shadow-2xl border-primary/10 rounded-none" align="end" side="left">
+          <PopoverContent className="w-48 p-2 shadow-2xl border-primary/10 rounded-none" align="end" side="top">
             <div className="space-y-1">
               <p className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1.5 tracking-widest border-b mb-1">Capas Base</p>
               <button onClick={() => onLayerChange?.('osm')} className={cn("w-full flex items-center justify-between p-2 rounded-none text-[11px] font-medium transition-colors", activeLayer === 'osm' ? "bg-primary text-white" : "hover:bg-muted")}>
@@ -550,14 +550,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         </Popover>
 
         <Button 
-          variant="outline" 
+          variant="ghost" 
           size="icon" 
           onClick={() => fileInputRef.current?.click()}
           disabled={isReadingKML}
-          className="h-10 w-10 rounded-none bg-white border-black hover:bg-neutral-50 shadow-xl transition-all"
+          className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none transition-all"
           title="Cargar KML"
         >
-          {isReadingKML ? <Loader2 className="h-5 w-5 animate-spin text-black" /> : <Upload className="h-5 w-5 text-black" />}
+          {isReadingKML ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
         </Button>
       </div>
     </div>
