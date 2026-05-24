@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -17,8 +16,6 @@ interface SettingsDialogProps {
 
 /**
  * Panel de configuración de sesión.
- * Utiliza un diseño flotante no modal para permitir la operación en campo 
- * sin bloquear el resto de la interfaz.
  */
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { toast } = useToast();
@@ -35,15 +32,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   }, [open]);
 
-  const handleClose = () => {
-    onOpenChange(false);
-    // Restauración manual de foco al cerrar el panel flotante
-    setTimeout(() => {
-      const trigger = document.getElementById('user-menu-trigger');
-      if (trigger) trigger.focus();
-    }, 50);
-  };
-
   const handleSave = () => {
     localStorage.setItem('dea_timeout_enabled', enabled.toString());
     localStorage.setItem('dea_timeout_minutes', minutes.toString());
@@ -55,7 +43,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       title: "Configuración guardada",
       description: `Inactividad: ${enabled ? `${minutes} min` : 'Desactivado'}.`,
     });
-    handleClose();
+    onOpenChange(false);
   };
 
   if (!open) return null;
@@ -77,9 +65,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </h2>
         </div>
         <button 
-          onClick={handleClose}
+          onClick={() => onOpenChange(false)}
           className="text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
-          aria-label="Cerrar configuración"
         >
           <X className="h-3.5 w-3.5" />
         </button>
