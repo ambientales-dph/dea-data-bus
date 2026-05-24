@@ -431,7 +431,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 hover:bg-primary/5 p-1 rounded-full transition-colors outline-none">
+                  <button id="user-menu-trigger" className="flex items-center gap-2 hover:bg-primary/5 p-1 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
                     <div className="flex flex-col items-end hidden md:flex">
                       <span className="text-[11px] font-bold leading-none text-foreground">{user?.displayName || 'Técnico'}</span>
                       <span className="text-[9px] text-muted-foreground">{user?.email}</span>

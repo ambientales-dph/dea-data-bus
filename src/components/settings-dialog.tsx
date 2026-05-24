@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -34,6 +35,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   }, [open]);
 
+  const handleClose = () => {
+    onOpenChange(false);
+    // Restauración manual de foco al cerrar el panel flotante
+    document.getElementById('user-menu-trigger')?.focus();
+  };
+
   const handleSave = () => {
     localStorage.setItem('dea_timeout_enabled', enabled.toString());
     localStorage.setItem('dea_timeout_minutes', minutes.toString());
@@ -45,7 +52,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       title: "Configuración guardada",
       description: `Inactividad: ${enabled ? `${minutes} min` : 'Desactivado'}.`,
     });
-    onOpenChange(false);
+    handleClose();
   };
 
   if (!open) return null;
@@ -67,7 +74,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </h2>
         </div>
         <button 
-          onClick={() => onOpenChange(false)}
+          onClick={handleClose}
           className="text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
           aria-label="Cerrar configuración"
         >
