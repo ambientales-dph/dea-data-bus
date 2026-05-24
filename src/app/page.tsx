@@ -14,7 +14,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { 
   DropdownMenu, 
@@ -300,6 +299,12 @@ export default function Home() {
     setShowResults(false);
   };
 
+  const handleOpenSettings = () => {
+    setTimeout(() => {
+      setIsSettingsOpen(true);
+    }, 100);
+  };
+
   return (
     <AuthGuard>
       <PresenceManager selectedPoint={selectedPoint} />
@@ -396,38 +401,12 @@ export default function Home() {
                )}
             </div>
 
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-9 gap-1 md:gap-2 text-muted-foreground hover:text-foreground hover:bg-primary/5 px-2 md:px-3">
-                  <Layers className="h-4 w-4" />
-                  <span className="text-xs font-semibold hidden md:inline">Capas</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-52 p-2 shadow-2xl border-primary/10" align="end">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1.5 tracking-widest border-b mb-1">Capas Base</p>
-                  <button onClick={() => setActiveLayer('osm')} className={cn("w-full flex items-center justify-between p-2 rounded-md text-[11px] font-medium transition-colors", activeLayer === 'osm' ? "bg-primary text-white" : "hover:bg-muted")}>
-                    <div className="flex items-center gap-2"><MapIcon className="h-3.5 w-3.5" /> Estándar OSM</div>
-                    {activeLayer === 'osm' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                  </button>
-                  <button onClick={() => setActiveLayer('grayscale')} className={cn("w-full flex items-center justify-between p-2 rounded-md text-[11px] font-medium transition-colors", activeLayer === 'grayscale' ? "bg-primary text-white" : "hover:bg-muted")}>
-                    <div className="flex items-center gap-2"><MapIcon className="h-3.5 w-3.5 opacity-50" /> Escala de Grises</div>
-                    {activeLayer === 'grayscale' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                  </button>
-                  <button onClick={() => setActiveLayer('satellite')} className={cn("w-full flex items-center justify-between p-2 rounded-md text-[11px] font-medium transition-colors", activeLayer === 'satellite' ? "bg-primary text-white" : "hover:bg-muted")}>
-                    <div className="flex items-center gap-2"><Satellite className="h-3.5 w-3.5" /> Satélite ArcGIS</div>
-                    {activeLayer === 'satellite' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                  </button>
-                </div>
-              </PopoverContent>
-            </Popover>
-
             <Separator orientation="vertical" className="h-6 hidden sm:block" />
 
             <div className="flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button id="user-menu-trigger" className="flex items-center gap-2 hover:bg-primary/5 p-1 rounded-full transition-colors outline-none">
+                  <button id="user-menu-trigger" className="flex items-center gap-2 hover:bg-primary/5 p-1 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
                     <div className="flex flex-col items-end hidden md:flex">
                       <span className="text-[11px] font-bold leading-none text-foreground">{user?.displayName || 'Técnico'}</span>
                       <span className="text-[9px] text-muted-foreground">{user?.email}</span>
@@ -445,14 +424,14 @@ export default function Home() {
                     Mi Cuenta
                   </DropdownMenuLabel>
                   <DropdownMenuItem 
-                    onSelect={() => setIsSettingsOpen(true)} 
+                    onSelect={handleOpenSettings} 
                     className="text-xs font-medium cursor-pointer py-2.5"
                   >
                     <Settings className="mr-2 h-4 w-4 text-foreground" />
                     Configuración de Sesión
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-xs font-medium cursor-pointer py-2.5 text-destructive focus:text-destructive focus:bg-destructive/5">
+                  <DropdownMenuItem onSelect={handleLogout} className="text-xs font-medium cursor-pointer py-2.5 text-destructive focus:text-destructive focus:bg-destructive/5">
                     <LogOut className="mr-2 h-4 w-4" />
                     Cerrar Sesión
                   </DropdownMenuItem>
@@ -469,6 +448,7 @@ export default function Home() {
                 onPointSelect={handlePointSelect} 
                 selectedPoint={selectedPoint} 
                 activeLayer={activeLayer}
+                onLayerChange={setActiveLayer}
                 isMobile={isMobile}
               />
             </div>

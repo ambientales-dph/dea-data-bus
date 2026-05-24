@@ -14,34 +14,45 @@ import Cluster from 'ol/source/Cluster';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import GeoJSON from 'ol/format/GeoJSON';
+import KML from 'ol/format/KML';
 import { Style, Text, Fill, Circle as CircleStyle, Stroke } from 'ol/style';
 import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Layers, Upload, Map as MapIcon, Satellite, Loader2, Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface MapViewProps {
   onPointSelect: (point: SelectedPoint) => void;
   selectedPoint: SelectedPoint | null;
   activeLayer: 'osm' | 'grayscale' | 'satellite';
+  onLayerChange?: (layer: 'osm' | 'grayscale' | 'satellite') => void;
   isMobile?: boolean;
 }
 
 // Umbral de caducidad para presencia (2 minutos)
 const PRESENCE_EXPIRATION_MS = 2 * 60 * 1000;
 
-export function MapView({ onPointSelect, selectedPoint, activeLayer, isMobile }: MapViewProps) {
+export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChange, isMobile }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<Map | null>(null);
   const stationsSource = useRef<VectorSource>(new VectorSource());
   const selectionSource = useRef<VectorSource>(new VectorSource());
   const presenceSource = useRef<VectorSource>(new VectorSource());
-  
+  const kmlSource = useRef<VectorSource>(new VectorSource());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
   const stationsLayerRef = useRef<VectorLayer<any> | null>(null);
   const selectionLayerRef = useRef<VectorLayer<any> | null>(null);
   const presenceLayerRef = useRef<VectorLayer<any> | null>(null);
   const baseLayerRef = useRef<TileLayer<any> | null>(null);
   const basinsLayerRef = useRef<VectorLayer<any> | null>(null);
   const codesLayerRef = useRef<VectorLayer<any> | null>(null);
+  const kmlLayerRef = useRef<VectorLayer<any> | null>(null);
   
   const basinsSource = useRef<VectorSource>(new VectorSource({
     url: '/data/cuencas_dph.json',
@@ -56,6 +67,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, isMobile }:
 
   const [hoveredText, setHoveredText] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number, y: number } | null>(null);
+  const [isReadingKML, setIsReadingKML] = useState(false);
 
   useEffect(() => {
     onPointSelectRef.current = onPointSelect;
@@ -113,9 +125,24 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, isMobile }:
     });
     presenceLayerRef.current = presenceLayer;
 
+    const kmlLayer = new VectorLayer({
+      source: kmlSource.current,
+      zIndex: 8,
+      style: new Style({
+        stroke: new Stroke({ color: '#ff5722', width: 2 }),
+        fill: new Fill({ color: 'rgba(255, 87, 34, 0.2)' }),
+        image: new CircleStyle({
+          radius: 4,
+          fill: new Fill({ color: '#ff5722' }),
+          stroke: new Stroke({ color: '#fff', width: 1 })
+        })
+      })
+    });
+    kmlLayerRef.current = kmlLayer;
+
     const map = new Map({
       target: mapRef.current,
-      layers: [baseLayer, basinsLayer, codesLayer, presenceLayer, stationsLayer, selectionLayer],
+      layers: [baseLayer, basinsLayer, codesLayer, kmlLayer, presenceLayer, stationsLayer, selectionLayer],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
         zoom: 5.5,
@@ -419,6 +446,57 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, isMobile }:
     });
   }, [stations]);
 
+  const handleKMLFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsReadingKML(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const kmlContent = e.target?.result as string;
+        const kmlFormat = new KML({ extractStyles: true });
+        const features = kmlFormat.readFeatures(kmlContent, {
+          dataProjection: 'EPSG:4326',
+          featureProjection: 'EPSG:3857'
+        });
+
+        if (features.length > 0) {
+          kmlSource.current.clear();
+          kmlSource.current.addFeatures(features);
+          
+          const extent = kmlSource.current.getExtent();
+          mapInstance.current?.getView().fit(extent, {
+            padding: [50, 50, 50, 50],
+            duration: 1000
+          });
+
+          toast({
+            title: "KML Cargado",
+            description: `Se importaron ${features.length} elementos geográficos.`,
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error KML",
+            description: "No se encontraron elementos válidos en el archivo.",
+          });
+        }
+      } catch (err) {
+        console.error("KML error", err);
+        toast({
+          variant: "destructive",
+          title: "Error de lectura",
+          description: "No se pudo procesar el archivo KML.",
+        });
+      } finally {
+        setIsReadingKML(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="relative h-full w-full overflow-hidden bg-muted/20 flex flex-col">
       <div ref={mapRef} className="absolute inset-0 z-10" />
@@ -431,6 +509,57 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, isMobile }:
           {hoveredText}
         </div>
       )}
+
+      <div className="absolute bottom-6 right-6 z-40 flex flex-col gap-2">
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          accept=".kml" 
+          className="hidden" 
+          onChange={handleKMLFileSelect} 
+        />
+        
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-10 w-10 rounded-none bg-white border-black hover:bg-neutral-50 shadow-xl transition-all"
+              title="Capas Base"
+            >
+              <Layers className="h-5 w-5 text-black" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-2 shadow-2xl border-primary/10 rounded-none" align="end" side="left">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1.5 tracking-widest border-b mb-1">Capas Base</p>
+              <button onClick={() => onLayerChange?.('osm')} className={cn("w-full flex items-center justify-between p-2 rounded-none text-[11px] font-medium transition-colors", activeLayer === 'osm' ? "bg-primary text-white" : "hover:bg-muted")}>
+                <div className="flex items-center gap-2"><MapIcon className="h-3.5 w-3.5" /> Estándar</div>
+                {activeLayer === 'osm' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+              </button>
+              <button onClick={() => onLayerChange?.('grayscale')} className={cn("w-full flex items-center justify-between p-2 rounded-none text-[11px] font-medium transition-colors", activeLayer === 'grayscale' ? "bg-primary text-white" : "hover:bg-muted")}>
+                <div className="flex items-center gap-2"><MapIcon className="h-3.5 w-3.5 opacity-50" /> Grises</div>
+                {activeLayer === 'grayscale' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+              </button>
+              <button onClick={() => onLayerChange?.('satellite')} className={cn("w-full flex items-center justify-between p-2 rounded-none text-[11px] font-medium transition-colors", activeLayer === 'satellite' ? "bg-primary text-white" : "hover:bg-muted")}>
+                <div className="flex items-center gap-2"><Satellite className="h-3.5 w-3.5" /> Satélite</div>
+                {activeLayer === 'satellite' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isReadingKML}
+          className="h-10 w-10 rounded-none bg-white border-black hover:bg-neutral-50 shadow-xl transition-all"
+          title="Cargar KML"
+        >
+          {isReadingKML ? <Loader2 className="h-5 w-5 animate-spin text-black" /> : <Upload className="h-5 w-5 text-black" />}
+        </Button>
+      </div>
     </div>
   );
 }
