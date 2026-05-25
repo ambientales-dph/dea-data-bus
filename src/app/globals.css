@@ -51,10 +51,16 @@
 }
 
 /* Filtros aislados para la capa base únicamente */
-.map-grayscale .ol-base-layer canvas {
+/* El uso de .ol-base-layer asegura que NO afecte a estaciones ni cuencas */
+.map-container-grayscale .ol-base-layer canvas {
   filter: grayscale(100%) brightness(0.9) contrast(1.2) !important;
 }
 
-.map-satellite .ol-base-layer canvas {
+.map-container-satellite .ol-base-layer canvas {
   filter: saturate(1.2) contrast(1.1) !important;
+}
+
+/* Forzar que las capas vectoriales ignoren filtros heredados si los hubiera */
+.ol-layer:not(.ol-base-layer) canvas {
+  filter: none !important;
 }

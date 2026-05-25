@@ -101,11 +101,10 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
     codesLayerRef.current = codesLayer;
 
-    // Asignamos explícitamente una clase CSS para aislamiento de filtros
+    // Clase estática ol-base-layer para aislamiento en CSS
     const baseLayer = new TileLayer({
       source: new OSM(),
       className: 'ol-base-layer',
-      properties: { id: 'base-layer' }
     });
     baseLayerRef.current = baseLayer;
 
@@ -472,6 +471,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     } else {
       baseLayer.setSource(new OSM());
     }
+    // IMPORTANTE: Eliminamos cualquier llamada a setClassName o filtros JS aquí
   }, [activeLayer]);
 
   useEffect(() => {
@@ -583,14 +583,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   };
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-muted/20 flex flex-col">
+    <div className={cn(
+      "relative h-full w-full overflow-hidden bg-muted/20 flex flex-col",
+      activeLayer === 'grayscale' && "map-container-grayscale",
+      activeLayer === 'satellite' && "map-container-satellite"
+    )}>
       <div 
         ref={mapRef} 
-        className={cn(
-          "absolute inset-0 z-10",
-          activeLayer === 'grayscale' && "map-grayscale",
-          activeLayer === 'satellite' && "map-satellite"
-        )} 
+        className="absolute inset-0 z-10"
       />
 
       {hoveredText && tooltipPos && (
