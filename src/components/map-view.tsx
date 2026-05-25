@@ -82,14 +82,12 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   const presenceQuery = useMemo(() => query(collection(db, 'presence')), [db]);
   const { data: presences } = useCollection(presenceQuery);
 
-  // Inicialización única del mapa
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
-    // Estilo base para cuencas (transparente)
     const basinBaseStyle = new Style({
       stroke: new Stroke({ color: 'rgba(13, 145, 102, 0.7)', width: 1 }),
-      fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }) // Completamente transparente
+      fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }) 
     });
 
     const basinsLayer = new VectorLayer({
@@ -108,14 +106,13 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
     codesLayerRef.current = codesLayer;
 
-    // Sincronizar la fuente inicial con el estado actual de activeLayer
     const initialSource = activeLayer === 'satellite' 
       ? new XYZ({ url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 19 })
       : new OSM();
 
     const baseLayer = new TileLayer({
       source: initialSource,
-      className: 'ol-base-layer', // Clase crucial para los filtros CSS
+      className: 'ol-base-layer',
     });
     baseLayerRef.current = baseLayer;
 
@@ -166,7 +163,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       }),
     });
 
-    // Interacción de arrastre
     const translateInteraction = new Translate({
       layers: [selectionLayer],
       hitTolerance: isMobile ? 15 : 8,
@@ -236,14 +232,12 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     };
   }, []);
 
-  // Actualizar tolerancia sin destruir el mapa
   useEffect(() => {
     if (mapInstance.current) {
       mapInstance.current.updateSize();
     }
   }, [isMobile]);
 
-  // Manejar cambios en la capa activa de forma segura
   useEffect(() => {
     if (!baseLayerRef.current) return;
     const baseLayer = baseLayerRef.current;
@@ -318,7 +312,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       const strokeWidth = (zoom && zoom >= 10) ? 3 : 1;
       let textStyle = undefined;
       
-      // Mostrar etiquetas solo a partir de zoom 7
       if (zoom && zoom >= 7) {
         const codLetras = feature.get('cod_letras') || feature.get('CODIGO') || '';
         const subregion = feature.get('subregion') || feature.get('nombre_2') || '';
@@ -334,7 +327,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       }
       return new Style({
         stroke: new Stroke({ color: strokeColor, width: strokeWidth }),
-        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }), // RELLENO TRANSPARENTE
+        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }), 
         text: textStyle
       });
     };
