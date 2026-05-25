@@ -21,9 +21,10 @@ import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Layers, Upload, Map as MapIcon, Satellite, Loader2, Info } from 'lucide-react';
+import { Layers, Upload, Map as MapIcon, Satellite, Loader2, Info, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import JSZip from 'jszip';
 
 interface MapViewProps {
   onPointSelect: (point: SelectedPoint) => void;
@@ -42,7 +43,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   const stationsSource = useRef<VectorSource>(new VectorSource());
   const selectionSource = useRef<VectorSource>(new VectorSource());
   const presenceSource = useRef<VectorSource>(new VectorSource());
-  const kmlSource = useRef<VectorSource>(new VectorSource());
+  const uploadedSource = useRef<VectorSource>(new VectorSource());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -52,7 +53,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   const baseLayerRef = useRef<TileLayer<any> | null>(null);
   const basinsLayerRef = useRef<VectorLayer<any> | null>(null);
   const codesLayerRef = useRef<VectorLayer<any> | null>(null);
-  const kmlLayerRef = useRef<VectorLayer<any> | null>(null);
+  const uploadedLayerRef = useRef<VectorLayer<any> | null>(null);
   
   const basinsSource = useRef<VectorSource>(new VectorSource({
     url: '/data/cuencas_dph.json',
@@ -67,7 +68,9 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
   const [hoveredText, setHoveredText] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number, y: number } | null>(null);
-  const [isReadingKML, setIsReadingKML] = useState(false);
+  const [isReadingFile, setIsReadingFile] = useState(false);
+  const [hasUploadedData, setHasUploadedData] = useState(false);
+  const [isUploadedLayerVisible, setIsUploadedLayerVisible] = useState(true);
 
   useEffect(() => {
     onPointSelectRef.current = onPointSelect;
@@ -125,24 +128,24 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
     presenceLayerRef.current = presenceLayer;
 
-    const kmlLayer = new VectorLayer({
-      source: kmlSource.current,
+    const uploadedLayer = new VectorLayer({
+      source: uploadedSource.current,
       zIndex: 8,
       style: new Style({
-        stroke: new Stroke({ color: '#ff5722', width: 2 }),
-        fill: new Fill({ color: 'rgba(255, 87, 34, 0.2)' }),
+        stroke: new Stroke({ color: '#ff5722', width: 2.5 }),
+        fill: new Fill({ color: 'rgba(255, 87, 34, 0.25)' }),
         image: new CircleStyle({
-          radius: 4,
+          radius: 5,
           fill: new Fill({ color: '#ff5722' }),
-          stroke: new Stroke({ color: '#fff', width: 1 })
+          stroke: new Stroke({ color: '#fff', width: 1.5 })
         })
       })
     });
-    kmlLayerRef.current = kmlLayer;
+    uploadedLayerRef.current = uploadedLayer;
 
     const map = new Map({
       target: mapRef.current,
-      layers: [baseLayer, basinsLayer, codesLayer, kmlLayer, presenceLayer, stationsLayer, selectionLayer],
+      layers: [baseLayer, basinsLayer, codesLayer, uploadedLayer, presenceLayer, stationsLayer, selectionLayer],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
         zoom: 5.5,
@@ -446,55 +449,97 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
   }, [stations]);
 
-  const handleKMLFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setIsReadingKML(true);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const kmlContent = e.target?.result as string;
-        const kmlFormat = new KML({ extractStyles: true });
-        const features = kmlFormat.readFeatures(kmlContent, {
+    setIsReadingFile(true);
+    const fileName = file.name.toLowerCase();
+
+    try {
+      let features: Feature[] = [];
+
+      if (fileName.endsWith('.kmz')) {
+        const zip = await JSZip.loadAsync(file);
+        const kmlFile = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
+        
+        if (kmlFile) {
+          const kmlContent = await zip.files[kmlFile].async('string');
+          const kmlFormat = new KML({ extractStyles: true });
+          features = kmlFormat.readFeatures(kmlContent, {
+            dataProjection: 'EPSG:4326',
+            featureProjection: 'EPSG:3857'
+          });
+        }
+      } else if (fileName.endsWith('.geojson') || fileName.endsWith('.json')) {
+        const content = await file.text();
+        const geojsonFormat = new GeoJSON();
+        features = geojsonFormat.readFeatures(content, {
           dataProjection: 'EPSG:4326',
           featureProjection: 'EPSG:3857'
         });
+      } else if (fileName.endsWith('.kml')) {
+        const content = await file.text();
+        const kmlFormat = new KML({ extractStyles: true });
+        features = kmlFormat.readFeatures(content, {
+          dataProjection: 'EPSG:4326',
+          featureProjection: 'EPSG:3857'
+        });
+      }
 
-        if (features.length > 0) {
-          kmlSource.current.clear();
-          kmlSource.current.addFeatures(features);
-          
-          const extent = kmlSource.current.getExtent();
-          mapInstance.current?.getView().fit(extent, {
-            padding: [50, 50, 50, 50],
-            duration: 1000
-          });
+      if (features.length > 0) {
+        uploadedSource.current.clear();
+        uploadedSource.current.addFeatures(features);
+        setHasUploadedData(true);
+        setIsUploadedLayerVisible(true);
+        uploadedLayerRef.current?.setVisible(true);
+        
+        const extent = uploadedSource.current.getExtent();
+        mapInstance.current?.getView().fit(extent, {
+          padding: [50, 50, 50, 50],
+          duration: 1000
+        });
 
-          toast({
-            title: "KML Cargado",
-            description: `Se importaron ${features.length} elementos geográficos.`,
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Error KML",
-            description: "No se encontraron elementos válidos en el archivo.",
-          });
-        }
-      } catch (err) {
-        console.error("KML error", err);
+        toast({
+          title: "Datos Cargados",
+          description: `Se importaron ${features.length} elementos desde ${file.name}.`,
+        });
+      } else {
         toast({
           variant: "destructive",
-          title: "Error de lectura",
-          description: "No se pudo procesar el archivo KML.",
+          title: "Error de Formato",
+          description: "No se encontraron elementos válidos en el archivo.",
         });
-      } finally {
-        setIsReadingKML(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
       }
-    };
-    reader.readAsText(file);
+    } catch (err) {
+      console.error("File error", err);
+      toast({
+        variant: "destructive",
+        title: "Error de lectura",
+        description: "No se pudo procesar el archivo seleccionado.",
+      });
+    } finally {
+      setIsReadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const toggleUploadedLayer = () => {
+    if (uploadedLayerRef.current) {
+      const visible = !uploadedLayerRef.current.getVisible();
+      uploadedLayerRef.current.setVisible(visible);
+      setIsUploadedLayerVisible(visible);
+    }
+  };
+
+  const clearUploadedLayer = () => {
+    uploadedSource.current.clear();
+    setHasUploadedData(false);
+    setIsUploadedLayerVisible(true);
+    toast({
+      title: "Capa Eliminada",
+      description: "Los datos importados han sido removidos del mapa.",
+    });
   };
 
   return (
@@ -510,15 +555,38 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         </div>
       )}
 
-      <div className="absolute bottom-6 right-6 z-40 flex flex-row gap-1">
+      <div className="absolute bottom-6 right-6 z-40 flex flex-row items-center gap-1.5">
         <input 
           type="file" 
           ref={fileInputRef} 
-          accept=".kml" 
+          accept=".kml,.kmz,.json,.geojson" 
           className="hidden" 
-          onChange={handleKMLFileSelect} 
+          onChange={handleFileSelect} 
         />
         
+        {hasUploadedData && (
+          <>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleUploadedLayer}
+              className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none transition-all"
+              title={isUploadedLayerVisible ? "Ocultar Capa Importada" : "Mostrar Capa Importada"}
+            >
+              {isUploadedLayerVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 opacity-50" />}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={clearUploadedLayer}
+              className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none transition-all hover:text-destructive"
+              title="Eliminar Capa Importada"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </>
+        )}
+
         <Popover>
           <PopoverTrigger asChild>
             <Button 
@@ -553,11 +621,11 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           variant="ghost" 
           size="icon" 
           onClick={() => fileInputRef.current?.click()}
-          disabled={isReadingKML}
+          disabled={isReadingFile}
           className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none transition-all"
-          title="Cargar KML"
+          title="Importar KML/KMZ/GeoJSON"
         >
-          {isReadingKML ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {isReadingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
         </Button>
       </div>
     </div>
