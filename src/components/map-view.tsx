@@ -417,6 +417,40 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
 
     selectionLayerRef.current.setStyle(() => {
+      if (isDraggable) {
+        // Estilo DIANA para modo edición/creación
+        return [
+          new Style({
+            image: new CircleStyle({
+              radius: 14,
+              stroke: new Stroke({ color: '#22c55e', width: 2 }),
+            }),
+          }),
+          new Style({
+            image: new CircleStyle({
+              radius: 6,
+              stroke: new Stroke({ color: '#22c55e', width: 1.5 }),
+              fill: new Fill({ color: 'white' }),
+            }),
+          }),
+          new Style({
+            image: new CircleStyle({
+              radius: 2,
+              fill: new Fill({ color: '#22c55e' }),
+            }),
+          }),
+          // Crosshairs
+          new Style({
+            text: new Text({
+              text: '+',
+              font: 'bold 24px Arial',
+              fill: new Fill({ color: '#22c55e' }),
+              offsetY: -0.5
+            })
+          })
+        ];
+      }
+
       return new Style({
         image: new CircleStyle({
           radius: 8,
@@ -440,7 +474,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       });
     });
 
-  }, [activeLayer, selectedPoint?.stationId]);
+  }, [activeLayer, selectedPoint?.stationId, isDraggable]);
 
   useEffect(() => {
     if (!baseLayerRef.current) return;

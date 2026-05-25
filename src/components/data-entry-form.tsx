@@ -428,23 +428,30 @@ export function DataEntryForm({
     const currentKey = `${selectedPoint.lat}-${selectedPoint.lon}-${selectedPoint.stationId}`;
 
     if (!isInitialLoadRef.current && lastPointKeyRef.current !== currentKey) {
-      if (selectedPoint.stationId) {
-        setActiveView('summary');
+      // Bloqueamos el reseteo de la vista si estamos en modo creación o edición de coordenadas
+      if (activeView !== 'create-station' && activeView !== 'edit-station') {
+        if (selectedPoint.stationId) {
+          setActiveView('summary');
+        } else {
+          setActiveView('create-station');
+          setEditLat(selectedPoint.lat.toString());
+          setEditLon(selectedPoint.lon.toString());
+        }
+        setCurrentReportId(null);
+        setActiveFormId(null);
+        setViewingReportId(null);
+        setSelectedProject('');
+        setProjectSearch('');
+        setSelectedTemplate('manual');
       } else {
-        setActiveView('create-station');
+        // En modo edición/creación, solo actualizamos los campos de lat/lon locales
         setEditLat(selectedPoint.lat.toString());
         setEditLon(selectedPoint.lon.toString());
       }
-      setCurrentReportId(null);
-      setActiveFormId(null);
-      setViewingReportId(null);
-      setSelectedProject('');
-      setProjectSearch('');
-      setSelectedTemplate('manual');
       
       lastPointKeyRef.current = currentKey;
     }
-  }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.stationId]);
+  }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.stationId, activeView]);
 
   useEffect(() => {
     if (selectedPoint) {
