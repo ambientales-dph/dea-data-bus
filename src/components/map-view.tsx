@@ -86,10 +86,17 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
+    // Estilo base para cuencas (transparente)
+    const basinBaseStyle = new Style({
+      stroke: new Stroke({ color: 'rgba(13, 145, 102, 0.7)', width: 1 }),
+      fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }) // Completamente transparente
+    });
+
     const basinsLayer = new VectorLayer({
       source: basinsSource.current,
       zIndex: 5,
       minZoom: 6.5,
+      style: basinBaseStyle
     });
     basinsLayerRef.current = basinsLayer;
 
@@ -97,6 +104,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       source: codesSource.current,
       zIndex: 4,
       maxZoom: 6.5,
+      style: basinBaseStyle
     });
     codesLayerRef.current = codesLayer;
 
@@ -301,16 +309,19 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   }, [presences, user?.uid]);
 
   useEffect(() => {
-    if (!basinsLayerRef.current) return;
+    if (!basinsLayerRef.current || !codesLayerRef.current) return;
+    
     const strokeColor = 'rgba(13, 145, 102, 0.7)';
-    basinsLayerRef.current.setStyle((feature, resolution) => {
+    const vectorStyleFunction = (feature: any, resolution: number) => {
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
       const strokeWidth = (zoom && zoom >= 10) ? 3 : 1;
       let textStyle = undefined;
+      
+      // Mostrar etiquetas solo a partir de zoom 7
       if (zoom && zoom >= 7) {
-        const codLetras = feature.get('cod_letras') || '';
-        const subregion = feature.get('subregion') || '';
+        const codLetras = feature.get('cod_letras') || feature.get('CODIGO') || '';
+        const subregion = feature.get('subregion') || feature.get('nombre_2') || '';
         const label = `${codLetras} ${subregion}`.trim();
         if (label) {
           textStyle = new Text({
@@ -323,10 +334,13 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       }
       return new Style({
         stroke: new Stroke({ color: strokeColor, width: strokeWidth }),
-        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }),
+        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }), // RELLENO TRANSPARENTE
         text: textStyle
       });
-    });
+    };
+
+    basinsLayerRef.current.setStyle(vectorStyleFunction);
+    codesLayerRef.current.setStyle(vectorStyleFunction);
   }, [activeLayer]);
 
   useEffect(() => {

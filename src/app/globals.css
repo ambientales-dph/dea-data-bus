@@ -64,7 +64,7 @@
   filter: saturate(1.2) contrast(1.1) !important;
 }
 
-/* Asegurar que ninguna otra capa sea afectada por los filtros del contenedor */
+/* Asegurar que ninguna otra capa vectorial sea afectada por los filtros del contenedor base */
 .ol-layer:not(.ol-base-layer) canvas {
   filter: none !important;
 }
