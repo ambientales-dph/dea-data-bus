@@ -84,6 +84,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   const presenceQuery = useMemo(() => query(collection(db, 'presence')), [db]);
   const { data: presences } = useCollection(presenceQuery);
 
+  // Inicialización única del mapa
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
@@ -101,9 +102,13 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
     codesLayerRef.current = codesLayer;
 
-    // Clase estática ol-base-layer para aislamiento en CSS
+    // Inicializamos con la fuente correspondiente al activeLayer inicial
+    const initialSource = activeLayer === 'satellite' 
+      ? new XYZ({ url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 19 })
+      : new OSM();
+
     const baseLayer = new TileLayer({
-      source: new OSM(),
+      source: initialSource,
       className: 'ol-base-layer',
     });
     baseLayerRef.current = baseLayer;
@@ -155,6 +160,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       }),
     });
 
+    // Interacción de arrastre
     const translateInteraction = new Translate({
       layers: [selectionLayer],
       hitTolerance: isMobile ? 15 : 8,
@@ -166,7 +172,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     translateInteraction.on('translateend', (event) => {
       const feature = event.features.item(0);
       if (!feature) return;
-
       const geometry = feature.getGeometry() as Point;
       const coordinate = geometry.getCoordinates();
       const lonLat = toLonLat(coordinate);
@@ -189,7 +194,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     map.on('click', (event) => {
       const coords = toLonLat(event.coordinate);
       const pixel = event.pixel;
-      
       let basinCode = '';
       const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(event.coordinate);
       if (featuresAtPoint.length > 0) {
@@ -198,9 +202,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
       const stationFeature = map.forEachFeatureAtPixel(pixel, (f) => {
         const features = f.get('features');
-        if (features && features.length === 1) {
-          return features[0];
-        }
+        if (features && features.length === 1) return features[0];
         return null;
       }, {
         hitTolerance: isMobile ? 12 : 4,
@@ -216,59 +218,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           basinCode: basinCode,
         });
       } else {
-        onPointSelectRef.current?.({ 
-          lat: coords[1], 
-          lon: coords[0],
-          basinCode: basinCode
-        });
-      }
-    });
-
-    map.on('pointermove', (evt) => {
-      if (evt.dragging) return;
-      const pixel = map.getEventPixel(evt.originalEvent);
-      
-      const feature = map.forEachFeatureAtPixel(pixel, (f) => f, {
-        hitTolerance: 8
-      });
-
-      if (feature) {
-        const isSelection = selectionSource.current.getFeatures().includes(feature as any);
-        if (isSelection && isDraggable) {
-          map.getTargetElement().style.cursor = 'move';
-          setHoveredText("Arrastrar para reubicar punto");
-          setTooltipPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
-          return;
-        }
-
-        let text = '';
-        const features = feature.get('features');
-
-        if (features) {
-          const names = features.map((f: any) => f.get('name')).filter(Boolean);
-          text = names.join('\n');
-        } else {
-          const email = feature.get('userEmail');
-          const name = feature.get('name');
-
-          if (email && name) text = `${email} - ${name}`;
-          else if (email) text = email;
-          else if (name) text = name;
-        }
-
-        if (text) {
-          setHoveredText(text);
-          setTooltipPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
-          map.getTargetElement().style.cursor = 'pointer';
-        } else {
-          setHoveredText(null);
-          setTooltipPos(null);
-          map.getTargetElement().style.cursor = '';
-        }
-      } else {
-        setHoveredText(null);
-        setTooltipPos(null);
-        map.getTargetElement().style.cursor = '';
+        onPointSelectRef.current?.({ lat: coords[1], lon: coords[0], basinCode });
       }
     });
 
@@ -278,7 +228,29 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       map.setTarget(undefined);
       mapInstance.current = null;
     };
+  }, []);
+
+  // Actualizar tolerancia sin destruir el mapa
+  useEffect(() => {
+    if (mapInstance.current) {
+      mapInstance.current.updateSize();
+    }
   }, [isMobile]);
+
+  // Manejar cambios en la capa activa
+  useEffect(() => {
+    if (!baseLayerRef.current) return;
+    const baseLayer = baseLayerRef.current;
+    
+    if (activeLayer === 'satellite') {
+      baseLayer.setSource(new XYZ({
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        maxZoom: 19
+      }));
+    } else {
+      baseLayer.setSource(new OSM());
+    }
+  }, [activeLayer]);
 
   useEffect(() => {
     if (translateInteractionRef.current) {
@@ -310,16 +282,13 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
   useEffect(() => {
     if (!presenceSource.current) return;
-
     const renderPresence = () => {
       presenceSource.current.clear();
       const now = Date.now();
-
       presences?.forEach((presence: any) => {
         if (presence.userId === user?.uid) return;
         const updatedAt = presence.updatedAt?.toMillis?.() || (presence.updatedAt instanceof Date ? presence.updatedAt.getTime() : now);
         if (now - updatedAt > PRESENCE_EXPIRATION_MS) return;
-
         const feature = new Feature({
           geometry: new Point(fromLonLat([presence.longitude, presence.latitude])),
           userEmail: presence.userEmail,
@@ -328,27 +297,23 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         presenceSource.current.addFeature(feature);
       });
     };
-
     renderPresence();
     const pruneInterval = setInterval(renderPresence, 60000);
     return () => clearInterval(pruneInterval);
   }, [presences, user?.uid]);
 
   useEffect(() => {
-    if (!basinsLayerRef.current || !codesLayerRef.current) return;
+    if (!basinsLayerRef.current) return;
     const strokeColor = 'rgba(13, 145, 102, 0.7)';
-
     basinsLayerRef.current.setStyle((feature, resolution) => {
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
       const strokeWidth = (zoom && zoom >= 10) ? 3 : 1;
-      
       let textStyle = undefined;
       if (zoom && zoom >= 7) {
         const codLetras = feature.get('cod_letras') || '';
         const subregion = feature.get('subregion') || '';
         const label = `${codLetras} ${subregion}`.trim();
-        
         if (label) {
           textStyle = new Text({
             text: label,
@@ -358,56 +323,33 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           });
         }
       }
-      
       return new Style({
         stroke: new Stroke({ color: strokeColor, width: strokeWidth }),
         fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }),
         text: textStyle
       });
     });
-
-    codesLayerRef.current.setStyle(() => {
-      return new Style({
-        stroke: new Stroke({ color: strokeColor, width: 0.5 }),
-        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }),
-      });
-    });
-
   }, [activeLayer]);
 
   useEffect(() => {
-    if (!stationsLayerRef.current || !selectionLayerRef.current || !presenceLayerRef.current) return;
-
+    if (!stationsLayerRef.current || !selectionLayerRef.current) return;
     stationsLayerRef.current.setStyle((feature, resolution) => {
       const features = feature.get('features');
       const size = features.length;
-
       if (size > 1) {
         return new Style({
           image: new CircleStyle({
             radius: 9 + Math.min(size, 5),
             fill: new Fill({ color: 'rgba(78, 151, 202, 0.7)' }),
-            stroke: undefined,
           }),
-          text: new Text({
-            text: size.toString(),
-            fill: new Fill({ color: 'white' }),
-            font: 'bold 10px "Encode Sans", sans-serif',
-          }),
+          text: new Text({ text: size.toString(), fill: new Fill({ color: 'white' }), font: 'bold 10px sans-serif' }),
         });
       }
-
       const stationFeature = features[0];
-      const isSelected = selectedPoint?.stationId === stationFeature.get('stationId');
-
-      if (isSelected) {
-        return new Style({});
-      }
-
+      if (selectedPoint?.stationId === stationFeature.get('stationId')) return new Style({});
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
       const radius = (zoom && zoom > 7) ? 6.5 : 3.5;
-
       return new Style({
         image: new CircleStyle({
           radius: radius,
@@ -421,10 +363,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       if (isDraggable) {
         return [
           new Style({
-            image: new CircleStyle({
-              radius: 15,
-              stroke: new Stroke({ color: '#000000', width: 0.5 }),
-            }),
+            image: new CircleStyle({ radius: 15, stroke: new Stroke({ color: '#000000', width: 0.5 }) }),
           }),
           new Style({
             image: new RegularShape({
@@ -437,42 +376,11 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           })
         ];
       }
-
       return new Style({
-        image: new CircleStyle({
-          radius: 8,
-          stroke: new Stroke({ color: '#ffffff', width: 2 }),
-          fill: new Fill({ color: '#22c55e' }),
-        })
+        image: new CircleStyle({ radius: 8, stroke: new Stroke({ color: '#ffffff', width: 2 }), fill: new Fill({ color: '#22c55e' }) }),
       });
     });
-
-    presenceLayerRef.current.setStyle(() => {
-      return new Style({
-        image: new CircleStyle({
-          radius: 3,
-          stroke: new Stroke({ color: '#ef4444', width: 0.8 }),
-          fill: new Fill({ color: 'rgba(239, 68, 68, 0.4)' }),
-        })
-      });
-    });
-
-  }, [activeLayer, selectedPoint?.stationId, isDraggable]);
-
-  useEffect(() => {
-    if (!baseLayerRef.current) return;
-    const baseLayer = baseLayerRef.current;
-    
-    if (activeLayer === 'satellite') {
-      baseLayer.setSource(new XYZ({
-        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        maxZoom: 19
-      }));
-    } else {
-      baseLayer.setSource(new OSM());
-    }
-    // IMPORTANTE: Eliminamos cualquier llamada a setClassName o filtros JS aquí
-  }, [activeLayer]);
+  }, [selectedPoint?.stationId, isDraggable]);
 
   useEffect(() => {
     if (!stationsSource.current) return;
@@ -492,94 +400,36 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     setIsReadingFile(true);
     const fileName = file.name.toLowerCase();
-
     try {
       let features: Feature[] = [];
-
       if (fileName.endsWith('.kmz')) {
         const zip = await JSZip.loadAsync(file);
         const kmlFile = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
-        
         if (kmlFile) {
           const kmlContent = await zip.files[kmlFile].async('string');
-          const kmlFormat = new KML({ extractStyles: true });
-          features = kmlFormat.readFeatures(kmlContent, {
-            dataProjection: 'EPSG:4326',
-            featureProjection: 'EPSG:3857'
-          });
+          features = new KML({ extractStyles: true }).readFeatures(kmlContent, { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
         }
       } else if (fileName.endsWith('.geojson') || fileName.endsWith('.json')) {
-        const content = await file.text();
-        const geojsonFormat = new GeoJSON();
-        features = geojsonFormat.readFeatures(content, {
-          dataProjection: 'EPSG:4326',
-          featureProjection: 'EPSG:3857'
-        });
+        features = new GeoJSON().readFeatures(await file.text(), { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
       } else if (fileName.endsWith('.kml')) {
-        const content = await file.text();
-        const kmlFormat = new KML({ extractStyles: true });
-        features = kmlFormat.readFeatures(content, {
-          dataProjection: 'EPSG:4326',
-          featureProjection: 'EPSG:3857'
-        });
+        features = new KML({ extractStyles: true }).readFeatures(await file.text(), { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' });
       }
-
       if (features.length > 0) {
         uploadedSource.current.clear();
         uploadedSource.current.addFeatures(features);
         setHasUploadedData(true);
         setIsUploadedLayerVisible(true);
-        uploadedLayerRef.current?.setVisible(true);
-        
-        const extent = uploadedSource.current.getExtent();
-        mapInstance.current?.getView().fit(extent, {
-          padding: [50, 50, 50, 50],
-          duration: 1000
-        });
-
-        toast({
-          title: "Datos Cargados",
-          description: `Se importaron ${features.length} elementos desde ${file.name}.`,
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error de Formato",
-          description: "No se encontraron elementos válidos en el archivo.",
-        });
+        mapInstance.current?.getView().fit(uploadedSource.current.getExtent(), { padding: [50, 50, 50, 50], duration: 1000 });
+        toast({ title: "Datos Cargados", description: `Se importaron ${features.length} elementos.` });
       }
     } catch (err) {
-      console.error("File error", err);
-      toast({
-        variant: "destructive",
-        title: "Error de lectura",
-        description: "No se pudo procesar el archivo seleccionado.",
-      });
+      toast({ variant: "destructive", title: "Error", description: "No se pudo procesar el archivo." });
     } finally {
       setIsReadingFile(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  };
-
-  const toggleUploadedLayer = () => {
-    if (uploadedLayerRef.current) {
-      const visible = !uploadedLayerRef.current.getVisible();
-      uploadedLayerRef.current.setVisible(visible);
-      setIsUploadedLayerVisible(visible);
-    }
-  };
-
-  const clearUploadedLayer = () => {
-    uploadedSource.current.clear();
-    setHasUploadedData(false);
-    setIsUploadedLayerVisible(true);
-    toast({
-      title: "Capa Eliminada",
-      description: "Los datos importados han sido removidos del mapa.",
-    });
   };
 
   return (
@@ -588,90 +438,32 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       activeLayer === 'grayscale' && "map-container-grayscale",
       activeLayer === 'satellite' && "map-container-satellite"
     )}>
-      <div 
-        ref={mapRef} 
-        className="absolute inset-0 z-10"
-      />
-
-      {hoveredText && tooltipPos && (
-        <div 
-          className="fixed z-[100] pointer-events-none bg-gray-200/30 text-black px-2 py-1 rounded-none text-[9px] font-code shadow-none transform -translate-x-1/2 -translate-y-full mb-4 transition-opacity duration-200 whitespace-pre-line"
-          style={{ left: tooltipPos.x, top: tooltipPos.y }}
-        >
-          {hoveredText}
-        </div>
-      )}
-
+      <div ref={mapRef} className="absolute inset-0 z-10" />
       <div className="absolute bottom-6 right-6 z-40 flex flex-row items-center gap-1.5">
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          accept=".kml,.kmz,.json,.geojson" 
-          className="hidden" 
-          onChange={handleFileSelect} 
-        />
-        
+        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
         {hasUploadedData && (
-          <>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleUploadedLayer}
-              className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none transition-all"
-              title={isUploadedLayerVisible ? "Ocultar Capa Importada" : "Mostrar Capa Importada"}
-            >
-              {isUploadedLayerVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 opacity-50" />}
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={clearUploadedLayer}
-              className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none transition-all hover:text-destructive"
-              title="Eliminar Capa Importada"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </>
+          <Button variant="ghost" size="icon" onClick={() => { const v = !uploadedLayerRef.current?.getVisible(); uploadedLayerRef.current?.setVisible(v); setIsUploadedLayerVisible(v); }} className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
+            {isUploadedLayerVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 opacity-50" />}
+          </Button>
         )}
-
         <Popover>
           <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none transition-all"
-              title="Capas Base"
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
               <Layers className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-48 p-2 shadow-2xl border-primary/10 rounded-none" align="end" side="top">
+          <PopoverContent className="w-48 p-2 shadow-2xl rounded-none" align="end" side="top">
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1.5 tracking-widest border-b mb-1">Capas Base</p>
-              <button onClick={() => onLayerChange?.('osm')} className={cn("w-full flex items-center justify-between p-2 rounded-none text-[11px] font-medium transition-colors", activeLayer === 'osm' ? "bg-primary text-white" : "hover:bg-muted")}>
-                <div className="flex items-center gap-2"><MapIcon className="h-3.5 w-3.5" /> Estándar</div>
-                {activeLayer === 'osm' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-              </button>
-              <button onClick={() => onLayerChange?.('grayscale')} className={cn("w-full flex items-center justify-between p-2 rounded-none text-[11px] font-medium transition-colors", activeLayer === 'grayscale' ? "bg-primary text-white" : "hover:bg-muted")}>
-                <div className="flex items-center gap-2"><MapIcon className="h-3.5 w-3.5 opacity-50" /> Grises</div>
-                {activeLayer === 'grayscale' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-              </button>
-              <button onClick={() => onLayerChange?.('satellite')} className={cn("w-full flex items-center justify-between p-2 rounded-none text-[11px] font-medium transition-colors", activeLayer === 'satellite' ? "bg-primary text-white" : "hover:bg-muted")}>
-                <div className="flex items-center gap-2"><Satellite className="h-3.5 w-3.5" /> Satélite</div>
-                {activeLayer === 'satellite' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-              </button>
+              {['osm', 'grayscale', 'satellite'].map((l) => (
+                <button key={l} onClick={() => onLayerChange?.(l as any)} className={cn("w-full flex items-center justify-between p-2 text-[11px] font-medium rounded-none", activeLayer === l ? "bg-primary text-white" : "hover:bg-muted")}>
+                  <div className="flex items-center gap-2 capitalize">{l === 'osm' ? 'Estándar' : l === 'grayscale' ? 'Grises' : 'Satélite'}</div>
+                  {activeLayer === l && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                </button>
+              ))}
             </div>
           </PopoverContent>
         </Popover>
-
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isReadingFile}
-          className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none transition-all"
-          title="Importar KML/KMZ/GeoJSON"
-        >
+        <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isReadingFile} className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
           {isReadingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
         </Button>
       </div>

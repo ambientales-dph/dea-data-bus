@@ -50,8 +50,7 @@
   background-color: hsl(var(--accent)) !important;
 }
 
-/* Filtros aislados para la capa base únicamente */
-/* El uso de .ol-base-layer asegura que NO afecte a estaciones ni cuencas */
+/* Aislamiento estricto de filtros para la capa base */
 .map-container-grayscale .ol-base-layer canvas {
   filter: grayscale(100%) brightness(0.9) contrast(1.2) !important;
 }
@@ -60,7 +59,7 @@
   filter: saturate(1.2) contrast(1.1) !important;
 }
 
-/* Forzar que las capas vectoriales ignoren filtros heredados si los hubiera */
+/* Asegurar que ninguna capa vectorial sea afectada por filtros heredados */
 .ol-layer:not(.ol-base-layer) canvas {
   filter: none !important;
 }
