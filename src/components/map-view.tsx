@@ -15,7 +15,7 @@ import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import GeoJSON from 'ol/format/GeoJSON';
 import KML from 'ol/format/KML';
-import { Style, Text, Fill, Circle as CircleStyle, Stroke } from 'ol/style';
+import { Style, Text, Fill, Circle as CircleStyle, Stroke, RegularShape } from 'ol/style';
 import Translate from 'ol/interaction/Translate';
 import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -418,35 +418,24 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
     selectionLayerRef.current.setStyle(() => {
       if (isDraggable) {
-        // Estilo DIANA para modo edición/creación
+        // Estilo DIANA técnica para modo edición/creación
         return [
+          // Círculo exterior fino gris oscuro
           new Style({
             image: new CircleStyle({
-              radius: 14,
-              stroke: new Stroke({ color: '#22c55e', width: 2 }),
+              radius: 20,
+              stroke: new Stroke({ color: '#333333', width: 0.5 }),
             }),
           }),
+          // Hilos de la mira (cruz técnica)
           new Style({
-            image: new CircleStyle({
-              radius: 6,
-              stroke: new Stroke({ color: '#22c55e', width: 1.5 }),
-              fill: new Fill({ color: 'white' }),
+            image: new RegularShape({
+              stroke: new Stroke({ color: '#333333', width: 0.5 }),
+              points: 4,
+              radius: 30,
+              radius2: 0,
+              angle: 0,
             }),
-          }),
-          new Style({
-            image: new CircleStyle({
-              radius: 2,
-              fill: new Fill({ color: '#22c55e' }),
-            }),
-          }),
-          // Crosshairs
-          new Style({
-            text: new Text({
-              text: '+',
-              font: 'bold 24px Arial',
-              fill: new Fill({ color: '#22c55e' }),
-              offsetY: -0.5
-            })
           })
         ];
       }
