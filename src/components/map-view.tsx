@@ -36,7 +36,6 @@ interface MapViewProps {
   isMobile?: boolean;
 }
 
-// Umbral de caducidad para presencia (2 minutos)
 const PRESENCE_EXPIRATION_MS = 2 * 60 * 1000;
 
 export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChange, isMobile }: MapViewProps) {
@@ -120,7 +119,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
     const selectionLayer = new VectorLayer({
       source: selectionSource.current,
-      zIndex: 20,
+      zIndex: 100, // Aseguramos que esté por encima de todo para el arrastre
     });
     selectionLayerRef.current = selectionLayer;
 
@@ -154,9 +153,9 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       }),
     });
 
-    // Añadir interacción de arrastre para el punto seleccionado
     const translateInteraction = new Translate({
       layers: [selectionLayer],
+      hitTolerance: isMobile ? 15 : 8,
     });
     map.addInteraction(translateInteraction);
 
@@ -213,7 +212,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           basinCode: basinCode,
         });
       } else {
-        // Si no se hizo click en una estación, es un punto nuevo
         onPointSelectRef.current?.({ 
           lat: coords[1], 
           lon: coords[0],
@@ -227,11 +225,10 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       const pixel = map.getEventPixel(evt.originalEvent);
       
       const feature = map.forEachFeatureAtPixel(pixel, (f) => f, {
-        hitTolerance: 5
+        hitTolerance: 8
       });
 
       if (feature) {
-        // Verificar si es el marcador de selección (draggable)
         const isSelection = selectionSource.current.getFeatures().includes(feature as any);
         if (isSelection) {
           map.getTargetElement().style.cursor = 'move';
@@ -285,8 +282,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       return;
     }
 
-    // Evitar limpiar y recrear si solo estamos actualizando desde un arrastre que ya movió el marcador
-    // pero para simplicidad y consistencia lo recreamos
     selectionSource.current.clear();
     const selectionFeature = new Feature({
       geometry: new Point(fromLonLat([selectedPoint.lon, selectedPoint.lat])),
@@ -297,8 +292,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     selectionFeature.set('name', selectedPoint.name);
     selectionSource.current.addFeature(selectionFeature);
 
-    // Solo animamos el centro si el cambio no proviene de un arrastre manual reciente
-    // Aquí podrías añadir una lógica para no recentrar mientras se edita, pero el fit/animate es útil
+    // Solo animamos el centro en la carga inicial o cuando cambia drásticamente
     mapInstance.current.getView().animate({
       center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
       duration: 500
@@ -379,6 +373,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       const features = feature.get('features');
       const size = features.length;
 
+      // Si hay un cluster, mostramos el número
       if (size > 1) {
         return new Style({
           image: new CircleStyle({
@@ -394,28 +389,40 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         });
       }
 
+      const stationFeature = features[0];
+      const isSelected = selectedPoint?.stationId === stationFeature.get('stationId');
+
+      // CRÍTICO: Si la estación está seleccionada, la ocultamos de esta capa
+      // para que no tape al marcador de selección arrastrable.
+      if (isSelected) {
+        return new Style({});
+      }
+
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
       const radius = (zoom && zoom > 7) ? 6.5 : 3.5;
 
-      const stationFeature = features[0];
-      const isSelected = selectedPoint?.stationId === stationFeature.get('stationId');
-
       return new Style({
         image: new CircleStyle({
           radius: radius,
-          fill: new Fill({ color: isSelected ? '#22c55e' : '#4E97CA' }),
+          fill: new Fill({ color: '#4E97CA' }),
           stroke: new Stroke({ color: 'white', width: 0.8 }),
         })
       });
     });
 
     selectionLayerRef.current.setStyle(() => {
+      // El marcador de selección debe ser lo suficientemente grande para ser arrastrado
       return new Style({
         image: new CircleStyle({
-          radius: 3.5,
-          stroke: new Stroke({ color: '#22c55e', width: 1.2 }),
+          radius: 8, // Aumentamos radio para facilitar el agarre
+          stroke: new Stroke({ color: '#22c55e', width: 2 }),
           fill: new Fill({ color: 'rgba(34, 197, 94, 0.6)' }),
+        }),
+        // Añadimos un pequeño punto central para precisión
+        image2: new CircleStyle({
+          radius: 2,
+          fill: new Fill({ color: '#ffffff' })
         })
       });
     });
@@ -681,4 +688,3 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     </div>
   );
 }
-
