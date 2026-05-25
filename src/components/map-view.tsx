@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
@@ -16,6 +17,7 @@ import Point from 'ol/geom/Point';
 import GeoJSON from 'ol/format/GeoJSON';
 import KML from 'ol/format/KML';
 import { Style, Text, Fill, Circle as CircleStyle, Stroke } from 'ol/style';
+import Translate from 'ol/interaction/Translate';
 import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
@@ -152,6 +154,35 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       }),
     });
 
+    // Añadir interacción de arrastre para el punto seleccionado
+    const translateInteraction = new Translate({
+      layers: [selectionLayer],
+    });
+    map.addInteraction(translateInteraction);
+
+    translateInteraction.on('translateend', (event) => {
+      const feature = event.features.item(0);
+      if (!feature) return;
+
+      const geometry = feature.getGeometry() as Point;
+      const coordinate = geometry.getCoordinates();
+      const lonLat = toLonLat(coordinate);
+      
+      let basinCode = '';
+      const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(coordinate);
+      if (featuresAtPoint.length > 0) {
+        basinCode = featuresAtPoint[0].get('CODIGO') || '';
+      }
+
+      onPointSelectRef.current?.({
+        lat: lonLat[1],
+        lon: lonLat[0],
+        stationId: feature.get('stationId'),
+        name: feature.get('name'),
+        basinCode: basinCode
+      });
+    });
+
     map.on('click', (event) => {
       const coords = toLonLat(event.coordinate);
       const pixel = event.pixel;
@@ -169,7 +200,8 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         }
         return null;
       }, {
-        hitTolerance: isMobile ? 12 : 4
+        hitTolerance: isMobile ? 12 : 4,
+        layerFilter: (l) => l === stationsLayer
       });
 
       if (stationFeature) {
@@ -181,6 +213,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           basinCode: basinCode,
         });
       } else {
+        // Si no se hizo click en una estación, es un punto nuevo
         onPointSelectRef.current?.({ 
           lat: coords[1], 
           lon: coords[0],
@@ -193,9 +226,20 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       if (evt.dragging) return;
       const pixel = map.getEventPixel(evt.originalEvent);
       
-      const feature = map.forEachFeatureAtPixel(pixel, (f) => f);
+      const feature = map.forEachFeatureAtPixel(pixel, (f) => f, {
+        hitTolerance: 5
+      });
 
       if (feature) {
+        // Verificar si es el marcador de selección (draggable)
+        const isSelection = selectionSource.current.getFeatures().includes(feature as any);
+        if (isSelection) {
+          map.getTargetElement().style.cursor = 'move';
+          setHoveredText("Arrastrar para reubicar punto");
+          setTooltipPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
+          return;
+        }
+
         let text = '';
         const features = feature.get('features');
 
@@ -241,14 +285,20 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       return;
     }
 
+    // Evitar limpiar y recrear si solo estamos actualizando desde un arrastre que ya movió el marcador
+    // pero para simplicidad y consistencia lo recreamos
     selectionSource.current.clear();
     const selectionFeature = new Feature({
       geometry: new Point(fromLonLat([selectedPoint.lon, selectedPoint.lat])),
       userEmail: user?.email || 'Mi selección',
       name: selectedPoint.name || '',
     });
+    selectionFeature.set('stationId', selectedPoint.stationId);
+    selectionFeature.set('name', selectedPoint.name);
     selectionSource.current.addFeature(selectionFeature);
 
+    // Solo animamos el centro si el cambio no proviene de un arrastre manual reciente
+    // Aquí podrías añadir una lógica para no recentrar mientras se edita, pero el fit/animate es útil
     mapInstance.current.getView().animate({
       center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
       duration: 500
@@ -363,9 +413,9 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     selectionLayerRef.current.setStyle(() => {
       return new Style({
         image: new CircleStyle({
-          radius: 3,
-          stroke: new Stroke({ color: '#22c55e', width: 0.8 }),
-          fill: new Fill({ color: 'rgba(34, 197, 94, 0.4)' }),
+          radius: 3.5,
+          stroke: new Stroke({ color: '#22c55e', width: 1.2 }),
+          fill: new Fill({ color: 'rgba(34, 197, 94, 0.6)' }),
         })
       });
     });
@@ -631,3 +681,4 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     </div>
   );
 }
+
