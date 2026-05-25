@@ -672,9 +672,15 @@ export function DataEntryForm({
       createdAt: serverTimestamp(),
     };
 
-    onStationCreated(newStationRef.id, data.name);
-    
     setDoc(newStationRef, stationData)
+      .then(() => {
+        onStationCreated(newStationRef.id, data.name);
+        setActiveView('summary');
+        toast({
+          title: "Estación registrada",
+          description: `Se guardó el punto: ${data.name}`,
+        });
+      })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
           path: newStationRef.path,
@@ -683,11 +689,6 @@ export function DataEntryForm({
         });
         errorEmitter.emit('permission-error', permissionError);
       });
-
-    toast({
-      title: "Estación registrada",
-      description: `Se guardó el punto: ${data.name}`,
-    });
   };
 
   const handleUpdateStation = (data: StationValues) => {
@@ -1176,7 +1177,7 @@ export function DataEntryForm({
                   )}
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => { onDeselect(); setActiveView('summary'); }} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
         </Card>
@@ -1185,7 +1186,7 @@ export function DataEntryForm({
           <CardHeader className="p-3">
             <div className="flex items-start justify-between gap-2">
               <CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight"><PlusCircle className="h-5 w-5" />NUEVO PUNTO</CardTitle>
-              <Button variant="ghost" size="icon" onClick={onDeselect} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => { onDeselect(); setActiveView('summary'); }} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
         </Card>
