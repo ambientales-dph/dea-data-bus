@@ -68,8 +68,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   const db = useFirestore();
   const { user } = useUser();
 
-  const [hoveredText, setHoveredText] = useState<string | null>(null);
-  const [tooltipPos, setTooltipPos] = useState<{ x: number, y: number } | null>(null);
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [hasUploadedData, setHasUploadedData] = useState(false);
   const [isUploadedLayerVisible, setIsUploadedLayerVisible] = useState(true);
@@ -102,14 +100,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
     codesLayerRef.current = codesLayer;
 
-    // Inicializamos con la fuente correspondiente al activeLayer inicial
+    // Sincronizar la fuente inicial con el estado actual de activeLayer
     const initialSource = activeLayer === 'satellite' 
       ? new XYZ({ url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 19 })
       : new OSM();
 
     const baseLayer = new TileLayer({
       source: initialSource,
-      className: 'ol-base-layer',
+      className: 'ol-base-layer', // Clase crucial para los filtros CSS
     });
     baseLayerRef.current = baseLayer;
 
@@ -237,7 +235,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     }
   }, [isMobile]);
 
-  // Manejar cambios en la capa activa
+  // Manejar cambios en la capa activa de forma segura
   useEffect(() => {
     if (!baseLayerRef.current) return;
     const baseLayer = baseLayerRef.current;

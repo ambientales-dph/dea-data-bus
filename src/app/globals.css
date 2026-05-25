@@ -51,6 +51,11 @@
 }
 
 /* Aislamiento estricto de filtros para la capa base */
+.ol-base-layer canvas {
+  will-change: filter;
+  transition: filter 0.3s ease;
+}
+
 .map-container-grayscale .ol-base-layer canvas {
   filter: grayscale(100%) brightness(0.9) contrast(1.2) !important;
 }
@@ -59,7 +64,7 @@
   filter: saturate(1.2) contrast(1.1) !important;
 }
 
-/* Asegurar que ninguna capa vectorial sea afectada por filtros heredados */
+/* Asegurar que ninguna otra capa sea afectada por los filtros del contenedor */
 .ol-layer:not(.ol-base-layer) canvas {
   filter: none !important;
 }
