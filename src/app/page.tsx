@@ -3,13 +3,13 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { AuthGuard } from '@/components/auth-guard';
 import { MapView } from '@/components/map-view';
-import { DataEntryForm } from '@/components/data-entry-form';
+import { DataEntryForm, type FormView } from '@/components/data-entry-form';
 import { PresenceManager } from '@/components/presence-manager';
 import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, Search, Loader2, Layers, Map as MapIcon, Satellite, MapPin, Database, X, FileText, Settings, User, Cloud, CloudOff } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -58,6 +58,7 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [isDraggable, setIsDraggable] = useState(false);
   
   const auth = useAuth();
   const db = useFirestore();
@@ -450,6 +451,7 @@ export default function Home() {
                 activeLayer={activeLayer}
                 onLayerChange={setActiveLayer}
                 isMobile={isMobile}
+                isDraggable={isDraggable}
               />
             </div>
             {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
@@ -481,6 +483,7 @@ export default function Home() {
                   onStationCreated={handleStationCreated} 
                   onPointUpdate={handlePointUpdate} 
                   onDeselect={handleDeselect} 
+                  onActiveViewChange={(view: FormView) => setIsDraggable(view === 'create-station' || view === 'edit-station')}
                 />
               </div>
             </ScrollArea>

@@ -46,7 +46,7 @@ const stationSchema = z.object({
 
 type StationValues = z.infer<typeof stationSchema>;
 
-type FormView = 'summary' | 'create-station' | 'edit-station' | 'report-entry' | 'consult' | 'report-view' | 'select-project' | 'select-template';
+export type FormView = 'summary' | 'create-station' | 'edit-station' | 'report-entry' | 'consult' | 'report-view' | 'select-project' | 'select-template';
 
 function DataExplorer({ 
   onSelectStation,
@@ -300,12 +300,14 @@ export function DataEntryForm({
   selectedPoint,
   onStationCreated,
   onPointUpdate,
-  onDeselect
+  onDeselect,
+  onActiveViewChange
 }: { 
   selectedPoint: SelectedPoint | null;
   onStationCreated: (id: string, name: string) => void;
   onPointUpdate: (point: SelectedPoint) => void;
   onDeselect: () => void;
+  onActiveViewChange?: (view: FormView) => void;
 }) {
   const { toast } = useToast();
   const db = useFirestore();
@@ -327,6 +329,10 @@ export function DataEntryForm({
 
   const lastPointKeyRef = useRef<string | null>(null);
   const isInitialLoadRef = useRef(true);
+
+  useEffect(() => {
+    onActiveViewChange?.(activeView);
+  }, [activeView, onActiveViewChange]);
 
   const customTemplatesQuery = useMemo(() => {
     if (!db || !user) return null;

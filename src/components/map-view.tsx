@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
@@ -23,7 +22,7 @@ import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Layers, Upload, Map as MapIcon, Satellite, Loader2, Info, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Layers, Upload, Map as MapIcon, Satellite, Loader2, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
@@ -34,11 +33,12 @@ interface MapViewProps {
   activeLayer: 'osm' | 'grayscale' | 'satellite';
   onLayerChange?: (layer: 'osm' | 'grayscale' | 'satellite') => void;
   isMobile?: boolean;
+  isDraggable?: boolean;
 }
 
 const PRESENCE_EXPIRATION_MS = 2 * 60 * 1000;
 
-export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChange, isMobile }: MapViewProps) {
+export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChange, isMobile, isDraggable }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<Map | null>(null);
   const stationsSource = useRef<VectorSource>(new VectorSource());
@@ -46,6 +46,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   const presenceSource = useRef<VectorSource>(new VectorSource());
   const uploadedSource = useRef<VectorSource>(new VectorSource());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const translateInteractionRef = useRef<Translate | null>(null);
   const { toast } = useToast();
 
   const stationsLayerRef = useRef<VectorLayer<any> | null>(null);
@@ -119,7 +120,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
     const selectionLayer = new VectorLayer({
       source: selectionSource.current,
-      zIndex: 100, // Aseguramos que esté por encima de todo para el arrastre
+      zIndex: 100,
     });
     selectionLayerRef.current = selectionLayer;
 
@@ -157,7 +158,9 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       layers: [selectionLayer],
       hitTolerance: isMobile ? 15 : 8,
     });
+    translateInteraction.setActive(!!isDraggable);
     map.addInteraction(translateInteraction);
+    translateInteractionRef.current = translateInteraction;
 
     translateInteraction.on('translateend', (event) => {
       const feature = event.features.item(0);
@@ -230,7 +233,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
       if (feature) {
         const isSelection = selectionSource.current.getFeatures().includes(feature as any);
-        if (isSelection) {
+        if (isSelection && isDraggable) {
           map.getTargetElement().style.cursor = 'move';
           setHoveredText("Arrastrar para reubicar punto");
           setTooltipPos({ x: evt.originalEvent.clientX, y: evt.originalEvent.clientY });
@@ -277,6 +280,12 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   }, [isMobile]);
 
   useEffect(() => {
+    if (translateInteractionRef.current) {
+      translateInteractionRef.current.setActive(!!isDraggable);
+    }
+  }, [isDraggable]);
+
+  useEffect(() => {
     if (!mapInstance.current || !selectedPoint) {
       selectionSource.current.clear();
       return;
@@ -292,7 +301,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     selectionFeature.set('name', selectedPoint.name);
     selectionSource.current.addFeature(selectionFeature);
 
-    // Solo animamos el centro en la carga inicial o cuando cambia drásticamente
     mapInstance.current.getView().animate({
       center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
       duration: 500
@@ -373,7 +381,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       const features = feature.get('features');
       const size = features.length;
 
-      // Si hay un cluster, mostramos el número
       if (size > 1) {
         return new Style({
           image: new CircleStyle({
@@ -392,8 +399,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       const stationFeature = features[0];
       const isSelected = selectedPoint?.stationId === stationFeature.get('stationId');
 
-      // CRÍTICO: Si la estación está seleccionada, la ocultamos de esta capa
-      // para que no tape al marcador de selección arrastrable.
       if (isSelected) {
         return new Style({});
       }
@@ -412,14 +417,12 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
 
     selectionLayerRef.current.setStyle(() => {
-      // El marcador de selección debe ser lo suficientemente grande para ser arrastrado
       return new Style({
         image: new CircleStyle({
-          radius: 8, // Aumentamos radio para facilitar el agarre
+          radius: 8,
           stroke: new Stroke({ color: '#22c55e', width: 2 }),
           fill: new Fill({ color: 'rgba(34, 197, 94, 0.6)' }),
         }),
-        // Añadimos un pequeño punto central para precisión
         image2: new CircleStyle({
           radius: 2,
           fill: new Fill({ color: '#ffffff' })
