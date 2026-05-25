@@ -22,7 +22,7 @@ import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Layers, Upload, Map as MapIcon, Satellite, Loader2, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Layers, Upload, Map as MapIcon, Satellite, Loader2, Eye, EyeOff, Locate } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
@@ -69,6 +69,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   const { user } = useUser();
 
   const [isReadingFile, setIsReadingFile] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [hasUploadedData, setHasUploadedData] = useState(false);
   const [isUploadedLayerVisible, setIsUploadedLayerVisible] = useState(true);
 
@@ -85,7 +86,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
-    const basinBaseStyle = new Style({
+    const vectorStyle = new Style({
       stroke: new Stroke({ color: 'rgba(13, 145, 102, 0.7)', width: 1 }),
       fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }) 
     });
@@ -94,7 +95,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       source: basinsSource.current,
       zIndex: 5,
       minZoom: 6.5,
-      style: basinBaseStyle
+      style: vectorStyle
     });
     basinsLayerRef.current = basinsLayer;
 
@@ -102,7 +103,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       source: codesSource.current,
       zIndex: 4,
       maxZoom: 6.5,
-      style: basinBaseStyle
+      style: vectorStyle
     });
     codesLayerRef.current = codesLayer;
 
@@ -437,6 +438,34 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     }
   };
 
+  const handleJumpToLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ variant: "destructive", title: "Error", description: "Geolocalización no soportada." });
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        if (mapInstance.current) {
+          mapInstance.current.getView().animate({
+            center: fromLonLat([longitude, latitude]),
+            zoom: 15,
+            duration: 1500
+          });
+        }
+        setIsLocating(false);
+        toast({ title: "Ubicación encontrada", description: "Mapa centrado en tu posición." });
+      },
+      (error) => {
+        setIsLocating(false);
+        toast({ variant: "destructive", title: "Error de GPS", description: "No se pudo obtener tu ubicación actual." });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   return (
     <div className={cn(
       "relative h-full w-full overflow-hidden bg-muted/20 flex flex-col",
@@ -446,11 +475,23 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       <div ref={mapRef} className="absolute inset-0 z-10" />
       <div className="absolute bottom-6 right-6 z-40 flex flex-row items-center gap-1.5">
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
+        
         {hasUploadedData && (
           <Button variant="ghost" size="icon" onClick={() => { const v = !uploadedLayerRef.current?.getVisible(); uploadedLayerRef.current?.setVisible(v); setIsUploadedLayerVisible(v); }} className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
             {isUploadedLayerVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 opacity-50" />}
           </Button>
         )}
+
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleJumpToLocation} 
+          disabled={isLocating}
+          className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none"
+        >
+          {isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Locate className="h-4 w-4" />}
+        </Button>
+
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
@@ -468,6 +509,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
             </div>
           </PopoverContent>
         </Popover>
+
         <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isReadingFile} className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
           {isReadingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
         </Button>
