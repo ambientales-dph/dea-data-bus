@@ -101,8 +101,10 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
     codesLayerRef.current = codesLayer;
 
+    // Asignamos explícitamente una clase CSS para aislamiento de filtros
     const baseLayer = new TileLayer({
       source: new OSM(),
+      className: 'ol-base-layer',
       properties: { id: 'base-layer' }
     });
     baseLayerRef.current = baseLayer;
@@ -462,7 +464,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     if (!baseLayerRef.current) return;
     const baseLayer = baseLayerRef.current;
     
-    // Cambiamos el source del mapa base
     if (activeLayer === 'satellite') {
       baseLayer.setSource(new XYZ({
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -587,8 +588,8 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         ref={mapRef} 
         className={cn(
           "absolute inset-0 z-10",
-          activeLayer === 'grayscale' && "map-container-grayscale",
-          activeLayer === 'satellite' && "map-container-satellite"
+          activeLayer === 'grayscale' && "map-grayscale",
+          activeLayer === 'satellite' && "map-satellite"
         )} 
       />
 

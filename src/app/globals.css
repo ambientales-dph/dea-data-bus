@@ -50,11 +50,11 @@
   background-color: hsl(var(--accent)) !important;
 }
 
-/* Filtros aplicados al contenedor para evitar errores de API */
-.map-container-grayscale .ol-layer:first-child {
+/* Filtros aislados para la capa base únicamente */
+.map-grayscale .ol-base-layer canvas {
   filter: grayscale(100%) brightness(0.9) contrast(1.2) !important;
 }
 
-.map-container-satellite .ol-layer:first-child {
+.map-satellite .ol-base-layer canvas {
   filter: saturate(1.2) contrast(1.1) !important;
 }
