@@ -15,6 +15,7 @@ import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import GeoJSON from 'ol/format/GeoJSON';
 import KML from 'ol/format/KML';
+import Overlay from 'ol/Overlay';
 import { Style, Text, Fill, Circle as CircleStyle, Stroke, RegularShape } from 'ol/style';
 import Translate from 'ol/interaction/Translate';
 import { useFirestore, useCollection, useUser } from '@/firebase';
@@ -40,6 +41,7 @@ const PRESENCE_EXPIRATION_MS = 2 * 60 * 1000;
 
 export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChange, isMobile, isDraggable }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<Map | null>(null);
   const stationsSource = useRef<VectorSource>(new VectorSource());
   const selectionSource = useRef<VectorSource>(new VectorSource());
@@ -164,6 +166,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       }),
     });
 
+    // Tooltip Overlay
+    const overlay = new Overlay({
+      element: tooltipRef.current!,
+      offset: [0, -10],
+      positioning: 'bottom-center',
+    });
+    map.addOverlay(overlay);
+
     const translateInteraction = new Translate({
       layers: [selectionLayer],
       hitTolerance: isMobile ? 15 : 8,
@@ -192,6 +202,42 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         name: feature.get('name'),
         basinCode: basinCode
       });
+    });
+
+    // Hover handler
+    map.on('pointermove', (event) => {
+      if (event.dragging) return;
+      
+      const pixel = map.getEventPixel(event.originalEvent);
+      const feature = map.forEachFeatureAtPixel(pixel, (f) => f, {
+        layerFilter: (l) => l === stationsLayer || l === selectionLayer,
+        hitTolerance: isMobile ? 12 : 5
+      });
+
+      if (feature) {
+        let name = '';
+        // Manejo de clusters
+        const clusterFeatures = feature.get('features');
+        if (clusterFeatures && clusterFeatures.length === 1) {
+          name = clusterFeatures[0].get('name');
+        } else if (!clusterFeatures) {
+          // No es un cluster (ej: selección actual)
+          name = feature.get('name');
+        }
+
+        if (name) {
+          tooltipRef.current!.innerHTML = name;
+          overlay.setPosition(event.coordinate);
+          tooltipRef.current!.style.display = 'block';
+          map.getTargetElement().style.cursor = 'pointer';
+        } else {
+          tooltipRef.current!.style.display = 'none';
+          map.getTargetElement().style.cursor = '';
+        }
+      } else {
+        tooltipRef.current!.style.display = 'none';
+        map.getTargetElement().style.cursor = '';
+      }
     });
 
     map.on('click', (event) => {
@@ -480,6 +526,8 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       activeLayer === 'satellite' && "map-container-satellite"
     )}>
       <div ref={mapRef} className="absolute inset-0 z-10" />
+      <div ref={tooltipRef} className="map-tooltip" />
+      
       <div className="absolute bottom-6 right-6 z-40 flex flex-row items-center gap-1.5">
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
         

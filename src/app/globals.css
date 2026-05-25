@@ -68,3 +68,32 @@
 .ol-layer:not(.ol-base-layer) canvas {
   filter: none !important;
 }
+
+/* Tooltip del mapa */
+.map-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -100%);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  display: none;
+}
+
+.map-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent;
+}
