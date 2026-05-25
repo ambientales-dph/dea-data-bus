@@ -22,7 +22,7 @@ import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Layers, Upload, Map as MapIcon, Satellite, Loader2, Eye, EyeOff, Locate } from 'lucide-react';
+import { Layers, Upload, Map as MapIcon, Satellite, Loader2, Eye, EyeOff, Locate, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
@@ -438,6 +438,13 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     }
   };
 
+  const handleClearUploadedData = () => {
+    uploadedSource.current.clear();
+    setHasUploadedData(false);
+    setIsUploadedLayerVisible(false);
+    toast({ title: "Capa eliminada", description: "Los datos cargados han sido removidos del mapa." });
+  };
+
   const handleJumpToLocation = () => {
     if (!navigator.geolocation) {
       toast({ variant: "destructive", title: "Error", description: "Geolocalización no soportada." });
@@ -477,9 +484,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
         
         {hasUploadedData && (
-          <Button variant="ghost" size="icon" onClick={() => { const v = !uploadedLayerRef.current?.getVisible(); uploadedLayerRef.current?.setVisible(v); setIsUploadedLayerVisible(v); }} className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
-            {isUploadedLayerVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 opacity-50" />}
-          </Button>
+          <div className="flex flex-row items-center gap-1.5">
+            <Button variant="ghost" size="icon" onClick={handleClearUploadedData} className="h-8 w-8 rounded-none bg-destructive/10 hover:bg-destructive/20 text-destructive shadow-none">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => { const v = !uploadedLayerRef.current?.getVisible(); uploadedLayerRef.current?.setVisible(v); setIsUploadedLayerVisible(v); }} className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
+              {isUploadedLayerVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 opacity-50" />}
+            </Button>
+          </div>
         )}
 
         <Button 
