@@ -418,21 +418,21 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
     selectionLayerRef.current.setStyle(() => {
       if (isDraggable) {
-        // Estilo DIANA técnica para modo edición/creación
+        // Estilo DIANA técnica para modo edición/creación (Negro, muy fino, más compacto)
         return [
-          // Círculo exterior fino gris oscuro
+          // Círculo exterior fino negro
           new Style({
             image: new CircleStyle({
-              radius: 20,
-              stroke: new Stroke({ color: '#333333', width: 0.5 }),
+              radius: 15,
+              stroke: new Stroke({ color: '#000000', width: 0.5 }),
             }),
           }),
-          // Hilos de la mira (cruz técnica)
+          // Hilos de la mira (cruz técnica negra)
           new Style({
             image: new RegularShape({
-              stroke: new Stroke({ color: '#333333', width: 0.5 }),
+              stroke: new Stroke({ color: '#000000', width: 0.5 }),
               points: 4,
-              radius: 30,
+              radius: 20,
               radius2: 0,
               angle: 0,
             }),
