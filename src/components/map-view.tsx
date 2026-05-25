@@ -418,16 +418,13 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
     selectionLayerRef.current.setStyle(() => {
       if (isDraggable) {
-        // DIANA TÉCNICA (Solo en modo creación/edición)
         return [
-          // Círculo exterior fino negro
           new Style({
             image: new CircleStyle({
               radius: 15,
               stroke: new Stroke({ color: '#000000', width: 0.5 }),
             }),
           }),
-          // Hilos de la mira (cruz técnica negra)
           new Style({
             image: new RegularShape({
               stroke: new Stroke({ color: '#000000', width: 0.5 }),
@@ -440,7 +437,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         ];
       }
 
-      // PUNTO VERDE ESTÁNDAR (Selección para carga de datos)
       return new Style({
         image: new CircleStyle({
           radius: 8,
@@ -466,52 +462,20 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     if (!baseLayerRef.current) return;
     const baseLayer = baseLayerRef.current;
     
+    // Aplicamos filtros CSS en lugar de manipular el contexto del canvas
     if (activeLayer === 'satellite') {
       baseLayer.setSource(new XYZ({
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         maxZoom: 19
       }));
+      baseLayer.setClassName('map-layer-satellite');
+    } else if (activeLayer === 'grayscale') {
+      baseLayer.setSource(new OSM());
+      baseLayer.setClassName('map-layer-grayscale');
     } else {
       baseLayer.setSource(new OSM());
+      baseLayer.setClassName('');
     }
-
-    const listener = (evt: any) => {
-      const ctx = evt.context as CanvasRenderingContext2D;
-      if (!ctx) return;
-      if (activeLayer === 'grayscale') {
-        ctx.filter = 'grayscale(100%) brightness(0.9) contrast(1.2)';
-      }
-    };
-    
-    const postListener = (evt: any) => {
-      const ctx = evt.context as CanvasRenderingContext2D;
-      if (!ctx) return;
-      if (activeLayer === 'satellite') {
-        ctx.save();
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.fillStyle = '#FF0000';
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.globalCompositeOperation = 'saturation';
-        ctx.fillStyle = '#000000'; 
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.globalCompositeOperation = 'color-dodge';
-        ctx.fillStyle = '#B0B0B0'; 
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.globalCompositeOperation = 'overlay';
-        ctx.fillStyle = '#A0A0A0';
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.restore();
-      }
-      ctx.filter = 'none';
-    };
-
-    baseLayer.on('prerender', listener);
-    baseLayer.on('postrender', postListener);
-
-    return () => {
-      baseLayer.un('prerender', listener);
-      baseLayer.un('postrender', postListener);
-    };
   }, [activeLayer]);
 
   useEffect(() => {

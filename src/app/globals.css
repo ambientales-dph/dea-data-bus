@@ -49,3 +49,12 @@
 .ol-control button:hover {
   background-color: hsl(var(--accent)) !important;
 }
+
+/* Filtros para capas de mapa */
+.map-layer-grayscale {
+  filter: grayscale(100%) brightness(0.9) contrast(1.2) !important;
+}
+
+.map-layer-satellite {
+  filter: saturate(1.2) contrast(1.1) !important;
+}
