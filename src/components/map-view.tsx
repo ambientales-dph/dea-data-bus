@@ -418,7 +418,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
     selectionLayerRef.current.setStyle(() => {
       if (isDraggable) {
-        // Estilo DIANA técnica para modo edición/creación (Negro, muy fino, más compacto)
+        // DIANA TÉCNICA (Solo en modo creación/edición)
         return [
           // Círculo exterior fino negro
           new Style({
@@ -440,15 +440,12 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         ];
       }
 
+      // PUNTO VERDE ESTÁNDAR (Selección para carga de datos)
       return new Style({
         image: new CircleStyle({
           radius: 8,
-          stroke: new Stroke({ color: '#22c55e', width: 2 }),
-          fill: new Fill({ color: 'rgba(34, 197, 94, 0.6)' }),
-        }),
-        image2: new CircleStyle({
-          radius: 2,
-          fill: new Fill({ color: '#ffffff' })
+          stroke: new Stroke({ color: '#ffffff', width: 2 }),
+          fill: new Fill({ color: '#22c55e' }),
         })
       });
     });
