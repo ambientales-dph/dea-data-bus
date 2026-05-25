@@ -462,19 +462,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     if (!baseLayerRef.current) return;
     const baseLayer = baseLayerRef.current;
     
-    // Aplicamos filtros CSS en lugar de manipular el contexto del canvas
+    // Cambiamos el source del mapa base
     if (activeLayer === 'satellite') {
       baseLayer.setSource(new XYZ({
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         maxZoom: 19
       }));
-      baseLayer.setClassName('map-layer-satellite');
-    } else if (activeLayer === 'grayscale') {
-      baseLayer.setSource(new OSM());
-      baseLayer.setClassName('map-layer-grayscale');
     } else {
       baseLayer.setSource(new OSM());
-      baseLayer.setClassName('');
     }
   }, [activeLayer]);
 
@@ -588,7 +583,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-muted/20 flex flex-col">
-      <div ref={mapRef} className="absolute inset-0 z-10" />
+      <div 
+        ref={mapRef} 
+        className={cn(
+          "absolute inset-0 z-10",
+          activeLayer === 'grayscale' && "map-container-grayscale",
+          activeLayer === 'satellite' && "map-container-satellite"
+        )} 
+      />
 
       {hoveredText && tooltipPos && (
         <div 

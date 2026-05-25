@@ -50,11 +50,11 @@
   background-color: hsl(var(--accent)) !important;
 }
 
-/* Filtros para capas de mapa */
-.map-layer-grayscale {
+/* Filtros aplicados al contenedor para evitar errores de API */
+.map-container-grayscale .ol-layer:first-child {
   filter: grayscale(100%) brightness(0.9) contrast(1.2) !important;
 }
 
-.map-layer-satellite {
+.map-container-satellite .ol-layer:first-child {
   filter: saturate(1.2) contrast(1.1) !important;
 }
