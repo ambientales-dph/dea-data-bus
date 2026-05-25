@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -135,6 +135,7 @@ export default function Home() {
 
   const handleDeselect = useCallback(() => {
     setSelectedPoint(null);
+    setIsDraggable(false);
     localStorage.removeItem('dea_selected_point');
     localStorage.removeItem('dea_form_state');
   }, []);
@@ -145,6 +146,7 @@ export default function Home() {
       if (updated) localStorage.setItem('dea_selected_point', JSON.stringify(updated));
       return updated;
     });
+    setIsDraggable(false);
   }, []);
 
   const handleLogout = () => {
