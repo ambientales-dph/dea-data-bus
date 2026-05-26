@@ -88,6 +88,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
+    // Estilo base para capas vectoriales: relleno 100% transparente y borde verde petróleo
     const vectorStyle = new Style({
       stroke: new Stroke({ color: 'rgba(13, 145, 102, 0.7)', width: 1 }),
       fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }) 
@@ -204,7 +205,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       });
     });
 
-    // Hover handler - Actualizado para soportar listas en clusters
+    // Hover handler - Actualizado: Sin bullets, sin contador, fondo más transparente
     map.on('pointermove', (event) => {
       if (event.dragging) return;
       
@@ -216,18 +217,16 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
 
       if (feature) {
         let content = '';
-        // Manejo de clusters
         const clusterFeatures = feature.get('features');
         if (clusterFeatures) {
           if (clusterFeatures.length === 1) {
             content = clusterFeatures[0].get('name');
           } else {
-            // Es un cluster con múltiples estaciones
+            // Es un cluster: mostrar solo los nombres de las estaciones
             const names = clusterFeatures.map((f: any) => f.get('name')).sort();
-            content = `Estaciones (${clusterFeatures.length}):\n• ` + names.join('\n• ');
+            content = names.join('\n');
           }
         } else {
-          // No es un cluster (ej: selección actual)
           content = feature.get('name');
         }
 
@@ -380,7 +379,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       }
       return new Style({
         stroke: new Stroke({ color: strokeColor, width: strokeWidth }),
-        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }), 
+        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }), // Relleno 100% transparente
         text: textStyle
       });
     };
