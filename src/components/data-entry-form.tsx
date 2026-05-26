@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -56,7 +57,7 @@ function DataExplorer({
 }: { 
   onSelectStation: (point: SelectedPoint) => void,
   onSelectReport: (station: any, reportId: string) => void,
-  onSelectPlanilla: (station: any, reportId: string, formId: string, medium: string, timestamp: any) => void
+  onSelectPlanilla: (station: any, reportId: string, formId: string, templateId: string) => void
 }) {
   const db = useFirestore();
   const [dynamicBasinNames, setDynamicBasinNames] = useState<Record<string, string>>({});
@@ -125,22 +126,33 @@ function DataExplorer({
   
   const getPlanillasByReport = (reportId: string) => {
     const rSamples = samples.filter((s: any) => s.reportId === reportId);
-    const planillasMap = new Map<string, { medium: string, timestamp: any, count: number }>();
+    const planillasMap = new Map<string, { medium: string, timestamp: any, count: number, templateId: string }>();
     
     rSamples.forEach((s: any) => {
       const fId = s.formId || 'legacy';
       const existing = planillasMap.get(fId);
+      
+      let detectedTemplate = 'manual';
+      if (s.medium === 'agua_superficial') detectedTemplate = 'agua_superficial';
+      else if (s.medium === 'agua_subterranea') detectedTemplate = 'agua_subterranea';
+      else if (s.medium === 'suelo') {
+        if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') detectedTemplate = 'suelo_geotecnia';
+        else detectedTemplate = 'suelo_edafologico';
+      }
+
       if (!existing) {
         planillasMap.set(fId, { 
           medium: s.medium || 'otro', 
           timestamp: s.timestamp,
-          count: 1
+          count: 1,
+          templateId: detectedTemplate
         });
       } else {
         existing.count += 1;
         if (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis())) {
           existing.timestamp = s.timestamp;
         }
+        if (detectedTemplate !== 'manual') existing.templateId = detectedTemplate;
       }
     });
 
@@ -148,7 +160,8 @@ function DataExplorer({
       formId, 
       medium: data.medium,
       timestamp: data.timestamp,
-      count: data.count
+      count: data.count,
+      templateId: data.templateId
     }));
   };
 
@@ -158,9 +171,12 @@ function DataExplorer({
     return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
   };
 
-  const mediumLabel = (m: string) => {
-    const labels: any = { agua_superficial: 'Agua Superficial', agua_subterranea: 'Freatímetro', suelo: 'Suelo', sedimentos: 'Sedimento' };
-    return labels[m] || m;
+  const getProtocolLabel = (templateId: string, medium: string) => {
+    if (templateId === 'suelo_geotecnia') return 'Geotecnia (GT-001)';
+    if (templateId === 'suelo_edafologico') return 'Edafología (PE-001)';
+    if (medium === 'agua_superficial') return 'Agua Superficial (AS-001)';
+    if (medium === 'agua_subterranea') return 'Freatímetro (FTA-001)';
+    return medium.replace('_', ' ');
   };
 
   return (
@@ -269,12 +285,12 @@ function DataExplorer({
                                                   role="button"
                                                   tabIndex={0}
                                                   key={p.formId} 
-                                                  onClick={() => onSelectPlanilla(station, report.id, p.formId, p.medium, p.timestamp)}
+                                                  onClick={() => onSelectPlanilla(station, report.id, p.formId, p.templateId)}
                                                   className="flex items-center gap-1.5 text-[9px] text-black uppercase hover:text-primary transition-colors group w-full text-left py-0.5 cursor-pointer focus:outline-none"
                                                 >
                                                   <div className="w-1 h-1 rounded-full bg-primary/40 shrink-0 group-hover:bg-primary" />
                                                   <span className="hover:underline underline-offset-2 truncate">
-                                                    {mediumLabel(p.medium)} • {formatDateShort(p.timestamp)} <span className="opacity-60 font-bold ml-1">({p.count})</span>
+                                                    {getProtocolLabel(p.templateId, p.medium)} • {formatDateShort(p.timestamp)} <span className="opacity-60 font-bold ml-1">({p.count})</span>
                                                   </span>
                                                 </div>
                                               ))}
@@ -376,25 +392,40 @@ export function DataEntryForm({
   }, [currentReportData]);
 
   const existingPlanillas = useMemo(() => {
-    const planillasMap = new Map<string, { formId: string, medium: string, userEmail?: string, timestamp?: any, count: number }>();
+    const planillasMap = new Map<string, { formId: string, medium: string, userEmail?: string, timestamp?: any, count: number, protocol?: string }>();
     currentReportSamples.forEach((s: any) => {
       const fId = s.formId || 'legacy';
       const medium = s.medium || 'otro';
       
       const existing = planillasMap.get(fId);
+      
+      let detectedProtocol = undefined;
+      if (medium === 'suelo') {
+        if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') detectedProtocol = 'suelo_geotecnia';
+        else if (s.analyte === 'Material_Originario' || s.analyte === 'Paisaje') detectedProtocol = 'suelo_edafologico';
+      } else if (medium === 'agua_superficial') {
+        detectedProtocol = 'agua_superficial';
+      } else if (medium === 'agua_subterranea') {
+        detectedProtocol = 'agua_subterranea';
+      }
+
       if (!existing) {
         planillasMap.set(fId, { 
           formId: fId, 
           medium: medium, 
           userEmail: s.userEmail, 
           timestamp: s.timestamp,
-          count: 1
+          count: 1,
+          protocol: detectedProtocol
         });
       } else {
         existing.count += 1;
         if (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis())) {
           existing.timestamp = s.timestamp;
           existing.userEmail = s.userEmail;
+        }
+        if (detectedProtocol && !existing.protocol) {
+          existing.protocol = detectedProtocol;
         }
       }
     });
@@ -893,14 +924,18 @@ export function DataEntryForm({
     setActiveView('select-template'); 
   };
 
-  const handleReopenPlanilla = (planilla: { formId: string, medium: string }) => {
+  const handleReopenPlanilla = (planilla: { formId: string, medium: string, protocol?: string }) => {
     setActiveFormId(planilla.formId);
-    const foundTemplate = MONITORING_TEMPLATES.find(t => t.medium === planilla.medium);
-    if (foundTemplate) {
-      setSelectedTemplate(foundTemplate.id);
+    let templateId = 'manual';
+    
+    if (planilla.protocol) {
+      templateId = planilla.protocol;
     } else {
-      setSelectedTemplate('manual');
+      const foundTemplate = MONITORING_TEMPLATES.find(t => t.medium === planilla.medium);
+      if (foundTemplate) templateId = foundTemplate.id;
     }
+    
+    setSelectedTemplate(templateId);
     setActiveView('report-entry');
   };
 
@@ -924,7 +959,7 @@ export function DataEntryForm({
     setActiveView('select-template');
   };
 
-  const handleExplorerSelectPlanilla = (station: any, reportId: string, formId: string, medium: string, timestamp: any) => {
+  const handleExplorerSelectPlanilla = (station: any, reportId: string, formId: string, templateId: string) => {
     const point = {
       lat: station.latitude,
       lon: station.longitude,
@@ -936,13 +971,7 @@ export function DataEntryForm({
     lastPointKeyRef.current = `${point.lat}-${point.lon}-${point.stationId}`;
     setCurrentReportId(reportId);
     setActiveFormId(formId);
-    
-    const foundTemplate = MONITORING_TEMPLATES.find(t => t.medium === medium);
-    if (foundTemplate) {
-      setSelectedTemplate(foundTemplate.id);
-    } else {
-      setSelectedTemplate('manual');
-    }
+    setSelectedTemplate(templateId);
     setActiveView('report-entry');
   };
 
@@ -955,6 +984,14 @@ export function DataEntryForm({
       />
     );
   }
+
+  const getProtocolLabel = (protocolId: string | undefined, medium: string) => {
+    if (protocolId === 'suelo_geotecnia') return 'Geotecnia (GT-001)';
+    if (protocolId === 'suelo_edafologico') return 'Edafología (PE-001)';
+    if (medium === 'agua_superficial') return 'Agua Superficial (AS-001)';
+    if (medium === 'agua_subterranea') return 'Freatímetro (FTA-001)';
+    return medium.replace('_', ' ');
+  };
 
   if (activeView === 'report-entry' && currentReportId && activeFormId) {
     return (
@@ -1169,10 +1206,12 @@ export function DataEntryForm({
                           <FileText className="h-3.5 w-3.5 text-black" />
                         </div>
                         <div className="text-left">
-                          <p className="text-xs font-normal capitalize text-black">{p.medium.replace('_', ' ')} <span className="text-[9px] opacity-60 font-bold">({p.count})</span></p>
+                          <p className="text-xs font-bold text-black uppercase tracking-tight">{p.formId}</p>
                           <div className="flex flex-col mt-0.5">
-                            <p className="text-[9px] text-neutral-600 uppercase font-normal">ID: {p.formId}</p>
-                            <div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter">
+                            <p className="text-[9px] text-neutral-600 uppercase font-bold">
+                                {getProtocolLabel(p.protocol, p.medium)} <span className="opacity-60 font-black ml-1">({p.count})</span>
+                            </p>
+                            <div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
                               <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span>
                               <span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span>
                             </div>

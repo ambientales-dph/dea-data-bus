@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -187,7 +188,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   }, [lowerTemplateId]);
 
   const isSueloGeotecnia = useMemo(() => {
-    return lowerTemplateId === 'suelo_geotecnia' || (lowerTemplateId.includes('suelo') && lowerTemplateId.includes('gt-001'));
+    return lowerTemplateId === 'suelo_geotecnia' || lowerTemplateId.includes('gt-001');
   }, [lowerTemplateId]);
 
   if (isFreatimetro) {
@@ -214,7 +215,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
             <div className="space-y-0.5">
               <CardTitle className="text-sm font-black uppercase tracking-tight text-foreground">{template?.nombre || template?.name || 'Carga de Analitos'}</CardTitle>
               <div className="flex flex-col gap-0.5">
-                <CardDescription className="text-[10px] font-bold">ID: <span className="text-foreground">{formId.substring(0, 8)}</span></CardDescription>
+                <CardDescription className="text-[10px] font-bold">ID: <span className="text-foreground">{formId}</span></CardDescription>
                 <div className="flex items-center gap-3 text-[9px] text-muted-foreground font-black uppercase tracking-tight">
                   <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
                   <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
