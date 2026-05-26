@@ -34,6 +34,12 @@ export const MONITORING_TEMPLATES = [
     nombre: "Suelo (Protocolo PE-001)",
     medium: "suelo",
     parametros: [] // Se maneja dinámicamente en su componente específico
+  },
+  {
+    id: "suelo_geotecnia",
+    nombre: "Sondeo Geotécnico (Protocolo GT-001)",
+    medium: "suelo",
+    parametros: [] // Se maneja dinámicamente en su componente específico
   }
 ];
 
