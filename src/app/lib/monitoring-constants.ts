@@ -31,7 +31,7 @@ export const MONITORING_TEMPLATES = [
   },
   {
     id: "suelo_edafologico",
-    nombre: "Suelo (Planilla Edafológica)",
+    nombre: "Suelo (Protocolo PE-001)",
     medium: "suelo",
     parametros: [] // Se maneja dinámicamente en su componente específico
   }

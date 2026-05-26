@@ -773,13 +773,53 @@ export function DataEntryForm({
     }
   };
 
-  const handleConfirmTemplate = () => {
-    const newFormId = crypto.randomUUID();
-    setActiveFormId(newFormId);
-    if (currentReportId) {
-      setActiveView('report-entry');
-    } else {
-      handleStartReport(newFormId);
+  const handleConfirmTemplate = async () => {
+    if (!selectedPoint) return;
+    setIsStartingReport(true);
+    
+    try {
+      const basinCode = (stationDetails as any)?.basinCode || selectedPoint.basinCode || 'XXX';
+      const prefix = `PL${basinCode}`;
+      let nextNumber = 1;
+
+      const samplesCol = collection(db, 'samples');
+      const q = query(
+        samplesCol,
+        where('formId', '>=', prefix),
+        where('formId', '<=', prefix + '\uf8ff'),
+        orderBy('formId', 'desc'),
+        limit(1)
+      );
+      
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const lastFormId = snapshot.docs[0].data().formId as string;
+        const numPart = lastFormId.substring(prefix.length);
+        const lastNum = parseInt(numPart, 10);
+        if (!isNaN(lastNum)) {
+          nextNumber = lastNum + 1;
+        }
+      }
+
+      const newFormId = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
+      
+      setActiveFormId(newFormId);
+      if (currentReportId) {
+        setActiveView('report-entry');
+      } else {
+        await handleStartReport(newFormId);
+      }
+    } catch (e) {
+      console.error("Error generating Planilla OID", e);
+      const fallbackId = `PL-ERR-${crypto.randomUUID().substring(0,8)}`;
+      setActiveFormId(fallbackId);
+      if (currentReportId) {
+        setActiveView('report-entry');
+      } else {
+        await handleStartReport(fallbackId);
+      }
+    } finally {
+      setIsStartingReport(false);
     }
   };
 
@@ -825,23 +865,13 @@ export function DataEntryForm({
         editors: [user.email]
       };
 
-      await addDoc(reportsCol, reportData)
-        .then((docRef) => {
-          setCurrentReportId(docRef.id);
-          setActiveView('report-entry');
-          toast({
-            title: "Reporte iniciado",
-            description: `Se generó el OID: ${oid}`,
-          });
-        })
-        .catch(async (error) => {
-          const permissionError = new FirestorePermissionError({
-            path: 'reports',
-            operation: 'create',
-            requestResourceData: reportData,
-          });
-          errorEmitter.emit('permission-error', permissionError);
-        });
+      const docRef = await addDoc(reportsCol, reportData);
+      setCurrentReportId(docRef.id);
+      setActiveView('report-entry');
+      toast({
+        title: "Reporte iniciado",
+        description: `Se generó el OID: ${oid}`,
+      });
     } catch (e) {
       console.error("Error creating report OID", e);
     } finally {
@@ -1161,7 +1191,7 @@ export function DataEntryForm({
                         <div className="text-left">
                           <p className="text-xs font-normal capitalize text-black">{p.medium.replace('_', ' ')} <span className="text-[9px] opacity-60 font-bold">({p.count})</span></p>
                           <div className="flex flex-col mt-0.5">
-                            <p className="text-[9px] text-neutral-600 uppercase font-normal">ID: {p.formId.substring(0, 8)}</p>
+                            <p className="text-[9px] text-neutral-600 uppercase font-normal">ID: {p.formId}</p>
                             <div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter">
                               <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span>
                               <span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, orderBy, limit } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -38,7 +38,6 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
 
-  // Estados para búsqueda OSM
   const [osmQuery, setOsmQuery] = useState('');
   const [osmResults, setOsmResults] = useState<OSMResult[]>([]);
   const [isSearchingOSM, setIsSearchingOSM] = useState(false);
@@ -152,7 +151,6 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     }
   };
 
-  // Lógica OSM
   const handleOSMSearch = async (q: string) => {
     setOsmQuery(q);
     if (q.length < 3) {
@@ -188,7 +186,6 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     setShowOSMResults(false);
   };
 
-  // Lógica Geolocalización para Punto Específico
   const captureGPS = () => {
     if (!navigator.geolocation) {
       toast({ variant: "destructive", title: "GPS no disponible", description: "Tu navegador no soporta geolocalización." });
@@ -322,9 +319,9 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
       <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-3 flex justify-between items-center">
         <div>
-          <h1 className="text-sm font-black uppercase tracking-tight text-black font-headline">Suelos • Planilla Edafológica</h1>
+          <h1 className="text-sm font-black uppercase tracking-tight text-black font-headline">Suelos • PE-001</h1>
           <div className="flex flex-col gap-0.5 mt-1">
-            <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID: {formId.substring(0, 12)}</p>
+            <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID: {formId}</p>
             <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter mt-1">
               <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
@@ -335,7 +332,6 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
 
       <div className={sectionHeaderClass}><Mountain className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-wider text-black">1. Identificación y Ubicación</span></div>
       
-      {/* Campo Lugar con búsqueda OSM */}
       <div className={cn(rowClass, "relative")}>
         <label className={labelClass}>Lugar / Localidad</label>
         <div className="flex items-center gap-2 flex-1 justify-end">
@@ -376,7 +372,6 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         )}
       </div>
 
-      {/* Campo Punto con Geolocalización */}
       <div className={rowClass}>
         <label className={labelClass}>Punto Específico</label>
         <div className="flex items-center gap-2 flex-1 justify-end">
