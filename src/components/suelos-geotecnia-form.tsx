@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Trash2, Printer, Save, Loader2, Check, Clock, User } from "lucide-react"
+import { Plus, Trash2, Printer, Save, Loader2, Check, Clock, User, Locate, MapPin } from "lucide-react"
 import { cn } from '@/lib/utils'
 import { PhotoRegistry } from './photo-registry'
 import { TechnicianLink } from './technician-link'
@@ -104,15 +104,9 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   const { user } = useUser();
   
   const [formData, setFormData] = useState<Record<string, any>>({
-    proyecto: "",
     sondeoNumero: "",
-    situacion: "",
-    fecha: "",
+    ubicacion: "",
     profundidadTotal: "",
-    coordenadaX: "",
-    coordenadaY: "",
-    coordenadaZ: "",
-    hoja: "",
     observaciones: ""
   });
 
@@ -148,7 +142,6 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
             foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.timestamp };
           }
 
-          // Detección de capas: "L[id]: [campo]"
           const layerMatch = analyte.match(/^L(\d+): (.*)/);
           if (layerMatch) {
             const lId = layerMatch[1];
@@ -265,6 +258,45 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     }
   };
 
+  const handleCerrarPlanilla = async () => {
+    if (!user || !db) return;
+    const fechaCierre = new Date().toLocaleString('es-AR');
+    await saveParam("Fecha Cierre de Sondeo", "Control", fechaCierre);
+    onClose?.();
+  };
+
+  const handleFormChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (savedFields[field]) {
+      setSavedFields(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const captureGPS = () => {
+    if (!navigator.geolocation) {
+      toast({ variant: "destructive", title: "GPS no disponible", description: "Tu navegador no soporta geolocalización." });
+      return;
+    }
+
+    toast({ title: "Obteniendo coordenadas...", description: "Por favor, espera." });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const val = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+        handleFormChange("ubicacion", val);
+        saveParam("ubicacion", "Encabezado", val);
+        toast({ title: "Ubicación capturada", description: val });
+      },
+      (err) => {
+        toast({ variant: "destructive", title: "Error de GPS", description: "No se pudo obtener la ubicación." });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   const saveLayerField = async (layerId: string, field: keyof CapaSuelo, value: any) => {
     if (!user || !db) return;
     const analyteName = `L${layerId}: ${field}`;
@@ -310,17 +342,6 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     }
   };
 
-  const handleFormChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (savedFields[field]) {
-      setSavedFields(prev => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
-
   const handleCapaChange = (id: string, field: keyof CapaSuelo, value: string | boolean) => {
     setCapas((prev) =>
       prev.map((capa) => (capa.id === id ? { ...capa, [field]: value } : capa))
@@ -363,8 +384,6 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   const eliminarCapa = async (id: string) => {
     if (capas.length > 1) {
       setCapas((prev) => prev.filter((capa) => capa.id !== id));
-      // Limpieza en DB opcional aquí o dejar que el técnico lo maneje.
-      // Por simplicidad en esta fase, solo removemos del estado local.
     }
   };
 
@@ -384,25 +403,9 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     return <div className="p-12 text-center text-xs animate-pulse font-bold uppercase">Cargando Registro de Sondeo...</div>;
   }
 
-  const renderInputRow = (label: string, field: string, type = "text", placeholder = "") => (
-    <div className="flex border-b border-black last:border-b-0">
-      <div className="w-[120px] border-r border-black p-2 flex items-center bg-neutral-50 shrink-0">
-        <span className="font-black text-[10px] uppercase">{label}:</span>
-      </div>
-      <div className="flex-1 flex items-center">
-        <Input
-          type={type}
-          value={formData[field]}
-          onChange={(e) => handleFormChange(field, e.target.value)}
-          className="border-0 h-9 rounded-none text-xs font-bold font-code"
-          placeholder={placeholder}
-        />
-        <button onClick={() => saveParam(field, 'Encabezado')} className={cn("p-2 transition-colors", savedFields[field] ? "text-green-600" : "text-black")}>
-          {savingFields[field] ? <Loader2 className="h-3 w-3 animate-spin" /> : savedFields[field] ? <Check className="h-3 w-3" /> : <Save className="h-3 w-3" />}
-        </button>
-      </div>
-    </div>
-  );
+  const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-3";
+  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none w-1/3 shrink-0 uppercase";
+  const inputClass = "h-7 flex-1 border-none bg-transparent px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none placeholder:text-neutral-300";
 
   return (
     <div className="mx-auto w-full border border-black bg-white font-body shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20 overflow-hidden">
@@ -424,34 +427,59 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       </div>
 
       <div className="p-0 border-b border-black">
-        {renderInputRow("PROYECTO", "proyecto", "text", "Nombre del proyecto...")}
-        <div className="flex border-b border-black">
-           <div className="w-1/2 border-r border-black flex">
-             <div className="w-[120px] border-r border-black p-2 flex items-center bg-neutral-50 shrink-0"><span className="font-black text-[10px] uppercase">SONDEO:</span></div>
-             <Input value={formData.sondeoNumero} onChange={(e) => handleFormChange("sondeoNumero", e.target.value)} className="border-0 h-9 rounded-none text-xs font-bold" />
-             <button onClick={() => saveParam("sondeoNumero", 'Encabezado')} className="p-2">{savingFields["sondeoNumero"] ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}</button>
-           </div>
-           <div className="w-1/2 flex">
-             <div className="w-[100px] border-r border-black p-2 flex items-center bg-neutral-50 shrink-0"><span className="font-black text-[10px] uppercase">SITUACIÓN:</span></div>
-             <Input value={formData.situacion} onChange={(e) => handleFormChange("situacion", e.target.value)} className="border-0 h-9 rounded-none text-xs font-bold" />
-             <button onClick={() => saveParam("situacion", 'Encabezado')} className="p-2">{savingFields["situacion"] ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}</button>
-           </div>
+        {/* Sondeo Nro */}
+        <div className={rowClass}>
+          <label className={labelClass}>Sondeo Nº</label>
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <Input
+              value={formData.sondeoNumero}
+              onChange={(e) => handleFormChange("sondeoNumero", e.target.value)}
+              className={inputClass}
+              placeholder="Ej: S-01"
+            />
+            <button onClick={() => saveParam("sondeoNumero", 'Encabezado')} className={cn("p-1 transition-colors", savedFields["sondeoNumero"] ? "text-green-600" : "text-black hover:text-primary")}>
+              {savingFields["sondeoNumero"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["sondeoNumero"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Save className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         </div>
-        <div className="flex border-b border-black">
-           <div className="w-1/2 border-r border-black flex">
-             <div className="w-[120px] border-r border-black p-2 flex items-center bg-neutral-50 shrink-0"><span className="font-black text-[10px] uppercase">FECHA:</span></div>
-             <Input type="date" value={formData.fecha} onChange={(e) => handleFormChange("fecha", e.target.value)} className="border-0 h-9 rounded-none text-xs font-bold" />
-             <button onClick={() => saveParam("fecha", 'Encabezado')} className="p-2">{savingFields["fecha"] ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}</button>
-           </div>
-           <div className="w-1/2 flex">
-             <div className="w-[100px] border-r border-black p-2 flex items-center bg-neutral-50 shrink-0"><span className="font-black text-[10px] uppercase">PROFUND.:</span></div>
-             <Input value={formData.profundidadTotal} onChange={(e) => handleFormChange("profundidadTotal", e.target.value)} className="border-0 h-9 rounded-none text-xs font-bold" placeholder="m" />
-             <button onClick={() => saveParam("profundidadTotal", 'Encabezado')} className="p-2">{savingFields["profundidadTotal"] ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}</button>
-           </div>
+
+        {/* Ubicación con GPS */}
+        <div className={rowClass}>
+          <label className={labelClass}>Ubicación</label>
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <Input
+              value={formData.ubicacion}
+              onChange={(e) => handleFormChange("ubicacion", e.target.value)}
+              className={inputClass}
+              placeholder="Coordenadas o Ref."
+            />
+            <button onClick={captureGPS} title="Capturar GPS" className="p-1 hover:bg-primary/5 rounded transition-colors">
+              <Locate className="h-4 w-4 text-primary" />
+            </button>
+            <button onClick={() => saveParam("ubicacion", "Encabezado")} className={cn("p-1 transition-colors", savedFields["ubicacion"] ? "text-green-600" : "text-black hover:text-primary")}>
+              {savingFields["ubicacion"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["ubicacion"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Save className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Profundidad Total */}
+        <div className={rowClass}>
+          <label className={labelClass}>Profundidad (m)</label>
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <Input
+              value={formData.profundidadTotal}
+              onChange={(e) => handleFormChange("profundidadTotal", e.target.value)}
+              className={inputClass}
+              placeholder="Total perforado"
+            />
+            <button onClick={() => saveParam("profundidadTotal", 'Encabezado')} className={cn("p-1 transition-colors", savedFields["profundidadTotal"] ? "text-green-600" : "text-black hover:text-primary")}>
+              {savingFields["profundidadTotal"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["profundidadTotal"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Save className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Tabla de Estratos - Adaptada para alta densidad de datos */}
+      {/* Tabla de Estratos */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[10px]">
           <thead>
@@ -466,7 +494,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
               <th className="border-r border-black p-1 w-14">USCS</th>
               <th className="p-1 w-8 print:hidden"></th>
             </tr>
-            <tr className="bg-neutral-50 text-[8px] font-black border-b border-black">
+            <tr className="bg-neutral-50 text-[8px] font-black border-b border-black text-center">
               <th colSpan={5}></th>
               <th className="border-x border-black">LL</th>
               <th className="border-r border-black">IP</th>
@@ -528,13 +556,29 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         <Button variant="outline" size="sm" onClick={agregarCapa} className="w-full h-10 border-dashed border-neutral-400 font-black uppercase text-[10px] tracking-widest"><Plus className="h-4 w-4 mr-2" />Agregar Estrato al Perfil</Button>
       </div>
 
+      {/* Referencias Técnicas */}
+      <div className="grid grid-cols-2 border-b border-black text-[9px] font-bold bg-neutral-50">
+        <div className="p-2 border-r border-black space-y-0.5">
+          <p><span className="font-black">MI:</span> Muestra inalterada</p>
+          <p><span className="font-black">MA:</span> Muestra alterada</p>
+          <p><span className="font-black">SPT:</span> Ensayo de penetración estándar</p>
+        </div>
+        <div className="p-2 space-y-0.5">
+          <p><span className="font-black">MNC:</span> Muestra no conseguida</p>
+          <p><span className="font-black">TP:</span> Testigo parafinado</p>
+          <p><span className="font-black">N.F.:</span> Nivel freático</p>
+        </div>
+      </div>
+
       <div className="border-b border-black">
         <div className="bg-neutral-100 p-2 border-b border-black flex items-center gap-2">
            <span className="font-black text-[10px] uppercase">Observaciones:</span>
         </div>
         <div className="flex">
           <Textarea value={formData.observaciones} onChange={(e) => handleFormChange("observaciones", e.target.value)} className="border-0 font-bold text-xs min-h-[80px] p-3 resize-none rounded-none" />
-          <button onClick={() => saveParam("observaciones", 'General')} className="p-4 bg-white border-l border-black hover:bg-neutral-50">{savingFields["observaciones"] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}</button>
+          <button onClick={() => saveParam("observaciones", 'General')} className={cn("p-4 bg-white border-l border-black hover:bg-neutral-50 transition-colors", savedFields["observaciones"] ? "text-green-600" : "text-black")}>
+            {savingFields["observaciones"] ? <Loader2 className="h-4 w-4 animate-spin" /> : savedFields["observaciones"] ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+          </button>
         </div>
       </div>
 
@@ -543,7 +587,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       </div>
 
       <div className="p-4 border-t border-black bg-white print:hidden">
-        <Button onClick={onClose} className="w-full h-12 bg-black hover:bg-neutral-900 text-white font-black uppercase tracking-widest text-[11px] shadow-xl">Finalizar y Cerrar Sondeo</Button>
+        <Button onClick={handleCerrarPlanilla} className="w-full h-12 bg-black hover:bg-neutral-900 text-white font-black uppercase tracking-widest text-[11px] shadow-xl">Finalizar y Cerrar Sondeo</Button>
       </div>
 
       <style jsx global>{`
