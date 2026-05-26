@@ -1,14 +1,19 @@
 'use client';
 
-import { useMemo } from 'react';
-import { collection, query, where } from 'firebase/firestore';
-import { useFirestore, useCollection } from '@/firebase';
+import { useMemo, useState } from 'react';
+import { collection, query, where, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { useFirestore, useCollection, useUser } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, Calendar, FileSearch, Plus, Briefcase, Users } from 'lucide-react';
+import { Loader2, Calendar, FileSearch, Plus, Briefcase, Users, Trash2 } from 'lucide-react';
 import { TechnicianLink } from './technician-link';
+import { isUserAdmin } from '@/app/lib/auth-config';
+import { AdminDeleteDialog } from './admin-delete-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { ref, deleteObject, listAll } from 'firebase/storage';
+import { useStorage } from '@/firebase';
 
 interface ReportListProps {
   stationId: string;
@@ -18,6 +23,13 @@ interface ReportListProps {
 
 export function ReportList({ stationId, onViewReport, onOpenReport }: ReportListProps) {
   const db = useFirestore();
+  const storage = useStorage();
+  const { user } = useUser();
+  const { toast } = useToast();
+  const [deletingReport, setDeletingReport] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const isAdmin = useMemo(() => isUserAdmin(user?.email || null), [user?.email]);
 
   const reportsQuery = useMemo(() => {
     return query(
@@ -72,6 +84,54 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
     return match ? match[1] : fullName.substring(0, 8);
   };
 
+  const handleDeleteReport = async () => {
+    if (!deletingReport || !db) return;
+    setIsDeleting(true);
+    try {
+      // 1. Obtener todos los analitos asociados
+      const q = query(collection(db, 'samples'), where('reportId', '==', deletingReport.id));
+      const samplesSnap = await getDocs(q);
+      
+      // 2. Borrar documentos de analitos
+      for (const sDoc of samplesSnap.docs) {
+        await deleteDoc(doc(db, 'samples', sDoc.id));
+      }
+
+      // 3. Limpiar Storage del reporte
+      if (storage) {
+        const reportStorageRef = ref(storage, `reports/${deletingReport.id}`);
+        try {
+          const listRes = await listAll(reportStorageRef);
+          // Borrar recursivamente si es necesario (asumiendo estructura simple por ahora)
+          // Nota: listAll no borra carpetas, Firebase Storage no tiene carpetas reales.
+          // Hay que listar y borrar archivos.
+          for (const folder of listRes.prefixes) {
+            const innerList = await listAll(folder);
+            for (const item of innerList.items) {
+              await deleteObject(item);
+            }
+          }
+          for (const item of listRes.items) {
+            await deleteObject(item);
+          }
+        } catch (storageErr) {
+          console.warn("Storage cleanup skipped or failed:", storageErr);
+        }
+      }
+
+      // 4. Borrar el reporte
+      await deleteDoc(doc(db, 'reports', deletingReport.id));
+      
+      toast({ title: "Reporte eliminado", description: "Se limpió la base de datos y el storage asociado." });
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Error", description: "Falla crítica al borrar reporte." });
+    } finally {
+      setIsDeleting(false);
+      setDeletingReport(null);
+    }
+  };
+
   if (reportsLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
@@ -100,7 +160,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                 <TableHead className="text-[9px] uppercase font-bold px-3">Fecha</TableHead>
                 <TableHead className="text-[9px] uppercase font-bold px-3">OID</TableHead>
                 <TableHead className="text-[9px] uppercase font-bold px-3">Proyecto</TableHead>
-                <TableHead className="w-16 px-3 text-right"></TableHead>
+                <TableHead className="w-24 px-3 text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -160,10 +220,30 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                           size="icon" 
                           className="h-6 w-6 text-foreground hover:bg-primary/10"
                           onClick={() => onOpenReport(report.id)}
-                          title="Gestionar Planillas y Datos del Reporte"
+                          title="Gestionar Planillas"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 text-foreground hover:bg-primary/10"
+                          onClick={() => onViewReport(report.id)}
+                          title="Ver Datos"
                         >
                           <FileSearch className="h-3 w-3" />
                         </Button>
+                        {isAdmin && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeletingReport(report)}
+                            title="BORRAR REPORTE"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                         <div 
                           className="flex items-center px-0.5 text-[9px] font-black text-foreground min-w-[14px] justify-center" 
                           title="Cantidad de parámetros"
@@ -179,6 +259,17 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
           </Table>
         </CardContent>
       </Card>
+
+      {deletingReport && (
+        <AdminDeleteDialog 
+          open={!!deletingReport}
+          onOpenChange={(open) => !open && setDeletingReport(null)}
+          onConfirm={handleDeleteReport}
+          title={`Borrar Reporte ${deletingReport.oid}`}
+          description="Vas a eliminar el reporte completo, todos sus analitos y todas las fotos subidas a la red."
+          isLoading={isDeleting}
+        />
+      )}
     </TooltipProvider>
   );
 }

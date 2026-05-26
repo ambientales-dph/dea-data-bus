@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, query, where, orderBy, limit, getDocs, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, query, where, orderBy, limit, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, useCollection, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation, FolderOpen, Pencil, Settings } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation, FolderOpen, Pencil, Settings, Trash2 } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { MONITORING_TEMPLATES, BASIN_CODES_DATA } from '@/app/lib/monitoring-constants';
+import { isUserAdmin } from '@/app/lib/auth-config';
+import { AdminDeleteDialog } from './admin-delete-dialog';
 
 function isPointInPoly(pt: [number, number], poly: [number, number][][]) {
   for (let i = 0; i < poly.length; i++) {
@@ -314,6 +316,8 @@ export function DataEntryForm({
   const { user } = useUser();
   const [isGeneratingName, setIsGeneratingName] = useState(false);
   const [isStartingReport, setIsStartingReport] = useState(false);
+  const [isDeletingStation, setIsDeletingStation] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [activeView, setActiveView] = useState<FormView>('summary');
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [activeFormId, setActiveFormId] = useState<string | null>(null);
@@ -329,6 +333,8 @@ export function DataEntryForm({
 
   const lastPointKeyRef = useRef<string | null>(null);
   const isInitialLoadRef = useRef(true);
+
+  const isAdmin = useMemo(() => isUserAdmin(user?.email || null), [user?.email]);
 
   useEffect(() => {
     onActiveViewChange?.(activeView);
@@ -428,7 +434,6 @@ export function DataEntryForm({
     const currentKey = `${selectedPoint.lat}-${selectedPoint.lon}-${selectedPoint.stationId}`;
 
     if (!isInitialLoadRef.current && lastPointKeyRef.current !== currentKey) {
-      // Bloqueamos el reseteo de la vista si estamos en modo creación o edición de coordenadas
       if (activeView !== 'create-station' && activeView !== 'edit-station') {
         if (selectedPoint.stationId) {
           setActiveView('summary');
@@ -444,7 +449,6 @@ export function DataEntryForm({
         setProjectSearch('');
         setSelectedTemplate('manual');
       } else {
-        // En modo edición/creación, solo actualizamos los campos de lat/lon locales
         setEditLat(selectedPoint.lat.toString());
         setEditLon(selectedPoint.lon.toString());
       }
@@ -736,6 +740,23 @@ export function DataEntryForm({
         });
         errorEmitter.emit('permission-error', permissionError);
       });
+  };
+
+  const handleDeleteStation = async () => {
+    if (!selectedPoint?.stationId || !db) return;
+    setIsDeletingStation(true);
+    try {
+      await deleteDoc(doc(db, 'stations', selectedPoint.stationId));
+      onDeselect();
+      setActiveView('summary');
+      toast({ title: "Estación eliminada", description: "El punto ha sido removido del sistema." });
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Error", description: "No se pudo eliminar la estación." });
+    } finally {
+      setIsDeletingStation(false);
+      setShowDeleteDialog(false);
+    }
   };
 
   const handleConfirmTemplate = () => {
@@ -1164,6 +1185,16 @@ export function DataEntryForm({
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
+                  {isAdmin && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="h-6 w-6 ml-1 text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
                 <div className="space-y-0.5 ml-6">
                   <CardDescription className="text-[10px] font-normal text-black font-body">
@@ -1180,6 +1211,14 @@ export function DataEntryForm({
               <Button variant="ghost" size="icon" onClick={() => { onDeselect(); setActiveView('summary'); }} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
             </div>
           </CardHeader>
+          <AdminDeleteDialog 
+            open={showDeleteDialog}
+            onOpenChange={setShowDeleteDialog}
+            onConfirm={handleDeleteStation}
+            title={`Eliminar Estación ${selectedPoint.name}`}
+            description="Estás por borrar una ubicación fija de monitoreo."
+            isLoading={isDeletingStation}
+          />
         </Card>
       ) : (
         <Card className="border-primary/20 bg-primary/5 shadow-sm rounded-none">

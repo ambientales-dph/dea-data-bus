@@ -1,17 +1,19 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
-import { useFirestore, useCollection, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { collection, query, where, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { useFirestore, useCollection, useDoc, useUser, useStorage } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle2, User, Briefcase, Pencil, Check, X, Layers, FileText } from 'lucide-react';
+import { Loader2, CheckCircle2, User, Briefcase, Pencil, Check, X, Layers, FileText, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { isUserAdmin } from '@/app/lib/auth-config';
+import { AdminDeleteDialog } from './admin-delete-dialog';
+import { ref, deleteObject, listAll } from 'firebase/storage';
 
 interface ReportDetailProps {
   reportId: string;
@@ -20,11 +22,16 @@ interface ReportDetailProps {
 
 export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
   const db = useFirestore();
+  const storage = useStorage();
+  const { user } = useUser();
   const { toast } = useToast();
   
-  const [isEditingProject, setIsEditingProject] = useState(false);
+  const [deletingPlanilla, setDeletingPlanilla] = useState<{fid: string, medium: string} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
+
+  const isAdmin = useMemo(() => isUserAdmin(user?.email || null), [user?.email]);
 
   useEffect(() => {
     const stored = localStorage.getItem('trello_cards_sync');
@@ -56,11 +63,44 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
     if (reportData?.trelloCardName) setSelectedProject(reportData.trelloCardName);
   }, [reportData]);
 
-  const handleSaveProject = () => {
-    if (!selectedProject) return;
-    updateDoc(reportRef, { trelloCardName: selectedProject })
-      .then(() => setIsEditingProject(false))
-      .catch(console.error);
+  const handleDeletePlanilla = async () => {
+    if (!deletingPlanilla || !db) return;
+    setIsDeleting(true);
+    try {
+      // 1. Obtener analitos de esta planilla
+      const q = query(
+        collection(db, 'samples'), 
+        where('reportId', '==', reportId),
+        where('formId', '==', deletingPlanilla.fid)
+      );
+      const snap = await getDocs(q);
+
+      // 2. Borrar documentos
+      for (const sDoc of snap.docs) {
+        await deleteDoc(doc(db, 'samples', sDoc.id));
+      }
+
+      // 3. Limpiar Storage de esta planilla
+      if (storage) {
+        const planillaStorageRef = ref(storage, `reports/${reportId}/${deletingPlanilla.fid}`);
+        try {
+          const listRes = await listAll(planillaStorageRef);
+          for (const item of listRes.items) {
+            await deleteObject(item);
+          }
+        } catch (storageErr) {
+          console.warn("Planilla storage cleanup skipped:", storageErr);
+        }
+      }
+
+      toast({ title: "Planilla borrada", description: "Se eliminaron los datos y las evidencias visuales." });
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Error", description: "No se pudo borrar la planilla." });
+    } finally {
+      setIsDeleting(false);
+      setDeletingPlanilla(null);
+    }
   };
 
   const mediumLabel = (m: string) => {
@@ -93,6 +133,17 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
                         {mediumLabel(data.medium)} {fid !== 'legacy' ? `(ID: ${fid.substring(0,8)})` : ''}
                       </span>
                     </div>
+                    {isAdmin && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                        onClick={() => setDeletingPlanilla({fid, medium: data.medium})}
+                        title="BORRAR PLANILLA"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                   <Table>
                     <TableBody>
@@ -113,6 +164,17 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
           <Button onClick={onClose} variant="outline" className="text-xs">Cerrar</Button>
         </CardFooter>
       </Card>
+
+      {deletingPlanilla && (
+        <AdminDeleteDialog 
+          open={!!deletingPlanilla}
+          onOpenChange={(open) => !open && setDeletingPlanilla(null)}
+          onConfirm={handleDeletePlanilla}
+          title={`Borrar Planilla ${mediumLabel(deletingPlanilla.medium)}`}
+          description={`Vas a eliminar todos los analitos de esta planilla y sus evidencias fotográficas asociadas.`}
+          isLoading={isDeleting}
+        />
+      )}
     </div>
   );
 }

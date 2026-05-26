@@ -2,7 +2,7 @@ export const AUTH_WHITELIST = [
   { nombre: 'Luis Bree', email: 'luisbree@gmail.com' },
   { nombre: 'María de los Ángeles González', email: 'mdlangeles.dph@gmail.com' },
   { nombre: 'Nancy Neschuk', email: 'nancyneschuk@gmail.com' },
-  { nombre: 'No68 Si40', email: 'no68si40@gmail.com' },
+  { nombre: 'Norma Bordón', email: 'no68si40@gmail.com' },
   { nombre: 'Gonzalo Castro', email: 'gacastrocp@gmail.com' },
   { nombre: 'Eugenia Agabios', email: 'eugeniaagabios@gmail.com' },
   { nombre: 'Alan Santamarina', email: 'alansantamarina@gmail.com' },
@@ -23,10 +23,21 @@ export const AUTH_WHITELIST = [
   { nombre: 'Ambientales DPH', email: 'ambientales.dph@gmail.com' }
 ];
 
+export const ADMIN_WHITELIST = [
+  'luisbree@gmail.com',
+  'nancyneschuk@gmail.com'
+];
+
 export function isUserWhitelisted(email: string | null): boolean {
   if (!email) return false;
   const cleanEmail = email.trim().toLowerCase();
   return AUTH_WHITELIST.some(user => user.email.toLowerCase() === cleanEmail);
+}
+
+export function isUserAdmin(email: string | null): boolean {
+  if (!email) return false;
+  const cleanEmail = email.trim().toLowerCase();
+  return ADMIN_WHITELIST.some(adminEmail => adminEmail.toLowerCase() === cleanEmail);
 }
 
 export function getUserNameByEmail(email: string | null): string {
