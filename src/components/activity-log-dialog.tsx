@@ -89,11 +89,11 @@ export function ActivityLogDialog({ open, onOpenChange }: ActivityLogDialogProps
         <DialogHeader className="p-4 bg-neutral-100 border-b shrink-0">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
-            <DialogTitle className="text-sm font-black uppercase tracking-widest font-headline">
+            <DialogTitle className="text-sm font-normal uppercase tracking-widest font-headline text-black">
               Log de Registros del Sistema
             </DialogTitle>
           </div>
-          <DialogDescription className="text-[10px] font-bold uppercase text-muted-foreground mt-1">
+          <DialogDescription className="text-[10px] font-normal uppercase text-black mt-1">
             Últimos 100 registros detectados en la red • Auditoría en tiempo real
           </DialogDescription>
         </DialogHeader>
@@ -102,18 +102,18 @@ export function ActivityLogDialog({ open, onOpenChange }: ActivityLogDialogProps
           {samplesLoading ? (
             <div className="h-full flex flex-col items-center justify-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-[10px] font-black uppercase tracking-widest animate-pulse">Consultando historial...</p>
+              <p className="text-[10px] font-normal uppercase tracking-widest animate-pulse text-black">Consultando historial...</p>
             </div>
           ) : (
             <ScrollArea className="h-full">
               <Table className="border-collapse">
                 <TableHeader className="bg-neutral-50 sticky top-0 z-20 shadow-sm">
                   <TableRow className="hover:bg-transparent border-b-2 border-neutral-300 h-10">
-                    <TableHead className="text-[9px] font-black uppercase px-3 text-black"><Clock className="h-3 w-3 inline mr-1" /> Fecha/Hora</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase px-3 text-black"><FileText className="h-3 w-3 inline mr-1" /> Reporte</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase px-3 text-black text-center">Planilla</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase px-3 text-black">Registro (Analito : Valor)</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase px-3 text-black"><User className="h-3 w-3 inline mr-1" /> Técnico</TableHead>
+                    <TableHead className="text-[9px] font-normal uppercase px-3 text-black"><Clock className="h-3 w-3 inline mr-1" /> Fecha/Hora</TableHead>
+                    <TableHead className="text-[9px] font-normal uppercase px-3 text-black"><FileText className="h-3 w-3 inline mr-1" /> Reporte</TableHead>
+                    <TableHead className="text-[9px] font-normal uppercase px-3 text-black text-center">Planilla</TableHead>
+                    <TableHead className="text-[9px] font-normal uppercase px-3 text-black">Registro (Analito : Valor)</TableHead>
+                    <TableHead className="text-[9px] font-normal uppercase px-3 text-black"><User className="h-3 w-3 inline mr-1" /> Técnico</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -126,15 +126,15 @@ export function ActivityLogDialog({ open, onOpenChange }: ActivityLogDialogProps
                   ) : (
                     samples.map((sample: any) => (
                       <TableRow key={sample.id} className="h-8 border-b border-neutral-100 hover:bg-primary/5 group transition-colors">
-                        <TableCell className="px-3 py-1 font-code text-[10px] font-bold whitespace-nowrap text-neutral-600">
+                        <TableCell className="px-3 py-1 font-code text-[10px] font-normal whitespace-nowrap text-black">
                           {formatDate(sample.timestamp)}
                         </TableCell>
-                        <TableCell className="px-3 py-1 font-code text-[10px] font-black text-black">
+                        <TableCell className="px-3 py-1 font-code text-[10px] font-normal text-black">
                           {reportMap[sample.reportId] || '---'}
                         </TableCell>
                         <TableCell className="px-3 py-1 text-center">
                           <span className={cn(
-                            "px-1.5 py-0.5 text-[8px] font-black rounded-sm border",
+                            "px-1.5 py-0.5 text-[8px] font-normal rounded-sm border",
                             sample.medium === 'agua_superficial' ? "bg-blue-50 border-blue-200 text-blue-700" :
                             sample.medium === 'agua_subterranea' ? "bg-cyan-50 border-cyan-200 text-cyan-700" :
                             "bg-neutral-50 border-neutral-200 text-neutral-700"
@@ -144,14 +144,14 @@ export function ActivityLogDialog({ open, onOpenChange }: ActivityLogDialogProps
                         </TableCell>
                         <TableCell className="px-3 py-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-medium text-neutral-500 uppercase">{sample.analyte}</span>
-                            <span className="text-[10px] font-black text-primary font-code">
+                            <span className="text-[10px] font-normal text-neutral-500 uppercase">{sample.analyte}</span>
+                            <span className="text-[10px] font-normal text-black font-code">
                               : {sample.analyte === 'Evidencia Visual' ? 'FOTOGRAFÍA' : sample.value}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="px-3 py-1 text-[10px] font-bold text-neutral-600 truncate max-w-[120px]" title={sample.userEmail}>
-                          <TechnicianLink email={sample.userEmail} className="font-bold text-neutral-600" />
+                        <TableCell className="px-3 py-1 text-[10px] font-normal text-black truncate max-w-[120px]" title={sample.userEmail}>
+                          <TechnicianLink email={sample.userEmail} className="font-normal text-black" />
                         </TableCell>
                       </TableRow>
                     ))
@@ -162,10 +162,10 @@ export function ActivityLogDialog({ open, onOpenChange }: ActivityLogDialogProps
           )}
         </div>
         <div className="p-2 bg-neutral-100 border-t flex justify-between items-center shrink-0">
-          <span className="text-[8px] font-black uppercase text-neutral-400 tracking-tighter">DEA Data Bus • Audit Log v1.0</span>
+          <span className="text-[8px] font-normal uppercase text-neutral-400 tracking-tighter">DEA Data Bus • Audit Log v1.0</span>
           <div className="flex items-center gap-2">
              <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-             <span className="text-[8px] font-black uppercase text-neutral-600">Sincronizado</span>
+             <span className="text-[8px] font-normal uppercase text-neutral-600">Sincronizado</span>
           </div>
         </div>
       </DialogContent>

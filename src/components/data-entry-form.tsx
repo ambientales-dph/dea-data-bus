@@ -209,7 +209,7 @@ function DataExplorer({
           {stations.length === 0 ? (
             <div className="py-20 text-center opacity-40">
               <MapPin className="h-8 w-8 mx-auto mb-2" />
-              <p className="text-[8px] uppercase tracking-widest">Sin datos</p>
+              <p className="text-[8px] uppercase tracking-widest text-black">Sin datos</p>
             </div>
           ) : (
             <Accordion type="multiple" className="w-full">
@@ -218,7 +218,7 @@ function DataExplorer({
                   <AccordionTrigger className="py-1 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:hidden">
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] text-black uppercase font-normal tracking-widest group-hover:text-primary transition-colors text-left">
-                        {getBasinLabel(basinCode)} <span className="text-[9px] opacity-60 font-bold ml-1">({basinStations.length})</span>
+                        {getBasinLabel(basinCode)} <span className="text-[9px] opacity-60 font-normal ml-1">({basinStations.length})</span>
                       </span>
                     </div>
                   </AccordionTrigger>
@@ -246,7 +246,7 @@ function DataExplorer({
                                   }}
                                   className="text-[11px] text-black font-normal truncate text-left hover:underline underline-offset-4 decoration-primary/30 group-hover:text-primary transition-colors cursor-pointer focus:outline-none"
                                 >
-                                  {station.name} <span className="text-[9px] opacity-60 font-bold ml-1">({stationReports.length})</span>
+                                  {station.name} <span className="text-[9px] opacity-60 font-normal ml-1">({stationReports.length})</span>
                                 </span>
                               </div>
                             </AccordionTrigger>
@@ -270,9 +270,9 @@ function DataExplorer({
                                                 e.stopPropagation();
                                                 onSelectReport(station, report.id);
                                               }}
-                                              className="text-[10px] text-black uppercase font-medium tracking-tight text-left hover:underline group-hover:text-primary transition-colors cursor-pointer focus:outline-none"
+                                              className="text-[10px] text-black uppercase font-normal tracking-tight text-left hover:underline group-hover:text-primary transition-colors cursor-pointer focus:outline-none"
                                             >
-                                              {report.oid} <span className="text-[9px] opacity-60 font-bold ml-1">({planillas.length})</span>
+                                              {report.oid} <span className="text-[9px] opacity-60 font-normal ml-1">({planillas.length})</span>
                                             </span>
                                           </div>
                                         </AccordionTrigger>
@@ -290,7 +290,7 @@ function DataExplorer({
                                                 >
                                                   <div className="w-1 h-1 rounded-full bg-primary/40 shrink-0 group-hover:bg-primary" />
                                                   <span className="hover:underline underline-offset-2 truncate">
-                                                    {getProtocolLabel(p.templateId, p.medium)} • {formatDateShort(p.timestamp)} <span className="opacity-60 font-bold ml-1">({p.count})</span>
+                                                    {getProtocolLabel(p.templateId, p.medium)} • {formatDateShort(p.timestamp)} <span className="opacity-60 font-normal ml-1">({p.count})</span>
                                                   </span>
                                                 </div>
                                               ))}
@@ -1146,7 +1146,7 @@ export function DataEntryForm({
             {currentReportId && (
               <Accordion type="single" collapsible className="w-full border rounded-none overflow-hidden">
                 <AccordionItem value="edit-report" className="border-none">
-                  <AccordionTrigger className="px-4 py-2 hover:bg-neutral-50 hover:no-underline text-xs font-bold uppercase text-black">
+                  <AccordionTrigger className="px-4 py-2 hover:bg-neutral-50 hover:no-underline text-xs font-normal uppercase text-black">
                     <div className="flex items-center gap-2"><Settings className="h-4 w-4" /> Ajustes del Reporte</div>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 py-3 bg-neutral-50 border-t space-y-4">
@@ -1247,9 +1247,9 @@ export function DataEntryForm({
                               <FileText className="h-3.5 w-3.5 text-black" />
                             </div>
                             <div className="text-left">
-                              <p className="text-xs text-black uppercase tracking-tight">{p.formId}</p>
+                              <p className="text-xs text-black uppercase tracking-tight font-normal">{p.formId}</p>
                               <div className="flex flex-col mt-0.5">
-                                <p className="text-[9px] text-neutral-600 uppercase">
+                                <p className="text-[9px] text-black uppercase font-normal">
                                     {protocolLabel} <span className="opacity-60 font-normal ml-1">({p.count})</span>
                                 </p>
                                 <div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
@@ -1264,7 +1264,7 @@ export function DataEntryForm({
                         {isAdmin && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setDeletingPlanilla({ fid: p.formId, label: protocolLabel }); }}
-                            className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-white rounded-full flex items-center justify-center shadow-md z-10"
                             title="BORRAR PLANILLA"
                           >
                             <Trash2 className="h-3 w-3" />

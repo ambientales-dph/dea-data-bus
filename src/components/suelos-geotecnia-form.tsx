@@ -421,12 +421,12 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   };
 
   if (isLoadingExisting) {
-    return <div className="p-12 text-center text-xs animate-pulse font-bold uppercase">Cargando Registro de Sondeo...</div>;
+    return <div className="p-12 text-center text-xs animate-pulse font-normal uppercase text-black">Cargando Registro de Sondeo...</div>;
   }
 
   const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-3";
   const labelClass = "text-[11px] font-normal text-black tracking-tight font-headline leading-none w-1/3 shrink-0 uppercase";
-  const inputClass = "h-7 flex-1 border-none bg-transparent px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none placeholder:text-neutral-300";
+  const inputClass = "h-7 flex-1 border-none bg-transparent px-2 text-[12px] font-code text-black font-normal text-right rounded-none focus:ring-0 outline-none placeholder:text-neutral-300";
 
   return (
     <div className="mx-auto w-full border border-black bg-white font-body shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20 overflow-hidden">
@@ -435,7 +435,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         <div>
           <h1 className="text-sm font-normal uppercase tracking-tight text-black font-headline">Mecánica de suelos • MS-001</h1>
           <div className="flex flex-col gap-0.5 mt-1">
-            <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
+            <p className="text-[10px] text-black font-normal uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
             <div className="flex items-center gap-3 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
               <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
@@ -443,7 +443,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="h-8 text-[10px] font-normal uppercase rounded-none border-black"><Printer className="h-3 w-3 mr-1.5" />Imprimir</Button>
+          <Button variant="outline" size="sm" onClick={() => window.print()} className="h-8 text-[10px] font-normal uppercase rounded-none border-black text-black"><Printer className="h-3 w-3 mr-1.5" />Imprimir</Button>
         </div>
       </div>
 
@@ -504,7 +504,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[10px]">
           <thead>
-            <tr className="bg-neutral-100 font-normal uppercase text-center border-b border-black h-12">
+            <tr className="bg-neutral-100 font-normal uppercase text-center border-b border-black h-12 text-black">
               <th className="border-r border-black p-1 w-14">Prof. (m)</th>
               <th className="border-r border-black p-1 w-10">N.F.</th>
               <th className="border-r border-black p-1 w-16">Columna</th>
@@ -515,7 +515,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
               <th className="border-r border-black p-1 w-14">USCS</th>
               <th className="p-1 w-8 print:hidden"></th>
             </tr>
-            <tr className="bg-neutral-50 text-[8px] font-normal border-b border-black text-center">
+            <tr className="bg-neutral-50 text-[8px] font-normal border-b border-black text-center text-black">
               <th colSpan={5}></th>
               <th className="border-x border-black">LL</th>
               <th className="border-r border-black">IP</th>
@@ -527,39 +527,39 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
               <tr key={capa.id} className="border-b border-black hover:bg-neutral-50 group">
                 <td className="border-r border-black p-1 bg-white">
                   <div className="flex flex-col gap-0.5">
-                    <input value={capa.profundidadInicio} onChange={(e) => handleCapaChange(capa.id, "profundidadInicio", e.target.value)} onBlur={() => saveLayerField(capa.id, "profundidadInicio", capa.profundidadInicio)} className="w-full text-center font-normal border-none outline-none focus:ring-0 p-0" />
+                    <input value={capa.profundidadInicio} onChange={(e) => handleCapaChange(capa.id, "profundidadInicio", e.target.value)} onBlur={() => saveLayerField(capa.id, "profundidadInicio", capa.profundidadInicio)} className="w-full text-center font-normal border-none outline-none focus:ring-0 p-0 text-black" />
                     <div className="h-[1px] bg-neutral-200 mx-1" />
-                    <input value={capa.profundidadFin} onChange={(e) => handleCapaChange(capa.id, "profundidadFin", e.target.value)} onBlur={() => saveLayerField(capa.id, "profundidadFin", capa.profundidadFin)} className="w-full text-center font-normal border-none outline-none focus:ring-0 p-0" />
+                    <input value={capa.profundidadFin} onChange={(e) => handleCapaChange(capa.id, "profundidadFin", e.target.value)} onBlur={() => saveLayerField(capa.id, "profundidadFin", capa.profundidadFin)} className="w-full text-center font-normal border-none outline-none focus:ring-0 p-0 text-black" />
                   </div>
                 </td>
                 <td className="border-r border-black p-1 text-center bg-white">
-                  <input type="checkbox" checked={capa.nivelFreatico} onChange={(e) => { handleCapaChange(capa.id, "nivelFreatico", e.target.checked); saveLayerField(capa.id, "nivelFreatico", e.target.checked); }} className="w-4 h-4 rounded-none" />
+                  <input type="checkbox" checked={capa.nivelFreatico} onChange={(e) => { handleCapaChange(capa.id, "nivelFreatico", e.target.checked); saveLayerField(capa.id, "nivelFreatico", e.target.checked); }} className="w-4 h-4 rounded-none border-black" />
                 </td>
                 <td className="border-r border-black p-0 relative bg-white h-20">
                    <PatronSVG patron={capa.patron} color={capa.colorColumna} />
                    <div className="absolute inset-0 flex flex-col justify-between p-0.5 opacity-0 group-hover:opacity-100 bg-white/80 transition-opacity">
-                      <select value={capa.colorColumna} onChange={(e) => { handleCapaChange(capa.id, "colorColumna", e.target.value); saveLayerField(capa.id, "colorColumna", e.target.value); }} className="text-[8px] border-none p-0 bg-transparent uppercase font-normal">
+                      <select value={capa.colorColumna} onChange={(e) => { handleCapaChange(capa.id, "colorColumna", e.target.value); saveLayerField(capa.id, "colorColumna", e.target.value); }} className="text-[8px] border-none p-0 bg-transparent uppercase font-normal text-black">
                         {coloresDisponibles.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                       </select>
-                      <select value={capa.patron} onChange={(e) => { handleCapaChange(capa.id, "patron", e.target.value); saveLayerField(capa.id, "patron", e.target.value); }} className="text-[8px] border-none p-0 bg-transparent uppercase font-normal">
+                      <select value={capa.patron} onChange={(e) => { handleCapaChange(capa.id, "patron", e.target.value); saveLayerField(capa.id, "patron", e.target.value); }} className="text-[8px] border-none p-0 bg-transparent uppercase font-normal text-black">
                         {patronesDisponibles.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                       </select>
                    </div>
                 </td>
                 <td className="border-r border-black p-1 bg-white">
-                  <Textarea value={capa.descripcion} onChange={(e) => handleCapaChange(capa.id, "descripcion", e.target.value)} onBlur={() => saveLayerField(capa.id, "descripcion", capa.descripcion)} className="border-none text-[10px] min-h-[70px] p-1 font-normal resize-none leading-tight" />
+                  <Textarea value={capa.descripcion} onChange={(e) => handleCapaChange(capa.id, "descripcion", e.target.value)} onBlur={() => saveLayerField(capa.id, "descripcion", capa.descripcion)} className="border-none text-[10px] min-h-[70px] p-1 font-normal resize-none leading-tight text-black" />
                 </td>
                 <td className="border-r border-black p-1 bg-white">
-                  <input value={capa.golpesSPT} onChange={(e) => handleCapaChange(capa.id, "golpesSPT", e.target.value)} onBlur={() => saveLayerField(capa.id, "golpesSPT", capa.golpesSPT)} className="w-full text-center border-none font-normal font-code" placeholder="N" />
+                  <input value={capa.golpesSPT} onChange={(e) => handleCapaChange(capa.id, "golpesSPT", e.target.value)} onBlur={() => saveLayerField(capa.id, "golpesSPT", capa.golpesSPT)} className="w-full text-center border-none font-normal font-code text-black" placeholder="N" />
                 </td>
                 <td className="border-r border-black p-1 bg-white">
-                  <input value={capa.limiteLL} onChange={(e) => handleCapaChange(capa.id, "limiteLL", e.target.value)} onBlur={() => saveLayerField(capa.id, "limiteLL", capa.limiteLL)} className="w-full text-center border-none font-normal" />
+                  <input value={capa.limiteLL} onChange={(e) => handleCapaChange(capa.id, "limiteLL", e.target.value)} onBlur={() => saveLayerField(capa.id, "limiteLL", capa.limiteLL)} className="w-full text-center border-none font-normal text-black" />
                 </td>
                 <td className="border-r border-black p-1 bg-white">
-                  <input value={capa.limiteIP} onChange={(e) => handleCapaChange(capa.id, "limiteIP", e.target.value)} onBlur={() => saveLayerField(capa.id, "limiteIP", capa.limiteIP)} className="w-full text-center border-none font-normal" />
+                  <input value={capa.limiteIP} onChange={(e) => handleCapaChange(capa.id, "limiteIP", e.target.value)} onBlur={() => saveLayerField(capa.id, "limiteIP", capa.limiteIP)} className="w-full text-center border-none font-normal text-black" />
                 </td>
                 <td className="border-r border-black p-1 bg-white">
-                  <input value={capa.humedad} onChange={(e) => handleCapaChange(capa.id, "humedad", e.target.value)} onBlur={() => saveLayerField(capa.id, "humedad", capa.humedad)} className="w-full text-center border-none font-normal" />
+                  <input value={capa.humedad} onChange={(e) => handleCapaChange(capa.id, "humedad", e.target.value)} onBlur={() => saveLayerField(capa.id, "humedad", capa.humedad)} className="w-full text-center border-none font-normal text-black" />
                 </td>
                 <td className="border-r border-black p-1 bg-white">
                   <input value={capa.clasificacionUSCS} onChange={(e) => handleCapaChange(capa.id, "clasificacionUSCS", e.target.value)} onBlur={() => saveLayerField(capa.id, "clasificacionUSCS", capa.clasificacionUSCS)} className="w-full text-center border-none uppercase font-normal text-primary" placeholder="ML" />
@@ -597,11 +597,11 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       </div>
 
       <div className="p-3 border-b border-black print:hidden">
-        <Button variant="outline" size="sm" onClick={agregarCapa} className="w-full h-10 border-dashed border-neutral-400 font-normal uppercase text-[10px] tracking-widest"><Plus className="h-4 w-4 mr-2" />Agregar Estrato al Perfil</Button>
+        <Button variant="outline" size="sm" onClick={agregarCapa} className="w-full h-10 border-dashed border-neutral-400 font-normal uppercase text-[10px] tracking-widest text-black"><Plus className="h-4 w-4 mr-2" />Agregar Estrato al Perfil</Button>
       </div>
 
       {/* Referencias Técnicas */}
-      <div className="grid grid-cols-2 border-b border-black text-[9px] font-normal bg-neutral-50">
+      <div className="grid grid-cols-2 border-b border-black text-[9px] font-normal bg-neutral-50 text-black">
         <div className="p-2 border-r border-black space-y-0.5">
           <p><span className="font-normal">MI:</span> Muestra inalterada</p>
           <p><span className="font-normal">MA:</span> Muestra alterada</p>
@@ -616,10 +616,10 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
 
       <div className="border-b border-black">
         <div className="bg-neutral-100 p-2 border-b border-black flex items-center gap-2">
-           <span className="font-normal text-[10px] uppercase">Observaciones:</span>
+           <span className="font-normal text-[10px] uppercase text-black">Observaciones:</span>
         </div>
         <div className="flex">
-          <Textarea value={formData.observaciones} onChange={(e) => handleFormChange("observaciones", e.target.value)} className="border-0 font-normal text-xs min-h-[80px] p-3 resize-none rounded-none" />
+          <Textarea value={formData.observaciones} onChange={(e) => handleFormChange("observaciones", e.target.value)} className="border-0 font-normal text-xs min-h-[80px] p-3 resize-none rounded-none text-black" />
           <button onClick={() => saveParam("observaciones", 'General')} className={cn("p-4 bg-white border-l border-black hover:bg-neutral-50 transition-colors", savedFields["observaciones"] ? "text-green-600" : "text-black")}>
             {savingFields["observaciones"] ? <Loader2 className="h-4 w-4 animate-spin" /> : savedFields["observaciones"] ? <div className="rounded-full bg-green-100 p-1"><Check className="h-4 w-4" /></div> : <Check className="h-4 w-4" />}
           </button>

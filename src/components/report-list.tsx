@@ -154,11 +154,11 @@ export function ReportList({ stationId, onOpenReport }: ReportListProps) {
     <TooltipProvider>
       <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
         <CardHeader className="pb-1 pt-3 px-4">
-          <CardTitle className="text-md flex items-center gap-2 text-foreground font-black uppercase tracking-tight">
-            <Calendar className="h-4 w-4 text-foreground" />
+          <CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight">
+            <Calendar className="h-4 w-4 text-black" />
             Historial de Reportes
           </CardTitle>
-          <CardDescription className="text-[10px] font-bold">
+          <CardDescription className="text-[10px] font-normal text-black uppercase">
             Todos los muestreos registrados en esta estación.
           </CardDescription>
         </CardHeader>
@@ -166,9 +166,9 @@ export function ReportList({ stationId, onOpenReport }: ReportListProps) {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow className="h-8">
-                <TableHead className="text-[9px] uppercase font-bold px-3">Fecha</TableHead>
-                <TableHead className="text-[9px] uppercase font-bold px-3">OID</TableHead>
-                <TableHead className="text-[9px] uppercase font-bold px-3">Proyecto</TableHead>
+                <TableHead className="text-[9px] uppercase font-normal px-3 text-black">Fecha</TableHead>
+                <TableHead className="text-[9px] uppercase font-normal px-3 text-black">OID</TableHead>
+                <TableHead className="text-[9px] uppercase font-normal px-3 text-black">Proyecto</TableHead>
                 <TableHead className="w-24 px-3 text-right"></TableHead>
               </TableRow>
             </TableHeader>
@@ -182,28 +182,28 @@ export function ReportList({ stationId, onOpenReport }: ReportListProps) {
               ) : (
                 sortedReports.map((report: any) => (
                   <TableRow key={report.id} className="hover:bg-primary/5 transition-colors group h-9">
-                    <TableCell className="px-3 py-0 font-code text-[10px] text-foreground font-bold">
+                    <TableCell className="px-3 py-0 font-code text-[10px] text-black font-normal">
                       {formatDate(report.createdAt)}
                     </TableCell>
                     <TableCell className="px-3 py-0">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="text-[10px] font-code text-foreground font-black uppercase cursor-help hover:underline decoration-foreground/30 transition-all">
-                            {report.oid || report.id.substring(0, 8)} <span className="text-[9px] opacity-60 font-bold ml-1">({planillaCounts[report.id] || 0})</span>
+                          <span className="text-[10px] font-code text-black font-normal uppercase cursor-help hover:underline decoration-black/30 transition-all">
+                            {report.oid || report.id.substring(0, 8)} <span className="text-[9px] opacity-60 font-normal ml-1">({planillaCounts[report.id] || 0})</span>
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="p-2 w-auto min-w-[180px] shadow-2xl border-primary/20">
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-1.5 border-b pb-1.5 mb-1">
-                              <Users className="h-3.5 w-3.5 text-foreground" />
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">Técnicos Colaboradores</span>
+                              <Users className="h-3.5 w-3.5 text-black" />
+                              <span className="text-[10px] font-normal uppercase tracking-wider text-black">Técnicos Colaboradores</span>
                             </div>
                             <div className="flex flex-col gap-1">
                               {report.editors && report.editors.length > 0 ? (
                                 report.editors.map((email: string) => (
-                                  <div key={email} className="flex items-center gap-2 text-[10px] font-bold bg-muted/30 px-2 py-1 rounded text-foreground">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-foreground" />
-                                    <TechnicianLink email={email} className="text-[10px] font-bold" />
+                                  <div key={email} className="flex items-center gap-2 text-[10px] font-normal bg-muted/30 px-2 py-1 rounded text-black">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-black" />
+                                    <TechnicianLink email={email} className="text-[10px] font-normal" />
                                   </div>
                                 ))
                               ) : (
@@ -216,8 +216,8 @@ export function ReportList({ stationId, onOpenReport }: ReportListProps) {
                     </TableCell>
                     <TableCell className="px-3 py-0">
                       <div className="flex items-center gap-1">
-                        <Briefcase className="h-2.5 w-2.5 text-muted-foreground" />
-                        <span className="text-[10px] font-black text-foreground truncate max-w-[80px] uppercase" title={report.trelloCardName || 'Sin proyecto'}>
+                        <Briefcase className="h-2.5 w-2.5 text-neutral-400" />
+                        <span className="text-[10px] font-normal text-black truncate max-w-[80px] uppercase" title={report.trelloCardName || 'Sin proyecto'}>
                           {getProjectCode(report.trelloCardName || '')}
                         </span>
                       </div>
@@ -227,7 +227,7 @@ export function ReportList({ stationId, onOpenReport }: ReportListProps) {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-6 w-6 text-foreground hover:bg-primary/10"
+                          className="h-6 w-6 text-black hover:bg-primary/10"
                           onClick={() => onOpenReport(report.id)}
                           title="Gestionar Planillas"
                         >
@@ -245,7 +245,7 @@ export function ReportList({ stationId, onOpenReport }: ReportListProps) {
                           </Button>
                         )}
                         <div 
-                          className="flex items-center px-0.5 text-[9px] font-black text-foreground min-w-[14px] justify-center" 
+                          className="flex items-center px-0.5 text-[9px] font-normal text-black min-w-[14px] justify-center" 
                           title="Cantidad de parámetros"
                         >
                           {analyteCounts[report.id] || 0}
