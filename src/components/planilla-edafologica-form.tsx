@@ -137,27 +137,19 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     }
   };
 
-  // Lógica de máscara para Color Munsell: "10Y 2/1"
   const formatMunsell = (val: string) => {
-    let clean = val.toUpperCase().replace(/[^0-9A-Z/ ]/g, '');
+    let clean = val.toUpperCase().replace(/[^0-9A-Z/.]/g, '');
     
-    // Quitar espacios y barras para re-formatear
-    let digits = clean.replace(/[ /]/g, '');
-    
-    if (digits.length > 3) {
-      // XX L (Espacio) V / C
-      // Intentamos reconstruir: Hue (2-3 chars) + Value + Chroma
-      // Para simplificar, si tiene más de 3 caracteres y no tiene el formato, lo ayudamos
-      if (!clean.includes(' ') && digits.length >= 3) {
-        clean = clean.slice(0, 3) + ' ' + clean.slice(3);
-      }
-      if (clean.includes(' ') && !clean.includes('/') && clean.length >= 6) {
-        const parts = clean.split(' ');
-        if (parts[1] && parts[1].length >= 2) {
-           clean = parts[0] + ' ' + parts[1].slice(0, 1) + '/' + parts[1].slice(1);
-        }
-      }
+    // Intentar formatear dinámicamente si no tiene espacios ni barras
+    // Hue (ej: 10YR, 2.5Y) + Value (1 dígito) + / + Chroma (1 dígito)
+    const match = clean.replace(/[\s/]/g, '').match(/^([0-9.]+[A-Z]+)(\d)(\d)?$/);
+    if (match) {
+      const hue = match[1];
+      const value = match[2];
+      const chroma = match[3] || "";
+      return `${hue} ${value}${chroma ? "/" + chroma : ""}`;
     }
+    
     return clean;
   };
 
@@ -305,9 +297,21 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
             {renderSelect(`${hPrefix} Estructura`, "Estructura", "Horizontes", [
               {v: "granular", l: "Granular"}, {v: "bloques_ang", l: "Bloques Angulares"}, {v: "bloques_sub", l: "Bloques Subangulares"}, {v: "prismatica", l: "Prismática"}, {v: "columnar", l: "Columnar"}, {v: "laminar", l: "Laminar"}, {v: "sin_estructura", l: "Sin Estructura"}
             ])}
-            {renderSelect(`${hPrefix} Consistencia`, "Consistencia (Seco)", "Horizontes", [
+            
+            {/* Consistencia en 3 estados */}
+            {renderSelect(`${hPrefix} Consistencia_Seco`, "Consistencia (Seco)", "Horizontes", [
               {v: "suelto", l: "Suelto"}, {v: "blando", l: "Blando"}, {v: "m_firme", l: "Moderadamente Firme"}, {v: "firme", l: "Firme"}, {v: "muy_firme", l: "Muy Firme"}, {v: "extrem_firme", l: "Extremadamente Firme"}
             ])}
+            {renderSelect(`${hPrefix} Consistencia_Humedo`, "Consistencia (Húmedo)", "Horizontes", [
+              {v: "suelto", l: "Suelto"}, {v: "muy_friable", l: "Muy Friable"}, {v: "friable", l: "Friable"}, {v: "firme", l: "Firme"}, {v: "muy_firme", l: "Muy Firme"}, {v: "extrem_firme", l: "Extremadamente Firme"}
+            ])}
+            {renderSelect(`${hPrefix} Consistencia_Mojado_Adh`, "Consistencia (Mojado): Adherencia", "Horizontes", [
+              {v: "no_pegajoso", l: "No pegajoso"}, {v: "l_pegajoso", l: "Ligeramente pegajoso"}, {v: "pegajoso", l: "Pegajoso"}, {v: "m_pegajoso", l: "Muy pegajoso"}
+            ])}
+            {renderSelect(`${hPrefix} Consistencia_Mojado_Plas`, "Consistencia (Mojado): Plasticidad", "Horizontes", [
+              {v: "no_plastico", l: "No plástico"}, {v: "l_plastico", l: "Ligeramente plástico"}, {v: "plastico", l: "Plástico"}, {v: "m_plastico", l: "Muy plástico"}
+            ])}
+
             {renderSelect(`${hPrefix} Limite`, "Límite Inferior", "Horizontes", [
               {v: "abrupto", l: "Abrupto"}, {v: "claro", l: "Claro"}, {v: "gradual", l: "Gradual"}, {v: "difuso", l: "Difuso"}
             ])}
