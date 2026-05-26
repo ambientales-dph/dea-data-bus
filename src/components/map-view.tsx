@@ -204,7 +204,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       });
     });
 
-    // Hover handler
+    // Hover handler - Actualizado para soportar listas en clusters
     map.on('pointermove', (event) => {
       if (event.dragging) return;
       
@@ -215,18 +215,24 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       });
 
       if (feature) {
-        let name = '';
+        let content = '';
         // Manejo de clusters
         const clusterFeatures = feature.get('features');
-        if (clusterFeatures && clusterFeatures.length === 1) {
-          name = clusterFeatures[0].get('name');
-        } else if (!clusterFeatures) {
+        if (clusterFeatures) {
+          if (clusterFeatures.length === 1) {
+            content = clusterFeatures[0].get('name');
+          } else {
+            // Es un cluster con múltiples estaciones
+            const names = clusterFeatures.map((f: any) => f.get('name')).sort();
+            content = `Estaciones (${clusterFeatures.length}):\n• ` + names.join('\n• ');
+          }
+        } else {
           // No es un cluster (ej: selección actual)
-          name = feature.get('name');
+          content = feature.get('name');
         }
 
-        if (name) {
-          tooltipRef.current!.innerHTML = name;
+        if (content) {
+          tooltipRef.current!.innerHTML = content;
           overlay.setPosition(event.coordinate);
           tooltipRef.current!.style.display = 'block';
           map.getTargetElement().style.cursor = 'pointer';
