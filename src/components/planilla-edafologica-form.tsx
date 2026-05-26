@@ -2,14 +2,12 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs } from 'firebase/firestore';
-import { useFirestore, useUser, useDoc } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, Clock, User, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Check, Clock, User, Plus, Trash2, Mountain, ThermometerSun, Layers as LayersIcon, Droplets } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
@@ -80,9 +78,9 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     fetchExistingData();
   }, [db, reportId, formId, user?.email]);
 
-  const saveParam = async (name: string, category: string) => {
+  const saveParam = async (name: string, category: string, valueOverride?: any) => {
     if (!user || !db) return;
-    const value = formData[name];
+    const value = valueOverride !== undefined ? valueOverride : formData[name];
     if (value === null || value === undefined || value === "") return;
 
     setSavingFields(prev => ({ ...prev, [name]: true }));
@@ -139,9 +137,38 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     }
   };
 
-  const sectionHeaderClass = "flex items-center bg-neutral-100 px-3 py-1.5 border-y border-neutral-400 mt-4 first:mt-0";
+  // Lógica de máscara para Color Munsell: "10Y 2/1"
+  const formatMunsell = (val: string) => {
+    let clean = val.toUpperCase().replace(/[^0-9A-Z/ ]/g, '');
+    
+    // Quitar espacios y barras para re-formatear
+    let digits = clean.replace(/[ /]/g, '');
+    
+    if (digits.length > 3) {
+      // XX L (Espacio) V / C
+      // Intentamos reconstruir: Hue (2-3 chars) + Value + Chroma
+      // Para simplificar, si tiene más de 3 caracteres y no tiene el formato, lo ayudamos
+      if (!clean.includes(' ') && digits.length >= 3) {
+        clean = clean.slice(0, 3) + ' ' + clean.slice(3);
+      }
+      if (clean.includes(' ') && !clean.includes('/') && clean.length >= 6) {
+        const parts = clean.split(' ');
+        if (parts[1] && parts[1].length >= 2) {
+           clean = parts[0] + ' ' + parts[1].slice(0, 1) + '/' + parts[1].slice(1);
+        }
+      }
+    }
+    return clean;
+  };
+
+  const handleMunsellChange = (name: string, val: string) => {
+    const formatted = formatMunsell(val);
+    handleInputChange(name, formatted);
+  };
+
+  const sectionHeaderClass = "flex items-center gap-2 bg-neutral-100 px-3 py-2 border-y border-neutral-400 mt-6 first:mt-0";
   const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-3";
-  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none w-1/2";
+  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none w-1/3";
   const inputClass = "h-7 flex-1 border-none bg-transparent px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none placeholder:text-neutral-300";
 
   const renderField = (name: string, label: string, cat: string, placeholder = "---") => (
@@ -162,21 +189,48 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     </div>
   );
 
-  const renderRadio = (name: string, label: string, cat: string, options: {v: string, l: string}[]) => (
-    <div className="flex flex-col py-3 border-b border-neutral-300 px-3 hover:bg-neutral-50">
-      <label className="text-[11px] font-black text-black mb-3">{label}</label>
-      <RadioGroup 
-        value={formData[name] ?? ""} 
-        onValueChange={(val) => { handleInputChange(name, val); saveParam(name, cat); }}
-        className="flex flex-wrap gap-x-4 gap-y-2"
-      >
-        {options.map(opt => (
-          <div key={opt.v} className="flex items-center gap-1">
-            <RadioGroupItem value={opt.v} id={`${name}-${opt.v}`} className="h-3.5 w-3.5 border-black" />
-            <label htmlFor={`${name}-${opt.v}`} className="text-[10px] font-bold cursor-pointer">{opt.l}</label>
-          </div>
-        ))}
-      </RadioGroup>
+  const renderMunsellField = (name: string, label: string, cat: string) => (
+    <div className={rowClass}>
+      <label className={labelClass}>{label}</label>
+      <div className="flex items-center gap-2 flex-1 justify-end">
+        <input 
+          type="text" 
+          className={cn(inputClass, "uppercase")}
+          value={formData[name] ?? ""} 
+          onChange={(e) => handleMunsellChange(name, e.target.value)} 
+          placeholder="10YR 3/2"
+        />
+        <button onClick={() => saveParam(name, cat)} className={cn("p-1 transition-colors", savedFields[name] ? "text-green-600" : "text-black hover:text-primary")}>
+          {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields[name] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderSelect = (name: string, label: string, cat: string, options: {v: string, l: string}[]) => (
+    <div className={rowClass}>
+      <label className={labelClass}>{label}</label>
+      <div className="flex items-center gap-2 flex-1 justify-end">
+        <Select 
+          value={formData[name] ?? ""} 
+          onValueChange={(val) => {
+            handleInputChange(name, val);
+            saveParam(name, cat, val);
+          }}
+        >
+          <SelectTrigger className="h-7 border-none bg-transparent shadow-none focus:ring-0 text-[11px] font-bold text-black text-right flex-row-reverse p-0 w-full justify-start gap-2">
+            <SelectValue placeholder="Seleccionar..." />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map(opt => (
+              <SelectItem key={opt.v} value={opt.v} className="text-xs font-bold">{opt.l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className={cn("p-1", savedFields[name] ? "text-green-600" : "text-transparent")}>
+          {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin text-black" /> : <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5" /></div>}
+        </div>
+      </div>
     </div>
   );
 
@@ -192,73 +246,91 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
 
   return (
     <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
-      <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-2 flex justify-between items-center">
+      <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-3 flex justify-between items-center">
         <div>
-          <h1 className="text-xs font-black uppercase tracking-tight text-black font-headline">Suelos • Planilla Edafologica</h1>
-          <div className="flex flex-col gap-0.5 mt-0.5">
-            <p className="text-[9px] text-neutral-600 font-bold uppercase leading-none">ID: {formId.substring(0, 8)}</p>
-            <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter">
-              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
-              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
+          <h1 className="text-sm font-black uppercase tracking-tight text-black font-headline">Suelos • Planilla Edafológica</h1>
+          <div className="flex flex-col gap-0.5 mt-1">
+            <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID: {formId.substring(0, 12)}</p>
+            <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter mt-1">
+              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">1. Datos Generales y Ubicacion</span></div>
-      {renderField("Lugar", "Lugar", "General")}
-      {renderField("Serie", "Serie", "Clasificacion")}
-      {renderField("Fase", "Fase", "Clasificacion")}
-      {renderField("Simbolo", "Simbolo", "Clasificacion")}
-      {renderField("Paisaje", "Paisaje (Tipo/Forma)", "Entorno")}
-      {renderField("Vegetacion", "Vegetacion Natural / Cultivos", "Entorno")}
+      <div className={sectionHeaderClass}><Mountain className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-wider text-black">1. Identificación y Ubicación</span></div>
+      {renderField("Lugar", "Lugar / Localidad", "General")}
+      {renderField("Punto_Muestreo", "Punto Específico", "General")}
+      {renderField("Serie", "Serie de Suelo", "Clasificación")}
+      {renderField("Fase", "Fase", "Clasificación")}
+      {renderField("Simbolo", "Símbolo Cartográfico", "Clasificación")}
+      {renderField("Paisaje", "Paisaje / Forma", "Entorno")}
+      {renderField("Material_Originario", "Material Originario", "Geología")}
 
-      <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">2. Propiedades del Suelo</span></div>
-      {renderRadio("Drenaje", "Drenaje", "Propiedades", [
-        {v: "0", l: "0-M.Pobre"}, {v: "1", l: "1-Pobre"}, {v: "2", l: "2-Imperf."}, {v: "3", l: "3-M.Bueno"}, {v: "4", l: "4-Bueno"}, {v: "5", l: "5-Algo Exc."}, {v: "6", l: "6-Exc."}
+      <div className={sectionHeaderClass}><ThermometerSun className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-wider text-black">2. Factores Ambientales</span></div>
+      {renderField("Clima", "Clima / Región", "Entorno")}
+      {renderField("Vegetacion", "Vegetación / Cultivo", "Entorno")}
+      {renderSelect("Drenaje", "Drenaje", "Propiedades", [
+        {v: "0", l: "0 - Muy Pobre"}, {v: "1", l: "1 - Pobre"}, {v: "2", l: "2 - Imperfecto"}, {v: "3", l: "3 - Moderadamente Bueno"}, {v: "4", l: "4 - Bueno"}, {v: "5", l: "5 - Algo Excesivo"}, {v: "6", l: "6 - Excesivo"}
       ])}
-      {renderRadio("Relieve", "Relieve", "Propiedades", [
-        {v: "exc", l: "Excesivo"}, {v: "norm", l: "Normal"}, {v: "subn", l: "Subnormal"}, {v: "conc", l: "Concavo"}
+      {renderSelect("Relieve", "Relieve", "Propiedades", [
+        {v: "excesivo", l: "Excesivo"}, {v: "normal", l: "Normal"}, {v: "subnormal", l: "Subnormal"}, {v: "concavo", l: "Cóncavo"}
       ])}
-      {renderRadio("Inundacion", "Peligro de Inundacion", "Propiedades", [
-        {v: "1", l: "C1"}, {v: "2", l: "C2"}, {v: "3", l: "C3"}, {v: "4", l: "C4"}, {v: "5", l: "C5"}
+      {renderSelect("Inundacion", "Peligro Inundación", "Propiedades", [
+        {v: "C1", l: "C1 - Muy Bajo"}, {v: "C2", l: "C2 - Bajo"}, {v: "C3", l: "C3 - Moderado"}, {v: "C4", l: "C4 - Alto"}, {v: "C5", l: "C5 - Muy Alto"}
       ])}
-      {renderField("Pendiente", "Pendiente %", "Propiedades")}
+      {renderField("Pendiente", "Pendiente (%)", "Propiedades")}
       {renderField("Prof_Napa", "Profundidad Napa (m)", "Propiedades")}
 
-      <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">3. Horizontes</span></div>
+      <div className={sectionHeaderClass}><LayersIcon className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-wider text-black">3. Perfil del Suelo (Horizontes)</span></div>
       {Array.from({ length: horizontesCount }).map((_, i) => {
         const hIdx = i + 1;
         const hPrefix = `H${hIdx}:`;
         return (
-          <div key={hIdx} className="mb-4 border-b-2 border-neutral-100 pb-2">
-            <div className="bg-neutral-50 px-3 py-1 flex justify-between items-center border-y border-neutral-200">
-              <span className="text-[10px] font-black uppercase text-neutral-500">Horizonte {hIdx}</span>
+          <div key={hIdx} className="mb-6 border-b-2 border-neutral-200 pb-2">
+            <div className="bg-neutral-50 px-3 py-1.5 flex justify-between items-center border-y border-neutral-300">
+              <span className="text-[11px] font-black uppercase text-primary tracking-widest">Horizonte {hIdx}</span>
               {hIdx > 1 && hIdx === horizontesCount && (
-                <button onClick={() => setHorizontesCount(prev => prev - 1)} className="text-destructive p-1 hover:bg-destructive/10 rounded"><Trash2 className="h-3 w-3" /></button>
+                <button onClick={() => setHorizontesCount(prev => prev - 1)} className="text-destructive p-1 hover:bg-destructive/10 rounded transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
               )}
             </div>
-            {renderField(`${hPrefix} Horizonte`, "Nombre Horizonte (A, Bt, etc)", "Horizontes")}
+            {renderField(`${hPrefix} Horizonte`, "Denominación (A, Bt, C...)", "Horizontes")}
             {renderField(`${hPrefix} Profundidad`, "Profundidad (cm)", "Horizontes", "0-20")}
-            {renderField(`${hPrefix} Textura`, "Textura", "Horizontes", "Franco-arcilloso")}
-            {renderField(`${hPrefix} Estructura`, "Estructura (Tipo/Clase/Grado)", "Horizontes")}
-            {renderField(`${hPrefix} Color_Seco`, "Color Munsell (Seco)", "Horizontes")}
+            {renderMunsellField(`${hPrefix} Color_Seco`, "Color Munsell (Seco)", "Horizontes")}
+            {renderMunsellField(`${hPrefix} Color_Humedo`, "Color Munsell (Húmedo)", "Horizontes")}
+            {renderSelect(`${hPrefix} Textura`, "Textura", "Horizontes", [
+              {v: "A", l: "Arenosa"}, {v: "AF", l: "Arena Franca"}, {v: "FA", l: "Franco Arenosa"}, {v: "F", l: "Franca"}, {v: "FL", l: "Franco Limosa"}, {v: "L", l: "Limosa"}, {v: "FArA", l: "Franco Arcillo Arenosa"}, {v: "FAr", l: "Franco Arcillosa"}, {v: "FArL", l: "Franco Arcillo Limosa"}, {v: "ArA", l: "Arcillo Arenosa"}, {v: "ArL", l: "Arcillo Limosa"}, {v: "Ar", l: "Arcillosa"}
+            ])}
+            {renderSelect(`${hPrefix} Estructura`, "Estructura", "Horizontes", [
+              {v: "granular", l: "Granular"}, {v: "bloques_ang", l: "Bloques Angulares"}, {v: "bloques_sub", l: "Bloques Subangulares"}, {v: "prismatica", l: "Prismática"}, {v: "columnar", l: "Columnar"}, {v: "laminar", l: "Laminar"}, {v: "sin_estructura", l: "Sin Estructura"}
+            ])}
+            {renderSelect(`${hPrefix} Consistencia`, "Consistencia (Seco)", "Horizontes", [
+              {v: "suelto", l: "Suelto"}, {v: "blando", l: "Blando"}, {v: "m_firme", l: "Moderadamente Firme"}, {v: "firme", l: "Firme"}, {v: "muy_firme", l: "Muy Firme"}, {v: "extrem_firme", l: "Extremadamente Firme"}
+            ])}
+            {renderSelect(`${hPrefix} Limite`, "Límite Inferior", "Horizontes", [
+              {v: "abrupto", l: "Abrupto"}, {v: "claro", l: "Claro"}, {v: "gradual", l: "Gradual"}, {v: "difuso", l: "Difuso"}
+            ])}
             {renderField(`${hPrefix} pH`, "pH", "Horizontes")}
+            {renderSelect(`${hPrefix} Raices`, "Raíces", "Horizontes", [
+              {v: "ninguna", l: "Ninguna"}, {v: "pocas", l: "Pocas"}, {v: "frecuentes", l: "Frecuentes"}, {v: "muchas", l: "Muchas"}
+            ])}
           </div>
         );
       })}
       <div className="px-3 py-2">
-        <Button variant="outline" className="w-full h-8 border-dashed border-neutral-400 text-[10px] font-bold uppercase tracking-widest text-neutral-500" onClick={() => setHorizontesCount(prev => prev + 1)}>
-          <Plus className="h-3 w-3 mr-2" /> Agregar Horizonte
+        <Button variant="outline" className="w-full h-10 border-dashed border-neutral-400 text-[11px] font-black uppercase tracking-widest text-neutral-500 hover:bg-neutral-50" onClick={() => setHorizontesCount(prev => prev + 1)}>
+          <Plus className="h-4 w-4 mr-2" /> Agregar Horizonte al Perfil
         </Button>
       </div>
 
+      <div className={sectionHeaderClass}><Droplets className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-wider text-black">4. Registro Fotográfico</span></div>
       <div className="px-3 py-4">
         <PhotoRegistry reportId={reportId} formId={formId} stationId={stationId} medium="suelo" />
       </div>
 
-      <div className="bg-white p-4">
-        <button onClick={onClose} className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-md">Finalizar y Cerrar Planilla</button>
+      <div className="bg-white p-4 border-t border-neutral-200">
+        <button onClick={onClose} className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-[0.98]">Finalizar y Cerrar Planilla</button>
       </div>
     </div>
   );
