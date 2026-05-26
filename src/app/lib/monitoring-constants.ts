@@ -31,13 +31,13 @@ export const MONITORING_TEMPLATES = [
   },
   {
     id: "suelo_edafologico",
-    nombre: "Suelo (Protocolo PE-001)",
+    nombre: "Perfil Edafológico (Protocolo PE-001)",
     medium: "suelo",
     parametros: [] // Se maneja dinámicamente en su componente específico
   },
   {
     id: "suelo_geotecnia",
-    nombre: "Sondeo Geotécnico (Protocolo GT-001)",
+    nombre: "Mecánica de suelos (MS-001)",
     medium: "suelo",
     parametros: [] // Se maneja dinámicamente en su componente específico
   }

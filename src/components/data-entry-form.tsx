@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -6,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, query, where, orderBy, limit, getDocs, addDoc, deleteDoc, getDoc } from 'firebase/firestore';
-import { useFirestore, useUser, useDoc, useCollection, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useUser, useDoc, useCollection, errorEmitter, FirestorePermissionError, useStorage } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +24,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { MONITORING_TEMPLATES, BASIN_CODES_DATA } from '@/app/lib/monitoring-constants';
 import { isUserAdmin } from '@/app/lib/auth-config';
 import { AdminDeleteDialog } from './admin-delete-dialog';
+import { ref, listAll, deleteObject } from 'firebase/storage';
 
 function isPointInPoly(pt: [number, number], poly: [number, number][][]) {
   for (let i = 0; i < poly.length; i++) {
@@ -172,8 +172,8 @@ function DataExplorer({
   };
 
   const getProtocolLabel = (templateId: string, medium: string) => {
-    if (templateId === 'suelo_geotecnia') return 'Geotecnia (GT-001)';
-    if (templateId === 'suelo_edafologico') return 'Edafología (PE-001)';
+    if (templateId === 'suelo_geotecnia') return 'Mecánica de suelos (MS-001)';
+    if (templateId === 'suelo_edafologico') return 'Perfil Edafológico (PE-001)';
     if (medium === 'agua_superficial') return 'Agua Superficial (AS-001)';
     if (medium === 'agua_subterranea') return 'Freatímetro (FTA-001)';
     return medium.replace('_', ' ');
@@ -335,6 +335,7 @@ export function DataEntryForm({
 }) {
   const { toast } = useToast();
   const db = useFirestore();
+  const storage = useStorage();
   const { user } = useUser();
   const [isGeneratingName, setIsGeneratingName] = useState(false);
   const [isStartingReport, setIsStartingReport] = useState(false);
@@ -351,6 +352,9 @@ export function DataEntryForm({
 
   const [editLat, setEditLat] = useState('');
   const [editLon, setEditLon] = useState('');
+
+  const [deletingPlanilla, setDeletingPlanilla] = useState<{fid: string, label: string} | null>(null);
+  const [isDeletingPlanilla, setIsDeletingPlanilla] = useState(false);
 
   const lastPointKeyRef = useRef<string | null>(null);
   const isInitialLoadRef = useRef(true);
@@ -939,6 +943,41 @@ export function DataEntryForm({
     setActiveView('report-entry');
   };
 
+  const handleDeletePlanilla = async () => {
+    if (!deletingPlanilla || !db || !currentReportId) return;
+    setIsDeletingPlanilla(true);
+    try {
+      const q = query(
+        collection(db, 'samples'), 
+        where('reportId', '==', currentReportId),
+        where('formId', '==', deletingPlanilla.fid)
+      );
+      const snap = await getDocs(q);
+
+      for (const sDoc of snap.docs) {
+        await deleteDoc(doc(db, 'samples', sDoc.id));
+      }
+
+      if (storage) {
+        const planillaStorageRef = ref(storage, `reports/${currentReportId}/${deletingPlanilla.fid}`);
+        try {
+          const listRes = await listAll(planillaStorageRef);
+          for (const item of listRes.items) {
+            await deleteObject(item);
+          }
+        } catch (storageErr) {}
+      }
+
+      toast({ title: "Planilla borrada", description: "Se eliminaron los datos y las evidencias visuales." });
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Error", description: "No se pudo borrar la planilla." });
+    } finally {
+      setIsDeletingPlanilla(false);
+      setDeletingPlanilla(null);
+    }
+  };
+
   const handleExplorerSelectStation = (point: SelectedPoint) => {
     onPointUpdate(point);
     lastPointKeyRef.current = `${point.lat}-${point.lon}-${point.stationId}`;
@@ -986,8 +1025,8 @@ export function DataEntryForm({
   }
 
   const getProtocolLabel = (protocolId: string | undefined, medium: string) => {
-    if (protocolId === 'suelo_geotecnia') return 'Geotecnia (GT-001)';
-    if (protocolId === 'suelo_edafologico') return 'Edafología (PE-001)';
+    if (protocolId === 'suelo_geotecnia') return 'Mecánica de suelos (MS-001)';
+    if (protocolId === 'suelo_edafologico') return 'Perfil Edafológico (PE-001)';
     if (medium === 'agua_superficial') return 'Agua Superficial (AS-001)';
     if (medium === 'agua_subterranea') return 'Freatímetro (FTA-001)';
     return medium.replace('_', ' ');
@@ -1195,37 +1234,61 @@ export function DataEntryForm({
               <div className="space-y-3 pt-2">
                 <Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Planillas en este reporte (Editar)</Label>
                 <div className="grid grid-cols-1 gap-2">
-                  {existingPlanillas.map((p) => (
-                    <button
-                      key={p.formId}
-                      onClick={() => handleReopenPlanilla(p)}
-                      className="w-full flex items-center justify-between p-3 rounded-none bg-neutral-100 border border-neutral-300 hover:bg-primary/5 hover:border-primary/30 transition-all group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-none bg-white shadow-sm border">
-                          <FileText className="h-3.5 w-3.5 text-black" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-xs font-bold text-black uppercase tracking-tight">{p.formId}</p>
-                          <div className="flex flex-col mt-0.5">
-                            <p className="text-[9px] text-neutral-600 uppercase font-bold">
-                                {getProtocolLabel(p.protocol, p.medium)} <span className="opacity-60 font-black ml-1">({p.count})</span>
-                            </p>
-                            <div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
-                              <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span>
-                              <span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span>
+                  {existingPlanillas.map((p) => {
+                    const protocolLabel = getProtocolLabel(p.protocol, p.medium);
+                    return (
+                      <div key={p.formId} className="group relative">
+                        <button
+                          onClick={() => handleReopenPlanilla(p)}
+                          className="w-full flex items-center justify-between p-3 rounded-none bg-neutral-100 border border-neutral-300 hover:bg-primary/5 hover:border-primary/30 transition-all"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="p-1.5 rounded-none bg-white shadow-sm border">
+                              <FileText className="h-3.5 w-3.5 text-black" />
+                            </div>
+                            <div className="text-left">
+                              <p className="text-xs text-black uppercase tracking-tight">{p.formId}</p>
+                              <div className="flex flex-col mt-0.5">
+                                <p className="text-[9px] text-neutral-600 uppercase">
+                                    {protocolLabel} <span className="opacity-60 font-normal ml-1">({p.count})</span>
+                                </p>
+                                <div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
+                                  <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span>
+                                  <span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                          <ChevronRight className="h-4 w-4 text-black group-hover:translate-x-1 transition-all" />
+                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeletingPlanilla({ fid: p.formId, label: protocolLabel }); }}
+                            className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            title="BORRAR PLANILLA"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
-                      <ChevronRight className="h-4 w-4 text-black group-hover:text-black group-hover:translate-x-1 transition-all" />
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {deletingPlanilla && (
+          <AdminDeleteDialog 
+            open={!!deletingPlanilla}
+            onOpenChange={(o) => !o && setDeletingPlanilla(null)}
+            onConfirm={handleDeletePlanilla}
+            title={`Borrar Planilla ${deletingPlanilla.label}`}
+            description={`Vas a eliminar todos los registros de la planilla ${deletingPlanilla.fid} y sus fotos.`}
+            isLoading={isDeletingPlanilla}
+          />
+        )}
       </div>
     );
   }
