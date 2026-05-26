@@ -584,7 +584,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                       size="icon" 
                       onClick={() => eliminarCapa(capa.id)} 
                       disabled={capas.length === 1} 
-                      className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                      className="h-6 w-6 text-neutral-600 hover:bg-neutral-100"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

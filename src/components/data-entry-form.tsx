@@ -1264,7 +1264,7 @@ export function DataEntryForm({
                         {isAdmin && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setDeletingPlanilla({ fid: p.formId, label: protocolLabel }); }}
-                            className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-white rounded-full flex items-center justify-center shadow-md z-10"
+                            className="absolute -top-2 -right-2 h-6 w-6 bg-neutral-600 text-white rounded-full flex items-center justify-center shadow-md z-10"
                             title="BORRAR PLANILLA"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -1316,7 +1316,7 @@ export function DataEntryForm({
                       variant="ghost" 
                       size="icon" 
                       onClick={() => setShowDeleteDialog(true)}
-                      className="h-6 w-6 ml-1 text-destructive hover:bg-destructive/10 transition-colors"
+                      className="h-6 w-6 ml-1 text-neutral-600 hover:bg-neutral-100 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

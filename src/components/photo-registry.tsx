@@ -306,7 +306,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(resolve);
         resolve();
       }, 'image/jpeg', 0.90);
     });
@@ -696,7 +696,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
                     variant="ghost" 
                     size="icon" 
                     className={cn(
-                      "h-7 w-7 bg-destructive text-white hover:bg-destructive/90 transition-all",
+                      "h-7 w-7 bg-neutral-600 text-white hover:bg-neutral-700 transition-all",
                       selectedIds.length === 0 && "opacity-20 grayscale pointer-events-none"
                     )}
                     onClick={handleBulkDelete}

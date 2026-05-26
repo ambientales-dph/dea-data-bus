@@ -141,7 +141,7 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                        className="h-6 w-6 text-neutral-600 hover:bg-neutral-100"
                         onClick={() => setDeletingPlanilla({fid, medium: data.medium, protocol: data.protocol})}
                         title="BORRAR PLANILLA"
                       >
