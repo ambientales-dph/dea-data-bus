@@ -137,17 +137,42 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     }
   };
 
+  /**
+   * Formateador Munsell inteligente:
+   * Hue: 1-2 dígitos + 1-2 letras (ej: 5Y, 10YR, 2.5YR)
+   * Value: 1 dígito
+   * Chroma: 1 dígito
+   * Formato final: [HUE] [VALUE]/[CHROMA] (ej: 10YR 3/2)
+   */
   const formatMunsell = (val: string) => {
+    // 1. Limpiar caracteres no permitidos y pasar a mayúsculas
     let clean = val.toUpperCase().replace(/[^0-9A-Z/.]/g, '');
     
-    // Intentar formatear dinámicamente si no tiene espacios ni barras
-    // Hue (ej: 10YR, 2.5Y) + Value (1 dígito) + / + Chroma (1 dígito)
-    const match = clean.replace(/[\s/]/g, '').match(/^([0-9.]+[A-Z]+)(\d)(\d)?$/);
+    // 2. Eliminar barras y espacios existentes para re-procesar la estructura
+    let raw = clean.replace(/[\s/]/g, '');
+    
+    // 3. Regex para capturar las partes: [Hue Num][Hue Letters][Value digit][Chroma digit]
+    // El Hue Num puede tener puntos (ej 2.5). El Hue Letters son letras. Los últimos dos son dígitos solos.
+    const match = raw.match(/^([0-9.]+)?([A-Z]+)?(\d)?(\d)?/);
+    
     if (match) {
-      const hue = match[1];
-      const value = match[2];
-      const chroma = match[3] || "";
-      return `${hue} ${value}${chroma ? "/" + chroma : ""}`;
+      const hueNum = match[1] || "";
+      const hueLetters = match[2] || "";
+      const value = match[3] || "";
+      const chroma = match[4] || "";
+      
+      let formatted = `${hueNum}${hueLetters}`;
+      
+      if (value) {
+        // Si hay un dígito de Value, insertamos el espacio antes
+        formatted += ` ${value}`;
+        if (chroma) {
+          // Si hay un dígito de Chroma, insertamos la barra antes
+          formatted += `/${chroma}`;
+        }
+      }
+      
+      return formatted;
     }
     
     return clean;
@@ -298,7 +323,6 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
               {v: "granular", l: "Granular"}, {v: "bloques_ang", l: "Bloques Angulares"}, {v: "bloques_sub", l: "Bloques Subangulares"}, {v: "prismatica", l: "Prismática"}, {v: "columnar", l: "Columnar"}, {v: "laminar", l: "Laminar"}, {v: "sin_estructura", l: "Sin Estructura"}
             ])}
             
-            {/* Consistencia en 3 estados */}
             {renderSelect(`${hPrefix} Consistencia_Seco`, "Consistencia (Seco)", "Horizontes", [
               {v: "suelto", l: "Suelto"}, {v: "blando", l: "Blando"}, {v: "m_firme", l: "Moderadamente Firme"}, {v: "firme", l: "Firme"}, {v: "muy_firme", l: "Muy Firme"}, {v: "extrem_firme", l: "Extremadamente Firme"}
             ])}
