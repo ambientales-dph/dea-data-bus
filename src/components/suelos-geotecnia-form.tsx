@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Trash2, Printer, Save, Loader2, Check, Clock, User, Locate, MapPin } from "lucide-react"
+import { Plus, Trash2, Printer, Check, Loader2, Clock, User, Locate, MapPin } from "lucide-react"
 import { cn } from '@/lib/utils'
 import { PhotoRegistry } from './photo-registry'
 import { TechnicianLink } from './technician-link'
@@ -356,6 +356,27 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     }
   };
 
+  const saveWholeLayer = async (capa: CapaSuelo) => {
+    const fieldsToSave: (keyof CapaSuelo)[] = [
+      "profundidadInicio", "profundidadFin", "nivelFreatico", "colorColumna", 
+      "patron", "descripcion", "golpesSPT", "limiteLL", "limiteIP", "humedad", "clasificacionUSCS"
+    ];
+    
+    for (const field of fieldsToSave) {
+      await saveLayerField(capa.id, field, capa[field]);
+    }
+    toast({ title: "Capa sincronizada", description: "Todos los datos del estrato fueron guardados." });
+  };
+
+  const isLayerSaved = (id: string) => {
+    const fields: (keyof CapaSuelo)[] = ["profundidadInicio", "profundidadFin", "descripcion", "golpesSPT", "clasificacionUSCS"];
+    return fields.every(f => savedFields[`L${id}: ${f}`]);
+  };
+
+  const isLayerSaving = (id: string) => {
+    return Object.keys(savingFields).some(k => k.startsWith(`L${id}:`) && savingFields[k]);
+  };
+
   const agregarCapa = () => {
     const ultimaCapa = capas[capas.length - 1];
     const nuevaProfundidadInicio = ultimaCapa ? ultimaCapa.profundidadFin : "0.00";
@@ -438,7 +459,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
               placeholder="Ej: S-01"
             />
             <button onClick={() => saveParam("sondeoNumero", 'Encabezado')} className={cn("p-1 transition-colors", savedFields["sondeoNumero"] ? "text-green-600" : "text-black hover:text-primary")}>
-              {savingFields["sondeoNumero"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["sondeoNumero"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Save className="h-3.5 w-3.5" />}
+              {savingFields["sondeoNumero"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["sondeoNumero"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-3.5 w-3.5" />}
             </button>
           </div>
         </div>
@@ -457,7 +478,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
               <Locate className="h-4 w-4 text-primary" />
             </button>
             <button onClick={() => saveParam("ubicacion", "Encabezado")} className={cn("p-1 transition-colors", savedFields["ubicacion"] ? "text-green-600" : "text-black hover:text-primary")}>
-              {savingFields["ubicacion"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["ubicacion"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Save className="h-3.5 w-3.5" />}
+              {savingFields["ubicacion"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["ubicacion"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-3.5 w-3.5" />}
             </button>
           </div>
         </div>
@@ -473,7 +494,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
               placeholder="Total perforado"
             />
             <button onClick={() => saveParam("profundidadTotal", 'Encabezado')} className={cn("p-1 transition-colors", savedFields["profundidadTotal"] ? "text-green-600" : "text-black hover:text-primary")}>
-              {savingFields["profundidadTotal"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["profundidadTotal"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Save className="h-3.5 w-3.5" />}
+              {savingFields["profundidadTotal"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["profundidadTotal"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-3.5 w-3.5" />}
             </button>
           </div>
         </div>
@@ -544,7 +565,30 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                   <input value={capa.clasificacionUSCS} onChange={(e) => handleCapaChange(capa.id, "clasificacionUSCS", e.target.value)} onBlur={() => saveLayerField(capa.id, "clasificacionUSCS", capa.clasificacionUSCS)} className="w-full text-center border-none uppercase font-black text-primary" placeholder="ML" />
                 </td>
                 <td className="p-1 text-center print:hidden bg-white">
-                  <Button variant="ghost" size="icon" onClick={() => eliminarCapa(capa.id)} disabled={capas.length === 1} className="h-6 w-6 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></Button>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <button 
+                      onClick={() => saveWholeLayer(capa)} 
+                      className={cn("p-1 transition-colors", isLayerSaved(capa.id) ? "text-green-600" : "text-black hover:text-primary")}
+                      title="Sincronizar Estrato"
+                    >
+                      {isLayerSaving(capa.id) ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : isLayerSaved(capa.id) ? (
+                        <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div>
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => eliminarCapa(capa.id)} 
+                      disabled={capas.length === 1} 
+                      className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -577,7 +621,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         <div className="flex">
           <Textarea value={formData.observaciones} onChange={(e) => handleFormChange("observaciones", e.target.value)} className="border-0 font-bold text-xs min-h-[80px] p-3 resize-none rounded-none" />
           <button onClick={() => saveParam("observaciones", 'General')} className={cn("p-4 bg-white border-l border-black hover:bg-neutral-50 transition-colors", savedFields["observaciones"] ? "text-green-600" : "text-black")}>
-            {savingFields["observaciones"] ? <Loader2 className="h-4 w-4 animate-spin" /> : savedFields["observaciones"] ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+            {savingFields["observaciones"] ? <Loader2 className="h-4 w-4 animate-spin" /> : savedFields["observaciones"] ? <div className="rounded-full bg-green-100 p-1"><Check className="h-4 w-4" /></div> : <Check className="h-4 w-4" />}
           </button>
         </div>
       </div>
