@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, Calendar, FileSearch, Plus, Briefcase, Users, Trash2 } from 'lucide-react';
+import { Loader2, Calendar, FileSearch, Briefcase, Users, Trash2 } from 'lucide-react';
 import { TechnicianLink } from './technician-link';
 import { isUserAdmin } from '@/app/lib/auth-config';
 import { AdminDeleteDialog } from './admin-delete-dialog';
@@ -17,11 +17,10 @@ import { useStorage } from '@/firebase';
 
 interface ReportListProps {
   stationId: string;
-  onViewReport: (reportId: string) => void;
   onOpenReport: (reportId: string) => void;
 }
 
-export function ReportList({ stationId, onViewReport, onOpenReport }: ReportListProps) {
+export function ReportList({ stationId, onOpenReport }: ReportListProps) {
   const db = useFirestore();
   const storage = useStorage();
   const { user } = useUser();
@@ -105,16 +104,13 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
     if (!deletingReport || !db) return;
     setIsDeleting(true);
     try {
-      // 1. Obtener todos los analitos asociados
       const q = query(collection(db, 'samples'), where('reportId', '==', deletingReport.id));
       const samplesSnap = await getDocs(q);
       
-      // 2. Borrar documentos de analitos
       for (const sDoc of samplesSnap.docs) {
         await deleteDoc(doc(db, 'samples', sDoc.id));
       }
 
-      // 3. Limpiar Storage del reporte
       if (storage) {
         const reportStorageRef = ref(storage, `reports/${deletingReport.id}`);
         try {
@@ -133,7 +129,6 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
         }
       }
 
-      // 4. Borrar el reporte
       await deleteDoc(doc(db, 'reports', deletingReport.id));
       
       toast({ title: "Reporte eliminado", description: "Se limpió la base de datos y el storage asociado." });
@@ -236,16 +231,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                           onClick={() => onOpenReport(report.id)}
                           title="Gestionar Planillas"
                         >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 text-foreground hover:bg-primary/10"
-                          onClick={() => onViewReport(report.id)}
-                          title="Ver Datos"
-                        >
-                          <FileSearch className="h-3 w-3" />
+                          <FileSearch className="h-3.5 w-3.5" />
                         </Button>
                         {isAdmin && (
                           <Button 

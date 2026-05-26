@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, query, where, orderBy, limit, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, query, where, orderBy, limit, getDocs, addDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, useCollection, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,6 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { SamplingReportForm } from './sampling-report-form';
 import { ReportList } from './report-list';
-import { ReportDetail } from './report-detail';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -48,7 +47,7 @@ const stationSchema = z.object({
 
 type StationValues = z.infer<typeof stationSchema>;
 
-export type FormView = 'summary' | 'create-station' | 'edit-station' | 'report-entry' | 'consult' | 'report-view' | 'select-project' | 'select-template';
+export type FormView = 'summary' | 'create-station' | 'edit-station' | 'report-entry' | 'consult' | 'select-project' | 'select-template';
 
 function DataExplorer({ 
   onSelectStation,
@@ -328,7 +327,6 @@ export function DataEntryForm({
   const [activeView, setActiveView] = useState<FormView>('summary');
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [activeFormId, setActiveFormId] = useState<string | null>(null);
-  const [viewingReportId, setViewingReportId] = useState<string | null>(null);
   
   const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
@@ -416,7 +414,6 @@ export function DataEntryForm({
             setActiveView(parsed.activeView || 'summary');
             setCurrentReportId(parsed.currentReportId || null);
             setActiveFormId(parsed.activeFormId || null);
-            setViewingReportId(parsed.viewingReportId || null);
             setSelectedProject(parsed.selectedProject || '');
             setSelectedTemplate(parsed.selectedTemplate || 'manual');
           } else {
@@ -458,7 +455,6 @@ export function DataEntryForm({
         }
         setCurrentReportId(null);
         setActiveFormId(null);
-        setViewingReportId(null);
         setSelectedProject('');
         setProjectSearch('');
         setSelectedTemplate('manual');
@@ -473,10 +469,10 @@ export function DataEntryForm({
 
   useEffect(() => {
     if (selectedPoint) {
-      const state = { activeView, currentReportId, activeFormId, viewingReportId, selectedProject, selectedTemplate };
+      const state = { activeView, currentReportId, activeFormId, selectedProject, selectedTemplate };
       localStorage.setItem('dea_form_state', JSON.stringify(state));
     }
-  }, [activeView, currentReportId, activeFormId, viewingReportId, selectedProject, selectedTemplate, selectedPoint]);
+  }, [activeView, currentReportId, activeFormId, selectedProject, selectedTemplate, selectedPoint]);
 
   useEffect(() => {
     const stored = localStorage.getItem('trello_cards_sync');
@@ -892,11 +888,6 @@ export function DataEntryForm({
       .catch(console.error);
   };
 
-  const handleViewReportDetails = (reportId: string) => {
-    setViewingReportId(reportId);
-    setActiveView('report-view');
-  };
-
   const handleOpenExistingReport = (reportId: string) => {
     setCurrentReportId(reportId);
     setActiveView('select-template'); 
@@ -988,18 +979,7 @@ export function DataEntryForm({
         <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-black font-normal">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
         </Button>
-        <ReportList stationId={selectedPoint.stationId} onViewReport={handleViewReportDetails} onOpenReport={handleOpenExistingReport} />
-      </div>
-    );
-  }
-
-  if (activeView === 'report-view' && viewingReportId) {
-    return (
-      <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('consult')} className="mb-2 text-black font-normal">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al listado
-        </Button>
-        <ReportDetail reportId={viewingReportId} onClose={() => setActiveView('consult')} />
+        <ReportList stationId={selectedPoint.stationId} onOpenReport={handleOpenExistingReport} />
       </div>
     );
   }
