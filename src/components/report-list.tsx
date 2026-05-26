@@ -60,6 +60,23 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
     return counts;
   }, [allSamples]);
 
+  const planillaCounts = useMemo(() => {
+    const counts: Record<string, Set<string>> = {};
+    allSamples.forEach((sample: any) => {
+      const rid = sample.reportId;
+      const fid = sample.formId || 'legacy';
+      if (rid) {
+        if (!counts[rid]) counts[rid] = new Set();
+        counts[rid].add(fid);
+      }
+    });
+    const result: Record<string, number> = {};
+    for (const rid in counts) {
+      result[rid] = counts[rid].size;
+    }
+    return result;
+  }, [allSamples]);
+
   const sortedReports = useMemo(() => {
     return [...reports].sort((a: any, b: any) => {
       const timeA = a.createdAt?.toMillis?.() || (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
@@ -102,9 +119,6 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
         const reportStorageRef = ref(storage, `reports/${deletingReport.id}`);
         try {
           const listRes = await listAll(reportStorageRef);
-          // Borrar recursivamente si es necesario (asumiendo estructura simple por ahora)
-          // Nota: listAll no borra carpetas, Firebase Storage no tiene carpetas reales.
-          // Hay que listar y borrar archivos.
           for (const folder of listRes.prefixes) {
             const innerList = await listAll(folder);
             for (const item of innerList.items) {
@@ -180,7 +194,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="text-[10px] font-code text-foreground font-black uppercase cursor-help hover:underline decoration-foreground/30 transition-all">
-                            {report.oid || report.id.substring(0, 8)}
+                            {report.oid || report.id.substring(0, 8)} <span className="text-[9px] opacity-60 font-bold ml-1">({planillaCounts[report.id] || 0})</span>
                           </span>
                         </TooltipTrigger>
                         <TooltipContent className="p-2 w-auto min-w-[180px] shadow-2xl border-primary/20">

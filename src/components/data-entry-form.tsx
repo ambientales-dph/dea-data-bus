@@ -126,23 +126,30 @@ function DataExplorer({
   
   const getPlanillasByReport = (reportId: string) => {
     const rSamples = samples.filter((s: any) => s.reportId === reportId);
-    const planillasMap = new Map<string, { medium: string, timestamp: any }>();
+    const planillasMap = new Map<string, { medium: string, timestamp: any, count: number }>();
     
     rSamples.forEach((s: any) => {
       const fId = s.formId || 'legacy';
       const existing = planillasMap.get(fId);
-      if (!existing || (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis()))) {
+      if (!existing) {
         planillasMap.set(fId, { 
           medium: s.medium || 'otro', 
-          timestamp: s.timestamp 
+          timestamp: s.timestamp,
+          count: 1
         });
+      } else {
+        existing.count += 1;
+        if (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis())) {
+          existing.timestamp = s.timestamp;
+        }
       }
     });
 
     return Array.from(planillasMap.entries()).map(([formId, data]) => ({ 
       formId, 
       medium: data.medium,
-      timestamp: data.timestamp
+      timestamp: data.timestamp,
+      count: data.count
     }));
   };
 
@@ -196,7 +203,7 @@ function DataExplorer({
                   <AccordionTrigger className="py-1 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:hidden">
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] text-black uppercase font-normal tracking-widest group-hover:text-primary transition-colors text-left">
-                        {getBasinLabel(basinCode)}
+                        {getBasinLabel(basinCode)} <span className="text-[9px] opacity-60 font-bold ml-1">({basinStations.length})</span>
                       </span>
                     </div>
                   </AccordionTrigger>
@@ -224,7 +231,7 @@ function DataExplorer({
                                   }}
                                   className="text-[11px] text-black font-normal truncate text-left hover:underline underline-offset-4 decoration-primary/30 group-hover:text-primary transition-colors cursor-pointer focus:outline-none"
                                 >
-                                  {station.name}
+                                  {station.name} <span className="text-[9px] opacity-60 font-bold ml-1">({stationReports.length})</span>
                                 </span>
                               </div>
                             </AccordionTrigger>
@@ -250,7 +257,7 @@ function DataExplorer({
                                               }}
                                               className="text-[10px] text-black uppercase font-medium tracking-tight text-left hover:underline group-hover:text-primary transition-colors cursor-pointer focus:outline-none"
                                             >
-                                              {report.oid}
+                                              {report.oid} <span className="text-[9px] opacity-60 font-bold ml-1">({planillas.length})</span>
                                             </span>
                                           </div>
                                         </AccordionTrigger>
@@ -268,7 +275,7 @@ function DataExplorer({
                                                 >
                                                   <div className="w-1 h-1 rounded-full bg-primary/40 shrink-0 group-hover:bg-primary" />
                                                   <span className="hover:underline underline-offset-2 truncate">
-                                                    {mediumLabel(p.medium)} • {formatDateShort(p.timestamp)}
+                                                    {mediumLabel(p.medium)} • {formatDateShort(p.timestamp)} <span className="opacity-60 font-bold ml-1">({p.count})</span>
                                                   </span>
                                                 </div>
                                               ))}
@@ -371,19 +378,26 @@ export function DataEntryForm({
   }, [currentReportData]);
 
   const existingPlanillas = useMemo(() => {
-    const planillasMap = new Map<string, { formId: string, medium: string, userEmail?: string, timestamp?: any }>();
+    const planillasMap = new Map<string, { formId: string, medium: string, userEmail?: string, timestamp?: any, count: number }>();
     currentReportSamples.forEach((s: any) => {
       const fId = s.formId || 'legacy';
       const medium = s.medium || 'otro';
       
       const existing = planillasMap.get(fId);
-      if (!existing || (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis()))) {
+      if (!existing) {
         planillasMap.set(fId, { 
           formId: fId, 
           medium: medium, 
           userEmail: s.userEmail, 
-          timestamp: s.timestamp 
+          timestamp: s.timestamp,
+          count: 1
         });
+      } else {
+        existing.count += 1;
+        if (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis())) {
+          existing.timestamp = s.timestamp;
+          existing.userEmail = s.userEmail;
+        }
       }
     });
     return Array.from(planillasMap.values());
@@ -1145,7 +1159,7 @@ export function DataEntryForm({
                           <FileText className="h-3.5 w-3.5 text-black" />
                         </div>
                         <div className="text-left">
-                          <p className="text-xs font-normal capitalize text-black">{p.medium.replace('_', ' ')}</p>
+                          <p className="text-xs font-normal capitalize text-black">{p.medium.replace('_', ' ')} <span className="text-[9px] opacity-60 font-bold">({p.count})</span></p>
                           <div className="flex flex-col mt-0.5">
                             <p className="text-[9px] text-neutral-600 uppercase font-normal">ID: {p.formId.substring(0, 8)}</p>
                             <div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter">

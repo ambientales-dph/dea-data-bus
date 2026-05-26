@@ -130,7 +130,7 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
                     <div className="flex items-center gap-2">
                       <FileText className="h-3 w-3 text-accent" />
                       <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
-                        {mediumLabel(data.medium)} {fid !== 'legacy' ? `(ID: ${fid.substring(0,8)})` : ''}
+                        {mediumLabel(data.medium)} {fid !== 'legacy' ? `(ID: ${fid.substring(0,8)})` : ''} <span className="opacity-60 font-black ml-1">({data.samples.length})</span>
                       </span>
                     </div>
                     {isAdmin && (
