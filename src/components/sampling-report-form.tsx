@@ -15,6 +15,7 @@ import { CheckCircle2, Loader2, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FreatimetroFormIntegrated } from './freatimetro-form-integrated';
 import { SurfaceWaterFormIntegrated } from './surface-water-form-integrated';
+import { PlanillaEdafologicaForm } from './planilla-edafologica-form';
 import { MONITORING_TEMPLATES } from '@/app/lib/monitoring-constants';
 import { TechnicianLink } from './technician-link';
 
@@ -180,12 +181,20 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     return lowerTemplateId.includes('superficial') || lowerTemplateName.includes('superficial');
   }, [lowerTemplateId, lowerTemplateName]);
 
+  const isSuelo = useMemo(() => {
+    return lowerTemplateId.includes('suelo') || lowerTemplateName.includes('suelo');
+  }, [lowerTemplateId, lowerTemplateName]);
+
   if (isFreatimetro) {
     return <FreatimetroFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
   }
 
   if (isAguaSuperficial) {
     return <SurfaceWaterFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
+  }
+
+  if (isSuelo) {
+    return <PlanillaEdafologicaForm reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
   }
 
   return (

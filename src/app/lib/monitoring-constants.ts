@@ -28,6 +28,12 @@ export const MONITORING_TEMPLATES = [
       { nombre: "Conductividad", categoria: "Campo", unidades: "μS/cm" },
       { nombre: "Temperatura", categoria: "Campo", unidades: "°C" }
     ]
+  },
+  {
+    id: "suelo_edafologico",
+    nombre: "Suelo (Planilla Edafológica)",
+    medium: "suelo",
+    parametros: [] // Se maneja dinámicamente en su componente específico
   }
 ];
 
