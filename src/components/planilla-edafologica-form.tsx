@@ -1,22 +1,29 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, Clock, User, Plus, Trash2, Mountain, ThermometerSun, Layers as LayersIcon, Droplets } from 'lucide-react';
+import { Loader2, Check, Clock, User, Plus, Trash2, Mountain, ThermometerSun, Layers as LayersIcon, Droplets, Search, MapPin, Locate, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Props {
   reportId: string;
   formId: string;
   stationId: string;
   onClose?: () => void;
+}
+
+interface OSMResult {
+  display_name: string;
+  lat: string;
+  lon: string;
 }
 
 export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }: Props) {
@@ -30,6 +37,13 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+
+  // Estados para búsqueda OSM
+  const [osmQuery, setOsmQuery] = useState('');
+  const [osmResults, setOsmResults] = useState<OSMResult[]>([]);
+  const [isSearchingOSM, setIsSearchingOSM] = useState(false);
+  const [showOSMResults, setShowOSMResults] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchExistingData = async () => {
@@ -68,6 +82,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         setSavedFields(newSavedFields);
         setMetadata(foundMetadata);
         setHorizontesCount(maxH);
+        if (newFormData["Lugar"]) setOsmQuery(newFormData["Lugar"]);
       } catch (e) {
         console.error("Error fetching soil data", e);
       } finally {
@@ -137,22 +152,68 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     }
   };
 
-  /**
-   * Formateador Munsell inteligente:
-   * Hue: 1-2 dígitos + 1-2 letras (ej: 5Y, 10YR, 2.5YR)
-   * Value: 1 dígito
-   * Chroma: 1 dígito
-   * Formato final: [HUE] [VALUE]/[CHROMA] (ej: 10YR 3/2)
-   */
-  const formatMunsell = (val: string) => {
-    // 1. Limpiar caracteres no permitidos y pasar a mayúsculas
-    let clean = val.toUpperCase().replace(/[^0-9A-Z/.]/g, '');
+  // Lógica OSM
+  const handleOSMSearch = async (q: string) => {
+    setOsmQuery(q);
+    if (q.length < 3) {
+      setOsmResults([]);
+      setShowOSMResults(false);
+      return;
+    }
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     
-    // 2. Eliminar barras y espacios existentes para re-procesar la estructura
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearchingOSM(true);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=ar&limit=5`);
+        if (res.ok) {
+          const data = await res.json();
+          setOsmResults(data);
+          setShowOSMResults(true);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsSearchingOSM(false);
+      }
+    }, 500);
+  };
+
+  const selectOSMLocation = (res: OSMResult) => {
+    const val = res.display_name;
+    setOsmQuery(val);
+    handleInputChange("Lugar", val);
+    saveParam("Lugar", "General", val);
+    setShowOSMResults(false);
+  };
+
+  // Lógica Geolocalización para Punto Específico
+  const captureGPS = () => {
+    if (!navigator.geolocation) {
+      toast({ variant: "destructive", title: "GPS no disponible", description: "Tu navegador no soporta geolocalización." });
+      return;
+    }
+
+    toast({ title: "Obteniendo coordenadas...", description: "Por favor, espera." });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const val = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+        handleInputChange("Punto_Muestreo", val);
+        saveParam("Punto_Muestreo", "General", val);
+        toast({ title: "Ubicación capturada", description: val });
+      },
+      (err) => {
+        toast({ variant: "destructive", title: "Error de GPS", description: "No se pudo obtener la ubicación." });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const formatMunsell = (val: string) => {
+    let clean = val.toUpperCase().replace(/[^0-9A-Z/.]/g, '');
     let raw = clean.replace(/[\s/]/g, '');
     
-    // 3. Regex para capturar las partes: [Hue Num][Hue Letters][Value digit][Chroma digit]
-    // El Hue Num puede tener puntos (ej 2.5). El Hue Letters son letras. Los últimos dos son dígitos solos.
     const match = raw.match(/^([0-9.]+)?([A-Z]+)?(\d)?(\d)?/);
     
     if (match) {
@@ -164,17 +225,13 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       let formatted = `${hueNum}${hueLetters}`;
       
       if (value) {
-        // Si hay un dígito de Value, insertamos el espacio antes
         formatted += ` ${value}`;
         if (chroma) {
-          // Si hay un dígito de Chroma, insertamos la barra antes
           formatted += `/${chroma}`;
         }
       }
-      
       return formatted;
     }
-    
     return clean;
   };
 
@@ -185,7 +242,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
 
   const sectionHeaderClass = "flex items-center gap-2 bg-neutral-100 px-3 py-2 border-y border-neutral-400 mt-6 first:mt-0";
   const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-3";
-  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none w-1/3";
+  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none w-1/3 shrink-0";
   const inputClass = "h-7 flex-1 border-none bg-transparent px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none placeholder:text-neutral-300";
 
   const renderField = (name: string, label: string, cat: string, placeholder = "---") => (
@@ -277,11 +334,68 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       </div>
 
       <div className={sectionHeaderClass}><Mountain className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-wider text-black">1. Identificación y Ubicación</span></div>
-      {renderField("Lugar", "Lugar / Localidad", "General")}
-      {renderField("Punto_Muestreo", "Punto Específico", "General")}
-      {renderField("Serie", "Serie de Suelo", "Clasificación")}
-      {renderField("Fase", "Fase", "Clasificación")}
-      {renderField("Simbolo", "Símbolo Cartográfico", "Clasificación")}
+      
+      {/* Campo Lugar con búsqueda OSM */}
+      <div className={cn(rowClass, "relative")}>
+        <label className={labelClass}>Lugar / Localidad</label>
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          <div className="relative flex-1 flex justify-end">
+            <input 
+              type="text" 
+              className={cn(inputClass, "pr-6")} 
+              value={osmQuery} 
+              onChange={(e) => handleOSMSearch(e.target.value)} 
+              onFocus={() => osmResults.length > 0 && setShowOSMResults(true)}
+              placeholder="Buscar localidad..."
+            />
+            {isSearchingOSM ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin absolute right-0 top-2 text-neutral-400" />
+            ) : (
+              <Search className="h-3.5 w-3.5 absolute right-0 top-2 text-neutral-400" />
+            )}
+          </div>
+          <button onClick={() => saveParam("Lugar", "General", osmQuery)} className={cn("p-1 transition-colors", savedFields["Lugar"] ? "text-green-600" : "text-black")}>
+            {savingFields["Lugar"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["Lugar"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+        
+        {showOSMResults && osmResults.length > 0 && (
+          <div className="absolute top-full left-0 right-0 z-50 bg-white border border-neutral-300 shadow-xl mt-1 max-h-48 overflow-hidden rounded-sm">
+            <ScrollArea className="h-full">
+              {osmResults.map((res, idx) => (
+                <button 
+                  key={idx} 
+                  onClick={() => selectOSMLocation(res)}
+                  className="w-full text-left p-2 hover:bg-neutral-50 border-b last:border-0 text-[10px] font-bold uppercase text-black"
+                >
+                  {res.display_name}
+                </button>
+              ))}
+            </ScrollArea>
+          </div>
+        )}
+      </div>
+
+      {/* Campo Punto con Geolocalización */}
+      <div className={rowClass}>
+        <label className={labelClass}>Punto Específico</label>
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          <input 
+            type="text" 
+            className={inputClass} 
+            value={formData["Punto_Muestreo"] ?? ""} 
+            onChange={(e) => handleInputChange("Punto_Muestreo", e.target.value)} 
+            placeholder="Coordenadas o Ref."
+          />
+          <button onClick={captureGPS} title="Capturar GPS" className="p-1 hover:bg-primary/5 rounded transition-colors">
+            <Locate className="h-4 w-4 text-primary" />
+          </button>
+          <button onClick={() => saveParam("Punto_Muestreo", "General")} className={cn("p-1 transition-colors", savedFields["Punto_Muestreo"] ? "text-green-600" : "text-black")}>
+            {savingFields["Punto_Muestreo"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["Punto_Muestreo"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+      </div>
+
       {renderField("Paisaje", "Paisaje / Forma", "Entorno")}
       {renderField("Material_Originario", "Material Originario", "Geología")}
 
@@ -352,7 +466,12 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         </Button>
       </div>
 
-      <div className={sectionHeaderClass}><Droplets className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-wider text-black">4. Registro Fotográfico</span></div>
+      <div className={sectionHeaderClass}><Tag className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-wider text-black">4. Clasificación</span></div>
+      {renderField("Serie", "Serie de Suelo", "Clasificación")}
+      {renderField("Fase", "Fase", "Clasificación")}
+      {renderField("Simbolo", "Símbolo Cartográfico", "Clasificación")}
+
+      <div className={sectionHeaderClass}><Droplets className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-wider text-black">5. Registro Fotográfico</span></div>
       <div className="px-3 py-4">
         <PhotoRegistry reportId={reportId} formId={formId} stationId={stationId} medium="suelo" />
       </div>
