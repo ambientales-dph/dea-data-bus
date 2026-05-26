@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
 import JSZip from 'jszip';
+import { getUserNameByEmail } from '@/app/lib/auth-config';
+import { TechnicianLink } from './technician-link';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -271,9 +273,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     const lat = photo.latitude?.toFixed(6) || 'N/D';
     const lon = photo.longitude?.toFixed(6) || 'N/D';
     
+    const technicianName = getUserNameByEmail(photo.authorEmail || photo.userEmail || null);
+    
     const watermarkLines = [
       `DEA DATA BUS - DPH`,
-      `Técnico: ${photo.authorEmail || photo.userEmail || 'Desconocido'}`,
+      `Técnico: ${technicianName}`,
       `GPS: ${lat}, ${lon}`,
       `Fecha: ${dateStr}`
     ];
@@ -325,7 +329,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   };
 
   const executeDelete = async () => {
-    console.log("5. Ejecutando eliminación confirmada.");
     setIsDeleting(true);
     let successCount = 0;
     let omittedCount = 0;
@@ -338,7 +341,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
         const isAuthor = photo.authorEmail === user?.email || photo.userEmail === user?.email;
         if (!isAuthor) {
-          console.warn(`Omitiendo foto ${id}: No tienes permisos de autor.`);
           omittedCount++;
           continue;
         }
@@ -384,12 +386,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
   const handleBulkDelete = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    console.log("1. Botón de papelera presionado.");
-    console.log("2. IDs seleccionados:", selectedIds);
-    console.log("3. Variables de entorno:", { db: !!db, storage: !!storage, user: user?.email });
-
     if (!db || !storage || !user?.email || selectedIds.length === 0) {
-      console.error("4. ERROR: Faltan dependencias o no hay fotos seleccionadas. Abortando.");
       toast({ 
         variant: "destructive", 
         title: "Error", 
@@ -423,7 +420,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
       const zip = new JSZip();
       const photosFolder = zip.folder('fotos')!;
-      const csvData = [['id', 'lat', 'lon', 'fecha', 'author', 'ruta_foto']];
+      const csvData = [['id', 'lat', 'lon', 'fecha', 'author_name', 'author_email', 'ruta_foto']];
       
       toast({ title: "Procesando paquete", description: `Compilando ${photos.length} archivos...` });
 
@@ -438,12 +435,14 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
           const date = p.capturedAt?.toDate?.() || (p.timestamp?.toDate?.()) || new Date();
           const dateStr = date.toISOString();
+          const techName = getUserNameByEmail(p.authorEmail || p.userEmail || null);
           
           csvData.push([
             p.id,
             (p.latitude || '').toString(),
             (p.longitude || '').toString(),
             dateStr,
+            techName,
             p.authorEmail || '',
             `fotos/${fileName}`
           ]);
@@ -518,6 +517,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
           const dateStr = date.toLocaleString('es-AR');
           const lat = p.latitude || 0;
           const lon = p.longitude || 0;
+          const techName = getUserNameByEmail(p.authorEmail || p.userEmail || null);
 
           kmlPlacemarks += `
       <Placemark>
@@ -528,7 +528,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
               <h3 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Evidencia DEA Data Bus</h3>
               <img src="fotos/${fileName}" width="350" style="display: block; margin-bottom: 10px; border: 1px solid #000;" />
               <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                <tr><td style="font-weight: bold; width: 30%;">Técnico:</td><td>${p.authorEmail || p.userEmail || 'N/D'}</td></tr>
+                <tr><td style="font-weight: bold; width: 30%;">Técnico:</td><td>${techName}</td></tr>
                 <tr><td style="font-weight: bold;">Fecha:</td><td>${dateStr}</td></tr>
                 <tr><td style="font-weight: bold;">GPS:</td><td>${lat.toFixed(6)}, ${lon.toFixed(6)}</td></tr>
                 <tr><td style="font-weight: bold;">Planilla:</td><td>${formId}</td></tr>
@@ -584,7 +584,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   };
 
   const toggleSelect = (id: string) => {
-    console.log("Foto clickeada:", id);
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
@@ -719,6 +718,9 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
                     )}
                   >
                     <img src={photo.value} alt="Evidencia" className="w-full h-full object-cover" />
+                    <div className="absolute bottom-1 right-1 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 text-[7px] font-bold text-white flex items-center gap-1">
+                      <TechnicianLink email={photo.authorEmail || photo.userEmail} className="text-white hover:text-white" />
+                    </div>
                     {photo.latitude && (
                       <div className="absolute top-1 left-1 bg-black text-white px-1 py-0.5 text-[7px] font-bold flex items-center gap-0.5">
                         <MapPin className="h-2 w-2" /> GPS

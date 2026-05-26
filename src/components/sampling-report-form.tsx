@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -17,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { FreatimetroFormIntegrated } from './freatimetro-form-integrated';
 import { SurfaceWaterFormIntegrated } from './surface-water-form-integrated';
 import { MONITORING_TEMPLATES } from '@/app/lib/monitoring-constants';
+import { TechnicianLink } from './technician-link';
 
 const analyteSchema = z.object({
   medium: z.enum(['agua_superficial', 'agua_subterranea', 'suelo', 'sedimentos']),
@@ -199,7 +199,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
                 <CardDescription className="text-[10px] font-bold">ID: <span className="text-foreground">{formId.substring(0, 8)}</span></CardDescription>
                 <div className="flex items-center gap-3 text-[9px] text-muted-foreground font-black uppercase tracking-tight">
                   <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
-                  <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> {metadata.user || user?.email}</span>
+                  <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
                 </div>
               </div>
             </div>

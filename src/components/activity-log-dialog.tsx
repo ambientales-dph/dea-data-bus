@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -22,6 +21,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, ClipboardList, User, Clock, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TechnicianLink } from './technician-link';
 
 interface ActivityLogDialogProps {
   open: boolean;
@@ -113,7 +113,7 @@ export function ActivityLogDialog({ open, onOpenChange }: ActivityLogDialogProps
                     <TableHead className="text-[9px] font-black uppercase px-3 text-black"><FileText className="h-3 w-3 inline mr-1" /> Reporte</TableHead>
                     <TableHead className="text-[9px] font-black uppercase px-3 text-black text-center">Planilla</TableHead>
                     <TableHead className="text-[9px] font-black uppercase px-3 text-black">Registro (Analito : Valor)</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase px-3 text-black"><User className="h-3 w-3 inline mr-1" /> Usuario</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase px-3 text-black"><User className="h-3 w-3 inline mr-1" /> Técnico</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -151,7 +151,7 @@ export function ActivityLogDialog({ open, onOpenChange }: ActivityLogDialogProps
                           </div>
                         </TableCell>
                         <TableCell className="px-3 py-1 text-[10px] font-bold text-neutral-600 truncate max-w-[120px]" title={sample.userEmail}>
-                          {sample.userEmail?.split('@')[0]}
+                          <TechnicianLink email={sample.userEmail} className="font-bold text-neutral-600" />
                         </TableCell>
                       </TableRow>
                     ))

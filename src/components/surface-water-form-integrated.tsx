@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Check, CheckCircle2, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
+import { TechnicianLink } from './technician-link';
 
 export interface SurfaceWaterData {
   [key: string]: string | number | null;
@@ -217,7 +218,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
             <p className="text-[9px] text-neutral-600 font-bold uppercase leading-none">ID: {formId.substring(0, 8)}</p>
             <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter">
               <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
-              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> {metadata.user || user?.email}</span>
+              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>
         </div>

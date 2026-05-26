@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -8,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, Info, Check, Send, ArrowLeft, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
+import { TechnicianLink } from './technician-link';
 
 export interface FreatimetroData {
   idPozo: string;
@@ -70,7 +70,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const analyteToKeyMap: Record<string, keyof FreatimetroData> = {
     'Cota Brocal': 'cotaBrocal',
     'Nivel Estático': 'nivelEstatico',
-    'Profundidad Total': 'profundidadTotal',
+    'Phofundidad Total': 'profundidadTotal',
     'pH': 'ph',
     'Conductividad': 'conductividad',
     'Temperatura': 'temperatura',
@@ -123,7 +123,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
     };
 
     fetchExistingData();
-  }, [db, reportId, formId]);
+  }, [db, reportId, formId, user?.email]);
 
   useEffect(() => {
     if (stationData?.name && !hasSetInitialId.current && !formData.idPozo) {
@@ -234,7 +234,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
             <p className="text-[9px] text-neutral-600 font-bold uppercase leading-none">ID: {formId.substring(0, 8)}</p>
             <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter">
               <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
-              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> {metadata.user || user?.email}</span>
+              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>
         </div>

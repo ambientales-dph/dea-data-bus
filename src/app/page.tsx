@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { cn } from '@/lib/utils';
+import { getUserNameByEmail } from '@/app/lib/auth-config';
 
 export interface SelectedPoint {
   lat: number;
@@ -411,8 +412,8 @@ export default function Home() {
                 <DropdownMenuTrigger asChild>
                   <button id="user-menu-trigger" className="flex items-center gap-2 hover:bg-primary/5 p-1 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
                     <div className="flex flex-col items-end hidden md:flex">
-                      <span className="text-[11px] font-bold leading-none text-foreground">{user?.displayName || 'Técnico'}</span>
-                      <span className="text-[9px] text-muted-foreground">{user?.email}</span>
+                      <span className="text-[11px] font-bold leading-none text-foreground">{getUserNameByEmail(user?.email || null)}</span>
+                      <span className="text-[9px] text-muted-foreground/60">{user?.email}</span>
                     </div>
                     <Avatar className="h-8 w-8 md:h-9 md:w-9 border-2 border-primary/10 shadow-sm">
                       <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'Usuario'} />

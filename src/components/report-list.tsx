@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -9,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, Calendar, FileSearch, Plus, Briefcase, Users } from 'lucide-react';
+import { TechnicianLink } from './technician-link';
 
 interface ReportListProps {
   stationId: string;
@@ -134,7 +134,7 @@ export function ReportList({ stationId, onViewReport, onOpenReport }: ReportList
                                 report.editors.map((email: string) => (
                                   <div key={email} className="flex items-center gap-2 text-[10px] font-bold bg-muted/30 px-2 py-1 rounded text-foreground">
                                     <div className="h-1.5 w-1.5 rounded-full bg-foreground" />
-                                    {email}
+                                    <TechnicianLink email={email} className="text-[10px] font-bold" />
                                   </div>
                                 ))
                               ) : (
