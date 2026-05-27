@@ -416,15 +416,15 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         return new Style({
           image: new CircleStyle({
             radius: 4,
-            fill: new Fill({ color: 'rgba(0, 0, 0, 0.5)' }),
+            fill: new Fill({ color: 'rgba(34, 197, 94, 0.5)' }),
           })
         });
       }
       return new Style({
         image: new CircleStyle({ 
           radius: 8, 
-          stroke: new Stroke({ color: '#ffffff', width: 1 }), 
-          fill: new Fill({ color: '#000000' }) 
+          stroke: new Stroke({ color: '#ffffff', width: 1.5 }), 
+          fill: new Fill({ color: '#22c55e' }) // Diana en color verde
         }),
       });
     });
