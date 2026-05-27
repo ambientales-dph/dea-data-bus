@@ -160,7 +160,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       layers: [baseLayer, basinsLayer, codesLayer, uploadedLayer, presenceLayer, stationsLayer, selectionLayer],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
-        zoom: 5.5,
+        zoom: 6.5,
       }),
     });
 
