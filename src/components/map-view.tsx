@@ -17,7 +17,6 @@ import GeoJSON from 'ol/format/GeoJSON';
 import KML from 'ol/format/KML';
 import Overlay from 'ol/Overlay';
 import { Style, Text, Fill, Circle as CircleStyle, Stroke, RegularShape } from 'ol/style';
-import Translate from 'ol/interaction/Translate';
 import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
@@ -48,7 +47,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   const presenceSource = useRef<VectorSource>(new VectorSource());
   const uploadedSource = useRef<VectorSource>(new VectorSource());
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const translateInteractionRef = useRef<Translate | null>(null);
   const { toast } = useToast();
 
   const stationsLayerRef = useRef<VectorLayer<any> | null>(null);
@@ -88,7 +86,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
-    // Estilo base para capas vectoriales: relleno 100% transparente y borde verde petróleo
     const vectorStyle = new Style({
       stroke: new Stroke({ color: 'rgba(13, 145, 102, 0.7)', width: 1 }),
       fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }) 
@@ -167,7 +164,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       }),
     });
 
-    // Tooltip Overlay
     const overlay = new Overlay({
       element: tooltipRef.current!,
       offset: [0, -10],
@@ -175,40 +171,31 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
     map.addOverlay(overlay);
 
-    const translateInteraction = new Translate({
-      layers: [selectionLayer],
-      hitTolerance: isMobile ? 15 : 8,
-    });
-    translateInteraction.setActive(!!isDraggable);
-    map.addInteraction(translateInteraction);
-    translateInteractionRef.current = translateInteraction;
+    // Lógica para actualizar punto según el centro del mapa cuando se está en modo "Draggable"
+    map.on('moveend', () => {
+      // Usamos una variable de referencia o el estado actual a través de un truco de closure o prop estable
+      // Pero como estamos dentro del useEffect inicial, usamos un getter dinámico o accedemos a los atributos del mapa
+      const view = map.getView();
+      const center = view.getCenter();
+      if (center && (map as any)._isDraggableMode) {
+        const lonLat = toLonLat(center);
+        
+        let basinCode = '';
+        const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(center);
+        if (featuresAtPoint.length > 0) {
+          basinCode = featuresAtPoint[0].get('CODIGO') || '';
+        }
 
-    translateInteraction.on('translateend', (event) => {
-      const feature = event.features.item(0);
-      if (!feature) return;
-      const geometry = feature.getGeometry() as Point;
-      const coordinate = geometry.getCoordinates();
-      const lonLat = toLonLat(coordinate);
-      
-      let basinCode = '';
-      const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(coordinate);
-      if (featuresAtPoint.length > 0) {
-        basinCode = featuresAtPoint[0].get('CODIGO') || '';
+        onPointSelectRef.current?.({
+          lat: lonLat[1],
+          lon: lonLat[0],
+          basinCode: basinCode
+        });
       }
-
-      onPointSelectRef.current?.({
-        lat: lonLat[1],
-        lon: lonLat[0],
-        stationId: feature.get('stationId'),
-        name: feature.get('name'),
-        basinCode: basinCode
-      });
     });
 
-    // Hover handler - Actualizado: Sin bullets, sin contador, fondo más transparente
     map.on('pointermove', (event) => {
       if (event.dragging) return;
-      
       const pixel = map.getEventPixel(event.originalEvent);
       const feature = map.forEachFeatureAtPixel(pixel, (f) => f, {
         layerFilter: (l) => l === stationsLayer || l === selectionLayer,
@@ -222,7 +209,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           if (clusterFeatures.length === 1) {
             content = clusterFeatures[0].get('name');
           } else {
-            // Es un cluster: mostrar solo los nombres de las estaciones
             const names = clusterFeatures.map((f: any) => f.get('name')).sort();
             content = names.join('\n');
           }
@@ -246,14 +232,8 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
 
     map.on('click', (event) => {
-      const coords = toLonLat(event.coordinate);
       const pixel = event.pixel;
-      let basinCode = '';
-      const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(event.coordinate);
-      if (featuresAtPoint.length > 0) {
-        basinCode = featuresAtPoint[0].get('CODIGO') || '';
-      }
-
+      
       const stationFeature = map.forEachFeatureAtPixel(pixel, (f) => {
         const features = f.get('features');
         if (features && features.length === 1) return features[0];
@@ -263,7 +243,17 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         layerFilter: (l) => l === stationsLayer
       });
 
+      // Si clicamos en una estación existente
       if (stationFeature) {
+        const coords = [stationFeature.get('lon'), stationFeature.get('lat')];
+        map.getView().animate({ center: fromLonLat(coords), duration: 400 });
+        
+        let basinCode = '';
+        const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(fromLonLat(coords));
+        if (featuresAtPoint.length > 0) {
+          basinCode = featuresAtPoint[0].get('CODIGO') || '';
+        }
+
         onPointSelectRef.current?.({
           lat: stationFeature.get('lat'),
           lon: stationFeature.get('lon'),
@@ -272,6 +262,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           basinCode: basinCode,
         });
       } else {
+        // Si clicamos en el mapa vacío, centramos allí
+        map.getView().animate({ center: event.coordinate, duration: 400 });
+        const coords = toLonLat(event.coordinate);
+        let basinCode = '';
+        const featuresAtPoint = codesSource.current.getFeaturesAtCoordinate(event.coordinate);
+        if (featuresAtPoint.length > 0) {
+          basinCode = featuresAtPoint[0].get('CODIGO') || '';
+        }
         onPointSelectRef.current?.({ lat: coords[1], lon: coords[0], basinCode });
       }
     });
@@ -283,6 +281,13 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       mapInstance.current = null;
     };
   }, []);
+
+  // Actualizar modo "Draggable" en la instancia del mapa
+  useEffect(() => {
+    if (mapInstance.current) {
+      (mapInstance.current as any)._isDraggableMode = isDraggable;
+    }
+  }, [isDraggable]);
 
   useEffect(() => {
     if (mapInstance.current) {
@@ -305,12 +310,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   }, [activeLayer]);
 
   useEffect(() => {
-    if (translateInteractionRef.current) {
-      translateInteractionRef.current.setActive(!!isDraggable);
-    }
-  }, [isDraggable]);
-
-  useEffect(() => {
     if (!mapInstance.current || !selectedPoint) {
       selectionSource.current.clear();
       return;
@@ -326,10 +325,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     selectionFeature.set('name', selectedPoint.name);
     selectionSource.current.addFeature(selectionFeature);
 
-    mapInstance.current.getView().animate({
-      center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
-      duration: 500
-    });
+    // Solo animamos al centro si el punto seleccionado cambió externamente (no por arrastre del mapa)
+    // Para simplificar, animamos siempre que no estemos en modo Draggable o si es una estación existente
+    if (!isDraggable || selectedPoint.stationId) {
+      mapInstance.current.getView().animate({
+        center: fromLonLat([selectedPoint.lon, selectedPoint.lat]),
+        duration: 500
+      });
+    }
   }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.name, user?.email]);
 
   useEffect(() => {
@@ -379,7 +382,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       }
       return new Style({
         stroke: new Stroke({ color: strokeColor, width: strokeWidth }),
-        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }), // Relleno 100% transparente
+        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }), 
         text: textStyle
       });
     };
@@ -417,21 +420,15 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
 
     selectionLayerRef.current.setStyle(() => {
+      // Si estamos en modo de creación/edición, la cruz del centro es el objetivo.
+      // Podemos ocultar el punto verde o hacerlo muy sutil.
       if (isDraggable) {
-        return [
-          new Style({
-            image: new CircleStyle({ radius: 15, stroke: new Stroke({ color: '#000000', width: 0.5 }) }),
-          }),
-          new Style({
-            image: new RegularShape({
-              stroke: new Stroke({ color: '#000000', width: 0.5 }),
-              points: 4,
-              radius: 20,
-              radius2: 0,
-              angle: 0,
-            }),
+        return new Style({
+          image: new CircleStyle({
+            radius: 4,
+            fill: new Fill({ color: 'rgba(34, 197, 94, 0.4)' }),
           })
-        ];
+        });
       }
       return new Style({
         image: new CircleStyle({ radius: 8, stroke: new Stroke({ color: '#ffffff', width: 2 }), fill: new Fill({ color: '#22c55e' }) }),
@@ -533,6 +530,16 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       <div ref={mapRef} className="absolute inset-0 z-10" />
       <div ref={tooltipRef} className="map-tooltip" />
       
+      {/* CRUZ DE HILOS CENTRAL (Crosshair) */}
+      <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
+        {/* Línea horizontal */}
+        <div className="absolute w-12 h-[1px] bg-neutral-600/60" />
+        {/* Línea vertical */}
+        <div className="absolute h-12 w-[1px] bg-neutral-600/60" />
+        {/* Círculo central opcional para mayor precisión */}
+        <div className="absolute w-2 h-2 rounded-full border border-neutral-600/40" />
+      </div>
+
       <div className="absolute bottom-6 right-6 z-40 flex flex-row items-center gap-1.5">
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
         
