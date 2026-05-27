@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -18,6 +17,7 @@ import { FreatimetroFormIntegrated } from './freatimetro-form-integrated';
 import { SurfaceWaterFormIntegrated } from './surface-water-form-integrated';
 import { PlanillaEdafologicaForm } from './planilla-edafologica-form';
 import { SuelosGeotecniaFormIntegrated } from './suelos-geotecnia-form';
+import { PgaysChecklistForm } from './pgays-checklist-form';
 import { MONITORING_TEMPLATES } from '@/app/lib/monitoring-constants';
 import { TechnicianLink } from './technician-link';
 
@@ -188,7 +188,11 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   }, [lowerTemplateId]);
 
   const isSueloGeotecnia = useMemo(() => {
-    return lowerTemplateId === 'suelo_geotecnia' || lowerTemplateId.includes('gt-001');
+    return lowerTemplateId === 'suelo_geotecnia' || lowerTemplateId.includes('gt-001') || lowerTemplateId.includes('ms-001');
+  }, [lowerTemplateId]);
+
+  const isPgays = useMemo(() => {
+    return lowerTemplateId.includes('pgays');
   }, [lowerTemplateId]);
 
   if (isFreatimetro) {
@@ -205,6 +209,10 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
 
   if (isSueloGeotecnia) {
     return <SuelosGeotecniaFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
+  }
+
+  if (isPgays) {
+    return <PgaysChecklistForm reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
   }
 
   return (

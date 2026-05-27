@@ -40,6 +40,12 @@ export const MONITORING_TEMPLATES = [
     nombre: "Mecánica de suelos (MS-001)",
     medium: "suelo",
     parametros: [] // Se maneja dinámicamente en su componente específico
+  },
+  {
+    id: "pgays_inspeccion",
+    nombre: "Inspección de Obra (PGAyS-001)",
+    medium: "sedimentos", // Usamos sedimentos como medio técnico para diferenciar en la lista si fuera necesario
+    parametros: [] 
   }
 ];
 

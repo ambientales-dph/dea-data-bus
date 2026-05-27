@@ -30,9 +30,10 @@ interface PhotoRegistryProps {
   formId: string;
   stationId: string;
   medium: string;
+  analyteTag?: string; // Nuevo: permite asignar la foto a un ítem específico
 }
 
-export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegistryProps) {
+export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag = "Evidencia Visual" }: PhotoRegistryProps) {
   const db = useFirestore();
   const storage = useStorage();
   const { user, loading: authLoading } = useUser();
@@ -57,6 +58,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     const loadPending = async () => {
       try {
         const pending = await offlineStorage.getPendingPhotos(formId);
+        // Filtrar pendientes que correspondan a este ítem si se usa el tag offline? 
+        // Por ahora cargamos por formId, la identificación de ítem se hace al subir.
         setPendingPhotos(pending);
       } catch (e) {
         console.error("Error cargando fotos offline:", e);
@@ -161,7 +164,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         stationId,
         medium,
         parameterType: "Fotografía",
-        analyte: "Evidencia Visual",
+        analyte: analyteTag, // Se usa el tag del ítem
         value: downloadUrl,
         storagePath: snapshot.ref.fullPath,
         timestamp: serverTimestamp(),
@@ -213,7 +216,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         collection(db, 'samples'),
         where('reportId', '==', reportId),
         where('formId', '==', formId),
-        where('analyte', '==', 'Evidencia Visual')
+        where('analyte', '==', analyteTag)
       );
       
       const snapshot = await getDocs(q);
@@ -226,8 +229,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
       setSelectedIds([]);
       if (docsMapped.length === 0) {
         toast({
-          title: "Galería vacía",
-          description: "No se encontraron fotos guardadas para esta planilla.",
+          title: "Sin registros",
+          description: "No hay fotos para este ítem todavía.",
         });
       }
     } catch (error: any) {
@@ -277,6 +280,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
     
     const watermarkLines = [
       `DEA DATA BUS - DPH`,
+      `Ítem: ${analyteTag}`,
       `Técnico: ${technicianName}`,
       `GPS: ${lat}, ${lon}`,
       `Fecha: ${dateStr}`
@@ -302,7 +306,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `FOTO_${formId}_${Date.now()}.jpg`;
+        a.download = `FOTO_${analyteTag.substring(0,10)}_${Date.now()}.jpg`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -370,10 +374,10 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
         toast({
           variant: "destructive",
           title: "Acción restringida",
-          description: `Se borraron ${successCount} fotos. ${omittedCount} fotos de otros técnicos fueron omitidas.`,
+          description: `Se borraron ${successCount} fotos. ${omittedCount} de otros técnicos fueron omitidas.`,
         });
       } else if (successCount > 0) {
-        toast({ title: "Eliminación completa", description: `Se borraron ${successCount} fotos exitosamente.` });
+        toast({ title: "Eliminación completa", description: `Se borraron ${successCount} fotos.` });
       }
     } catch (error: any) {
       console.error("Error crítico en eliminación masiva:", error);
@@ -387,232 +391,32 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
   const handleBulkDelete = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
     if (!db || !storage || !user?.email || selectedIds.length === 0) {
-      toast({ 
-        variant: "destructive", 
-        title: "Error", 
-        description: "No hay fotos seleccionadas o falta conexión." 
-      });
+      toast({ variant: "destructive", title: "Error", description: "Falta conexión o selección." });
       return;
     }
-
     setShowDeleteModal(true);
-  };
-
-  const handleGISExport = async () => {
-    if (!db || !reportId || !formId) return;
-    
-    setIsExporting(true);
-    try {
-      const q = query(
-        collection(db, 'samples'),
-        where('reportId', '==', reportId),
-        where('formId', '==', formId),
-        where('analyte', '==', 'Evidencia Visual')
-      );
-      
-      const snapshot = await getDocs(q);
-      const photos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-
-      if (photos.length === 0) {
-        toast({ title: "Exportación vacía", description: "No hay fotos registradas para exportar." });
-        return;
-      }
-
-      const zip = new JSZip();
-      const photosFolder = zip.folder('fotos')!;
-      const csvData = [['id', 'lat', 'lon', 'fecha', 'author_name', 'author_email', 'ruta_foto']];
-      
-      toast({ title: "Procesando paquete", description: `Compilando ${photos.length} archivos...` });
-
-      for (let i = 0; i < photos.length; i++) {
-        const p = photos[i];
-        try {
-          const response = await fetch(p.value);
-          if (!response.ok) throw new Error(`Error descargando foto ${i}`);
-          const blob = await response.blob();
-          const fileName = `foto_${i}.jpg`;
-          photosFolder.file(fileName, blob);
-
-          const date = p.capturedAt?.toDate?.() || (p.timestamp?.toDate?.()) || new Date();
-          const dateStr = date.toISOString();
-          const techName = getUserNameByEmail(p.authorEmail || p.userEmail || null);
-          
-          csvData.push([
-            p.id,
-            (p.latitude || '').toString(),
-            (p.longitude || '').toString(),
-            dateStr,
-            techName,
-            p.authorEmail || '',
-            `fotos/${fileName}`
-          ]);
-        } catch (err) {
-          console.error(`Error procesando foto ${i}:`, err);
-        }
-      }
-
-      const csvContent = csvData.map(row => row.join(',')).join('\n');
-      zip.file('puntos_muestreo.csv', csvContent);
-
-      const content = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(content);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `RELEVAMIENTO_DEA_${formId.substring(0, 8)}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({ title: "Exportación completa", description: "Paquete GIS generado con éxito." });
-    } catch (error: any) {
-      console.error("Error en exportación GIS:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo generar el paquete GIS."
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleKMZExport = async () => {
-    if (!db || !reportId || !formId) return;
-    
-    setIsExportingKMZ(true);
-    try {
-      const q = query(
-        collection(db, 'samples'),
-        where('reportId', '==', reportId),
-        where('formId', '==', formId),
-        where('analyte', '==', 'Evidencia Visual')
-      );
-      
-      const snapshot = await getDocs(q);
-      const photos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-
-      if (photos.length === 0) {
-        toast({ title: "Exportación vacía", description: "No hay fotos registradas para exportar KMZ." });
-        return;
-      }
-
-      const zip = new JSZip();
-      const photosFolder = zip.folder('fotos')!;
-      
-      let kmlPlacemarks = '';
-      
-      toast({ title: "Generando KMZ", description: `Procesando ${photos.length} fotos para Google Earth...` });
-
-      for (let i = 0; i < photos.length; i++) {
-        const p = photos[i];
-        try {
-          const response = await fetch(p.value);
-          if (!response.ok) throw new Error(`Error descargando foto ${i}`);
-          const blob = await response.blob();
-          const fileName = `foto_${i}.jpg`;
-          photosFolder.file(fileName, blob);
-
-          const date = p.capturedAt?.toDate?.() || (p.timestamp?.toDate?.()) || new Date();
-          const dateStr = date.toLocaleString('es-AR');
-          const lat = p.latitude || 0;
-          const lon = p.longitude || 0;
-          const techName = getUserNameByEmail(p.authorEmail || p.userEmail || null);
-
-          kmlPlacemarks += `
-      <Placemark>
-        <name>Foto ${i + 1} - ${formId.substring(0, 8)}</name>
-        <description>
-          <![CDATA[
-            <div style="font-family: 'Encode Sans', sans-serif; min-width: 350px;">
-              <h3 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Evidencia DEA Data Bus</h3>
-              <img src="fotos/${fileName}" width="350" style="display: block; margin-bottom: 10px; border: 1px solid #000;" />
-              <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                <tr><td style="font-weight: bold; width: 30%;">Técnico:</td><td>${techName}</td></tr>
-                <tr><td style="font-weight: bold;">Fecha:</td><td>${dateStr}</td></tr>
-                <tr><td style="font-weight: bold;">GPS:</td><td>${lat.toFixed(6)}, ${lon.toFixed(6)}</td></tr>
-                <tr><td style="font-weight: bold;">Planilla:</td><td>${formId}</td></tr>
-              </table>
-            </div>
-          ]]>
-        </description>
-        <Point>
-          <coordinates>${lon},${lat},0</coordinates>
-        </Point>
-      </Placemark>`;
-        } catch (err) {
-          console.error(`Error procesando foto ${i} para KMZ:`, err);
-        }
-      }
-
-      const kmlString = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-    <name>Relevamiento DEA - ${formId.substring(0, 8)}</name>
-    <open>1</open>
-    ${kmlPlacemarks}
-  </Document>
-</kml>`;
-
-      zip.file('doc.kml', kmlString);
-
-      const content = await zip.generateAsync({ 
-        type: 'blob', 
-        mimeType: 'application/vnd.google-earth.kmz' 
-      });
-      
-      const url = URL.createObjectURL(content);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `RELEVAMIENTO_DEA_${formId.substring(0, 8)}.kmz`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({ title: "KMZ Generado", description: "Paquete listo para Google Earth." });
-    } catch (error: any) {
-      console.error("Error en exportación KMZ:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo generar el paquete KMZ."
-      });
-    } finally {
-      setIsExportingKMZ(false);
-    }
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
   };
 
   if (authLoading) return null;
 
-  const btnBase = "flex flex-col items-center justify-center p-3 bg-white hover:bg-neutral-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed";
-  const btnLabel = "text-[9px] font-black uppercase text-center leading-tight mt-1.5";
+  const btnBase = "flex flex-col items-center justify-center p-2.5 bg-white hover:bg-neutral-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed";
+  const btnLabel = "text-[8px] font-normal uppercase text-center leading-tight mt-1";
 
   return (
     <>
-      <Card className="border-t-4 border-t-accent shadow-none rounded-none mt-6 border-x-black border-b-black">
-        <CardContent className="p-4 space-y-4">
-          <div className="flex items-center justify-between border-b border-black pb-2">
+      <Card className="border-t border-black shadow-none rounded-none mt-2 bg-neutral-50/50">
+        <CardContent className="p-3 space-y-3">
+          <div className="flex items-center justify-between border-b border-neutral-200 pb-1.5">
             <div className="flex items-center gap-2">
-              <Camera className="h-4 w-4 text-black" />
-              <h3 className="text-[11px] font-black uppercase tracking-widest text-black font-headline">Evidencia Visual</h3>
+              <Camera className="h-3.5 w-3.5 text-black" />
+              <h3 className="text-[10px] font-normal uppercase tracking-widest text-black">Fotos del ítem</h3>
             </div>
             <div className="flex items-center gap-2">
-              {isLocating && (
-                <div className="flex items-center gap-1 text-[9px] font-bold text-primary animate-pulse">
-                  <MapPin className="h-3 w-3" /> GPS...
-                </div>
-              )}
+              {isLocating && <div className="text-[8px] font-normal text-primary animate-pulse">GPS...</div>}
               {pendingPhotos.length > 0 && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-neutral-100 border border-black text-black rounded-none">
-                  <CloudOff className="h-3 w-3" />
-                  <span className="text-[8px] font-black uppercase">{pendingPhotos.length} Pendientes</span>
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-100 border border-neutral-300 text-black">
+                  <CloudOff className="h-2.5 w-2.5" />
+                  <span className="text-[7px] font-normal uppercase">{pendingPhotos.length} Pend.</span>
                 </div>
               )}
             </div>
@@ -620,150 +424,67 @@ export function PhotoRegistry({ reportId, formId, stationId, medium }: PhotoRegi
 
           <div className="grid grid-cols-4 gap-0 border border-black divide-x divide-black overflow-hidden bg-black">
             <button onClick={handleCaptureClick} disabled={isProcessing} className={btnBase}>
-              {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-              <span className={btnLabel}>Cámara</span>
+              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              <span className={btnLabel}>Capturar</span>
             </button>
-            
             <button onClick={fetchGallery} disabled={isFetchingGallery} className={btnBase}>
-              {isFetchingGallery ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
-              <span className={btnLabel}>Colección</span>
+              {isFetchingGallery ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+              <span className={btnLabel}>Ver ({gallery.length})</span>
             </button>
-
-            <button onClick={handleGISExport} disabled={isExporting || gallery.length === 0} className={btnBase}>
-              {isExporting ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapIcon className="h-5 w-5" />}
-              <span className={btnLabel}>GIS (CSV)</span>
+            <button onClick={handleBulkDownload} disabled={selectedIds.length === 0} className={cn(btnBase, "text-primary")}>
+              <Download className="h-4 w-4" />
+              <span className={btnLabel}>Bajar</span>
             </button>
-
-            <button onClick={handleKMZExport} disabled={isExportingKMZ || gallery.length === 0} className={btnBase}>
-              {isExportingKMZ ? <Loader2 className="h-5 w-5 animate-spin" /> : <Globe className="h-5 w-5" />}
-              <span className={btnLabel}>KMZ (KML)</span>
+            <button onClick={handleBulkDelete} disabled={selectedIds.length === 0} className={cn(btnBase, "text-neutral-600")}>
+              <Trash2 className="h-4 w-4" />
+              <span className={btnLabel}>Borrar</span>
             </button>
           </div>
 
           {(localPhoto || pendingPhotos.length > 0) && (
-            <div className="space-y-3 pt-2">
-              <h4 className="text-[9px] font-black uppercase text-neutral-400 tracking-widest">Cola de Envío</h4>
-              <div className="grid grid-cols-4 gap-2">
-                {localPhoto && (
-                  <div className="relative aspect-square border border-black bg-neutral-100 group">
-                    <img src={localPhoto.preview} alt="Cargando" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                      <button onClick={() => removePhoto(localPhoto.id)} className="p-1 bg-white text-black"><Trash2 className="h-3 w-3" /></button>
-                      <button onClick={() => handleUpload(localPhoto.id, localPhoto.file, `${localPhoto.id}.jpg`)} className="p-1 bg-white text-primary">
-                        {uploadingIds.includes(localPhoto.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                      </button>
+            <div className="grid grid-cols-5 gap-1.5">
+               {localPhoto && (
+                  <div className="relative aspect-square border border-black group">
+                    <img src={localPhoto.preview} alt="C" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                       <button onClick={() => handleUpload(localPhoto.id, localPhoto.file, `${localPhoto.id}.jpg`)} className="p-1 bg-white text-primary">
+                          {uploadingIds.includes(localPhoto.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                       </button>
                     </div>
                   </div>
-                )}
-                {pendingPhotos.filter(p => p.id !== localPhoto?.id).map(photo => (
-                  <div key={photo.id} className="relative aspect-square border border-neutral-300 bg-neutral-50 group">
-                    <img src={URL.createObjectURL(photo.file)} alt="Pendiente" className="w-full h-full object-cover opacity-60" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      {uploadingIds.includes(photo.id) ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-black" />
-                      ) : (
-                        <button onClick={() => handleUpload(photo.id, photo.file, photo.fileName)} className="p-1 bg-white border border-black text-black">
-                          <Upload className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+               )}
             </div>
           )}
 
           {gallery.length > 0 && (
-            <div className="space-y-3 pt-2 animate-in fade-in duration-300">
-              <Separator className="bg-neutral-200" />
-              <div className="flex items-center justify-between">
-                <h4 className="text-[9px] font-black uppercase text-black tracking-widest">Colección Cargada</h4>
-                <div className="flex items-center gap-1">
-                  <span className="text-[9px] font-black mr-2 uppercase">{selectedIds.length} seleccionadas</span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className={cn(
-                      "h-7 w-7 bg-primary text-white hover:bg-primary/90 transition-all",
-                      selectedIds.length === 0 && "opacity-20 grayscale pointer-events-none"
-                    )}
-                    onClick={handleBulkDownload}
-                    disabled={downloadingIds.length > 0 || selectedIds.length === 0}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className={cn(
-                      "h-7 w-7 bg-neutral-600 text-white hover:bg-neutral-700 transition-all",
-                      selectedIds.length === 0 && "opacity-20 grayscale pointer-events-none"
-                    )}
-                    onClick={handleBulkDelete}
-                    disabled={isDeleting || selectedIds.length === 0}
-                  >
-                    {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  </Button>
+            <div className="grid grid-cols-3 gap-2 pt-1 animate-in fade-in duration-300">
+              {gallery.map((photo) => (
+                <div 
+                  key={photo.id} 
+                  onClick={() => setSelectedIds(prev => prev.includes(photo.id) ? prev.filter(i => i !== photo.id) : [...prev, photo.id])}
+                  className={cn(
+                    "border border-black bg-white group relative aspect-video cursor-pointer transition-all",
+                    selectedIds.includes(photo.id) ? "ring-2 ring-primary ring-offset-1 scale-[1.02]" : "hover:scale-[1.01]"
+                  )}
+                >
+                  <img src={photo.value} alt="E" className="w-full h-full object-cover" />
+                  {selectedIds.includes(photo.id) && <div className="absolute inset-0 bg-primary/20 flex items-center justify-center"><CheckSquare className="h-4 w-4 text-white" /></div>}
+                  <div className="absolute bottom-0.5 right-0.5 bg-black/40 px-1 text-[6px] text-white"><TechnicianLink email={photo.userEmail} className="text-white hover:text-white" /></div>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                {gallery.map((photo) => (
-                  <div 
-                    key={photo.id} 
-                    onClick={() => toggleSelect(photo.id)}
-                    className={cn(
-                      "border border-black bg-white group relative overflow-hidden transition-all cursor-pointer aspect-video",
-                      selectedIds.includes(photo.id) ? "ring-2 ring-primary ring-offset-1 z-10 scale-[1.02]" : "hover:scale-[1.01]"
-                    )}
-                  >
-                    <img src={photo.value} alt="Evidencia" className="w-full h-full object-cover" />
-                    <div className="absolute bottom-1 right-1 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 text-[7px] font-bold text-white flex items-center gap-1">
-                      <TechnicianLink email={photo.authorEmail || photo.userEmail} className="text-white hover:text-white" />
-                    </div>
-                    {photo.latitude && (
-                      <div className="absolute top-1 left-1 bg-black text-white px-1 py-0.5 text-[7px] font-bold flex items-center gap-0.5">
-                        <MapPin className="h-2 w-2" /> GPS
-                      </div>
-                    )}
-                    {selectedIds.includes(photo.id) && (
-                      <div className="absolute inset-0 bg-primary/10 pointer-events-none" />
-                    )}
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           )}
 
-          <input 
-            type="file" 
-            ref={fileInputRef}
-            accept="image/*" 
-            capture="environment" 
-            onChange={handleFileChange}
-            className="hidden" 
-          />
+          <input type="file" ref={fileInputRef} accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
         </CardContent>
       </Card>
 
       <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <AlertDialogContent className="border-t-4 border-t-destructive rounded-none">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm font-black uppercase tracking-tight">Confirmar Eliminación</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs font-medium text-muted-foreground">
-              ¿Estás seguro de que deseas eliminar permanentemente las {selectedIds.length} fotos seleccionadas? Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row gap-2 mt-4">
-            <AlertDialogCancel className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest rounded-none border-black m-0">
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={executeDelete}
-              className="flex-1 h-10 text-[10px] font-black uppercase tracking-widest rounded-none bg-destructive hover:bg-destructive/90 text-white m-0"
-            >
-              Eliminar
-            </AlertDialogAction>
+          <AlertDialogHeader><AlertDialogTitle className="text-sm font-normal uppercase">Confirmar Eliminación</AlertDialogTitle><AlertDialogDescription className="text-xs">¿Borrar {selectedIds.length} fotos permanentemente?</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-2">
+            <AlertDialogCancel className="flex-1 rounded-none border-black m-0 text-[10px] uppercase">No</AlertDialogCancel>
+            <AlertDialogAction onClick={executeDelete} className="flex-1 rounded-none bg-destructive text-white m-0 text-[10px] uppercase">Sí, Borrar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

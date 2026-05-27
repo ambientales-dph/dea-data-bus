@@ -135,6 +135,7 @@ function DataExplorer({
       let detectedTemplate = 'manual';
       if (s.medium === 'agua_superficial') detectedTemplate = 'agua_superficial';
       else if (s.medium === 'agua_subterranea') detectedTemplate = 'agua_subterranea';
+      else if (s.medium === 'sedimentos') detectedTemplate = 'pgays_inspeccion';
       else if (s.medium === 'suelo') {
         if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') detectedTemplate = 'suelo_geotecnia';
         else detectedTemplate = 'suelo_edafologico';
@@ -172,6 +173,7 @@ function DataExplorer({
   };
 
   const getProtocolLabel = (templateId: string, medium: string) => {
+    if (templateId === 'pgays_inspeccion') return 'Inspección de Obra (PGAyS-001)';
     if (templateId === 'suelo_geotecnia') return 'Mecánica de suelos (MS-001)';
     if (templateId === 'suelo_edafologico') return 'Perfil Edafológico (PE-001)';
     if (medium === 'agua_superficial') return 'Agua Superficial (AS-001)';
@@ -404,7 +406,9 @@ export function DataEntryForm({
       const existing = planillasMap.get(fId);
       
       let detectedProtocol = undefined;
-      if (medium === 'suelo') {
+      if (medium === 'sedimentos') {
+        detectedProtocol = 'pgays_inspeccion';
+      } else if (medium === 'suelo') {
         if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') detectedProtocol = 'suelo_geotecnia';
         else if (s.analyte === 'Material_Originario' || s.analyte === 'Paisaje') detectedProtocol = 'suelo_edafologico';
       } else if (medium === 'agua_superficial') {
@@ -1025,6 +1029,7 @@ export function DataEntryForm({
   }
 
   const getProtocolLabel = (protocolId: string | undefined, medium: string) => {
+    if (protocolId === 'pgays_inspeccion') return 'Inspección de Obra (PGAyS-001)';
     if (protocolId === 'suelo_geotecnia') return 'Mecánica de suelos (MS-001)';
     if (protocolId === 'suelo_edafologico') return 'Perfil Edafológico (PE-001)';
     if (medium === 'agua_superficial') return 'Agua Superficial (AS-001)';
