@@ -26,10 +26,10 @@ const SECTIONS = [
   {
     title: "1. Acuerdos y solicitudes anteriores",
     items: [
-      { id: "acuerdo_1", label: "Acuerdo / Solicitud 1", dynamic: true },
-      { id: "acuerdo_2", label: "Acuerdo / Solicitud 2", dynamic: true },
-      { id: "acuerdo_3", label: "Acuerdo / Solicitud 3", dynamic: true },
-      { id: "acuerdo_4", label: "Acuerdo / Solicitud 4", dynamic: true }
+      { id: "acuerdo_1", label: "..................................................", dynamic: true },
+      { id: "acuerdo_2", label: "..................................................", dynamic: true },
+      { id: "acuerdo_3", label: "..................................................", dynamic: true },
+      { id: "acuerdo_4", label: "..................................................", dynamic: true }
     ]
   },
   {
@@ -64,24 +64,24 @@ const SECTIONS = [
   {
     title: "5. Programa de Cumplimiento Legal, Permisos y Autorizaciones",
     items: [
-      { id: "permiso_1", label: "Permiso / Autorización 1", dynamic: true },
-      { id: "permiso_2", label: "Permiso / Autorización 2", dynamic: true }
+      { id: "permiso_1", label: "..................................................", dynamic: true },
+      { id: "permiso_2", label: "..................................................", dynamic: true }
     ]
   },
   {
     title: "6. Programa de Ordenamiento de la Circulación Vehicular",
     items: [
       { id: "vial_estado", label: "Se observa buen estado de caminos, se realizan tareas periódicas de mantenimiento" },
-      { id: "vial_dyn_1", label: "Consigna Vial 1", dynamic: true },
-      { id: "vial_dyn_2", label: "Consigna Vial 2", dynamic: true },
-      { id: "vial_dyn_3", label: "Consigna Vial 3", dynamic: true }
+      { id: "vial_dyn_1", label: "..................................................", dynamic: true },
+      { id: "vial_dyn_2", label: "..................................................", dynamic: true },
+      { id: "vial_dyn_3", label: "..................................................", dynamic: true }
     ]
   },
   {
     title: "7. Programa de Manejo Suelo / Recinto",
     items: [
       { id: "suelo_sector", label: "Se respeta el sector de disposición final de suelo" },
-      { id: "suelo_dyn_1", label: "Consigna Suelo 1", dynamic: true }
+      { id: "suelo_dyn_1", label: "..................................................", dynamic: true }
     ]
   },
   {
@@ -90,22 +90,22 @@ const SECTIONS = [
       { id: "monit_agua", label: "Se realizan de forma quincenal los monitoreos de agua" },
       { id: "monit_suelo", label: "Se ha realizado el monitoreo de suelo inicial" },
       { id: "monit_derrame", label: "Se observa en obra kits para contencion de derrames en lugar accesible" },
-      { id: "monit_dyn_1", label: "Consigna Monitoreo 1", dynamic: true }
+      { id: "monit_dyn_1", label: "..................................................", dynamic: true }
     ]
   },
   {
     title: "9. Programa de Prevención de Interferencias",
     items: [
       { id: "interf_servicios", label: "¿Se han detectado interferencias con servicios públicos? ¿Se contactó a la empresa prestadora?" },
-      { id: "interf_dyn_1", label: "Consigna Interferencia 1", dynamic: true }
+      { id: "interf_dyn_1", label: "..................................................", dynamic: true }
     ]
   },
   {
     title: "10. Programa de Prevención de Contingencias",
     items: [
       { id: "cont_emergencia", label: "Control de contingencias y respuesta ante emergencias" },
-      { id: "cont_dyn_1", label: "Consigna Contingencia 1", dynamic: true },
-      { id: "cont_dyn_2", label: "Consigna Contingencia 2", dynamic: true }
+      { id: "cont_dyn_1", label: "..................................................", dynamic: true },
+      { id: "cont_dyn_2", label: "..................................................", dynamic: true }
     ]
   }
 ];
@@ -348,8 +348,8 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
         </div>
         {[
           { id: "personal_afectado", label: "Personal afectado a obra" },
-          { id: "personal_dyn_1", label: "Dato Personal Adicional 1", dynamic: true },
-          { id: "personal_dyn_2", label: "Dato Personal Adicional 2", dynamic: true }
+          { id: "personal_dyn_1", label: "..................................................", dynamic: true },
+          { id: "personal_dyn_2", label: "..................................................", dynamic: true }
         ].map(item => (
           <div key={item.id} className="flex items-center justify-between py-2 px-3 border-b border-neutral-100 last:border-0">
             {item.dynamic ? (
