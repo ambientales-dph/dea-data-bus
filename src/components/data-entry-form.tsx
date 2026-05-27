@@ -484,7 +484,13 @@ export function DataEntryForm({
     const currentKey = `${selectedPoint.lat}-${selectedPoint.lon}-${selectedPoint.stationId}`;
 
     if (!isInitialLoadRef.current && lastPointKeyRef.current !== currentKey) {
-      if (activeView !== 'create-station' && activeView !== 'edit-station') {
+      // Si el punto viene con navegación profunda desde búsqueda global
+      if (selectedPoint.formId && selectedPoint.reportId) {
+        setCurrentReportId(selectedPoint.reportId);
+        setActiveFormId(selectedPoint.formId);
+        setSelectedTemplate(selectedPoint.templateId || 'manual');
+        setActiveView('report-entry');
+      } else if (activeView !== 'create-station' && activeView !== 'edit-station') {
         if (selectedPoint.stationId) {
           setActiveView('summary');
         } else {
@@ -504,7 +510,7 @@ export function DataEntryForm({
       
       lastPointKeyRef.current = currentKey;
     }
-  }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.stationId, activeView]);
+  }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.stationId, selectedPoint?.formId, activeView]);
 
   useEffect(() => {
     if (selectedPoint) {

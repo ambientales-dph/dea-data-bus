@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin, ListTodo } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -34,15 +34,19 @@ export interface SelectedPoint {
   name?: string;
   basinCode?: string;
   reportId?: string;
+  formId?: string;
+  templateId?: string;
 }
 
 interface SearchResult {
-  type: 'station' | 'place' | 'report';
+  type: 'station' | 'place' | 'report' | 'planilla';
   display_name: string;
   lat: string;
   lon: string;
   stationId?: string;
   reportId?: string;
+  formId?: string;
+  templateId?: string;
   trelloCode?: string;
 }
 
@@ -84,6 +88,12 @@ export default function Home() {
     return query(collection(db, 'reports'));
   }, [db, user]);
   const { data: reports } = useCollection(reportsQuery);
+
+  const samplesQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'samples'));
+  }, [db, user]);
+  const { data: samples } = useCollection(samplesQuery);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -210,6 +220,7 @@ export default function Home() {
 
     const currentSearchId = ++searchIdRef.current;
     
+    // 1. Estaciones
     const stationResults: SearchResult[] = (stations || [])
       .filter(s => {
         const stationName = normalizeText(String(s.name || ''));
@@ -224,6 +235,7 @@ export default function Home() {
         stationId: s.id
       }));
 
+    // 2. Reportes
     const reportResults: SearchResult[] = (reports || [])
       .filter(r => {
         const oid = normalizeText(String(r.oid || ''));
@@ -245,7 +257,47 @@ export default function Home() {
       })
       .filter((r): r is SearchResult => r !== null);
 
-    const localResults = [...stationResults, ...reportResults];
+    // 3. Planillas (NUEVO)
+    const planillaResults: SearchResult[] = [];
+    const seenPlanillas = new Set<string>();
+
+    (samples || []).forEach(s => {
+      const fid = s.formId;
+      if (!fid || seenPlanillas.has(fid)) return;
+      
+      const fidNormalized = normalizeText(fid);
+      if (fidNormalized.includes(q)) {
+        seenPlanillas.add(fid);
+        const report = (reports || []).find(r => r.id === s.reportId);
+        const station = (stations || []).find(st => st.id === s.stationId);
+        
+        if (report && station) {
+          // Detectar protocolo
+          let detectedTemplate = 'manual';
+          if (s.medium === 'agua_superficial') detectedTemplate = 'agua_superficial';
+          else if (s.medium === 'agua_subterranea') detectedTemplate = 'agua_subterranea';
+          else if (s.medium === 'sedimentos') detectedTemplate = 'pgays_inspeccion';
+          else if (s.medium === 'suelo') {
+            if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') detectedTemplate = 'suelo_geotecnia';
+            else detectedTemplate = 'suelo_edafologico';
+          }
+
+          planillaResults.push({
+            type: 'planilla',
+            display_name: fid,
+            lat: String(station.latitude),
+            lon: String(station.longitude),
+            stationId: station.id,
+            reportId: report.id,
+            formId: fid,
+            templateId: detectedTemplate,
+            trelloCode: getProjectCode(report.trelloCardName || '')
+          });
+        }
+      }
+    });
+
+    const localResults = [...stationResults, ...reportResults, ...planillaResults];
     setSearchResults(localResults);
 
     if (q.length < 3 || !isOnline) {
@@ -287,7 +339,7 @@ export default function Home() {
     }, 400);
     
     return () => clearTimeout(timer);
-  }, [searchQuery, stations, reports, isOnline]);
+  }, [searchQuery, stations, reports, samples, isOnline]);
 
   const handleSelectResult = (result: SearchResult) => {
     handlePointSelect({
@@ -295,8 +347,11 @@ export default function Home() {
       lon: parseFloat(result.lon),
       stationId: result.stationId,
       name: result.type === 'station' ? result.display_name : 
-            result.type === 'report' ? (stations?.find(s => s.id === result.stationId)?.name || 'Estación') : undefined,
-      reportId: result.reportId
+            result.type === 'report' ? (stations?.find(s => s.id === result.stationId)?.name || 'Estación') : 
+            result.type === 'planilla' ? (stations?.find(s => s.id === result.stationId)?.name || 'Estación') : undefined,
+      reportId: result.reportId,
+      formId: result.formId,
+      templateId: result.templateId
     });
     setSearchQuery('');
     setSearchResults([]);
@@ -335,7 +390,7 @@ export default function Home() {
                   {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-foreground" /> : <Search className="h-4 w-4" />}
                 </div>
                 <Input 
-                  placeholder={isMobile ? "Buscar..." : isOnline ? "Buscar estación, reporte, cuenca o lugar..." : "Buscar estación o reporte (Offline)..."} 
+                  placeholder={isMobile ? "Buscar..." : isOnline ? "Buscar estación, reporte, planilla, cuenca o lugar..." : "Buscar local (Offline)..."} 
                   className="border-0 focus-visible:ring-0 h-full text-xs bg-transparent placeholder:text-[10px] md:placeholder:text-xs text-foreground font-medium"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -368,10 +423,12 @@ export default function Home() {
                               "mt-0.5 p-1.5 rounded",
                               result.type === 'station' ? "bg-primary/10 text-foreground" : 
                               result.type === 'report' ? "bg-accent/10 text-accent" :
+                              result.type === 'planilla' ? "bg-neutral-800 text-white" :
                               "bg-muted text-muted-foreground"
                             )}>
                               {result.type === 'station' ? <Database className="h-3.5 w-3.5" /> : 
                                result.type === 'report' ? <FileText className="h-3.5 w-3.5" /> :
+                               result.type === 'planilla' ? <ListTodo className="h-3.5 w-3.5" /> :
                                <MapPin className="h-3.5 w-3.5" />}
                             </div>
                             <div className="flex-1 overflow-hidden">
@@ -379,6 +436,7 @@ export default function Home() {
                               <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">
                                 {result.type === 'station' ? 'Estación de Monitoreo' : 
                                  result.type === 'report' ? `Reporte • ${result.trelloCode}` : 
+                                 result.type === 'planilla' ? `Planilla • ${result.trelloCode}` : 
                                  'Lugar / Ubicación'}
                               </p>
                             </div>
