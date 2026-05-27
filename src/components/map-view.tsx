@@ -423,7 +423,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       return new Style({
         image: new CircleStyle({ 
           radius: 8, 
-          stroke: new Stroke({ color: '#ffffff', width: 2 }), 
+          stroke: new Stroke({ color: '#ffffff', width: 1 }), 
           fill: new Fill({ color: '#000000' }) 
         }),
       });
@@ -524,14 +524,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       <div ref={mapRef} className="absolute inset-0 z-10" />
       <div ref={tooltipRef} className="map-tooltip" />
       
-      {/* CRUZ DE HILOS CENTRAL (Crosshair) - Negro Pleno */}
+      {/* CRUZ DE HILOS CENTRAL (Crosshair) - Negro Pleno Refinado */}
       <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
-        {/* Línea horizontal */}
-        <div className="absolute w-12 h-[1px] bg-black" />
-        {/* Línea vertical */}
-        <div className="absolute h-12 w-[1px] bg-black" />
-        {/* Círculo central */}
-        <div className="absolute w-2 h-2 rounded-full border border-black" />
+        {/* Línea horizontal - Trazo fino */}
+        <div className="absolute w-12 h-[0.5px] bg-black" />
+        {/* Línea vertical - Trazo fino */}
+        <div className="absolute h-12 w-[0.5px] bg-black" />
+        {/* Círculo central - Diámetro doble y trazo fino */}
+        <div className="absolute w-4 h-4 rounded-full border-[0.5px] border-black" />
       </div>
 
       <div className="absolute bottom-6 right-6 z-40 flex flex-row items-center gap-1.5">
