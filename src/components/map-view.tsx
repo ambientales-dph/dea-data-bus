@@ -160,7 +160,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       layers: [baseLayer, basinsLayer, codesLayer, uploadedLayer, presenceLayer, stationsLayer, selectionLayer],
       view: new View({
         center: fromLonLat([-60.0, -37.0]),
-        zoom: 6.5,
+        zoom: 6.0,
       }),
     });
 
@@ -424,7 +424,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         image: new CircleStyle({ 
           radius: 8, 
           stroke: new Stroke({ color: '#ffffff', width: 1.5 }), 
-          fill: new Fill({ color: '#22c55e' }) // Diana en color verde
+          fill: new Fill({ color: '#22c55e' }) 
         }),
       });
     });
@@ -524,13 +524,9 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       <div ref={mapRef} className="absolute inset-0 z-10" />
       <div ref={tooltipRef} className="map-tooltip" />
       
-      {/* CRUZ DE HILOS CENTRAL (Crosshair) - Negro Pleno Refinado */}
       <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
-        {/* Línea horizontal - Trazo fino */}
         <div className="absolute w-12 h-[0.5px] bg-black" />
-        {/* Línea vertical - Trazo fino */}
         <div className="absolute h-12 w-[0.5px] bg-black" />
-        {/* Círculo central - Diámetro doble y trazo fino */}
         <div className="absolute w-4 h-4 rounded-full border-[0.5px] border-black" />
       </div>
 
