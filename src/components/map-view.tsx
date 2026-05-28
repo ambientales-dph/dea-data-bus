@@ -16,13 +16,13 @@ import Point from 'ol/geom/Point';
 import GeoJSON from 'ol/format/GeoJSON';
 import KML from 'ol/format/KML';
 import Overlay from 'ol/Overlay';
-import { Style, Text, Fill, Circle as CircleStyle, Stroke, RegularShape } from 'ol/style';
+import { Style, Text, Fill, Circle as CircleStyle, Stroke } from 'ol/style';
 import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { SelectedPoint } from '@/app/page';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Layers, Upload, Map as MapIcon, Satellite, Loader2, Eye, EyeOff, Locate, Trash2 } from 'lucide-react';
+import { Layers, Upload, Loader2, Eye, EyeOff, Locate, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
@@ -108,7 +108,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     codesLayerRef.current = codesLayer;
 
     const getInitialSource = () => {
-      if (activeLayer === 'satellite' || activeLayer === 'grayscale') {
+      if (activeLayer === 'satellite') {
         return new XYZ({ 
           url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', 
           maxZoom: 19 
@@ -299,7 +299,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     if (!baseLayerRef.current) return;
     const baseLayer = baseLayerRef.current;
     
-    if (activeLayer === 'satellite' || activeLayer === 'grayscale') {
+    if (activeLayer === 'satellite') {
       baseLayer.setSource(new XYZ({
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         maxZoom: 19
@@ -576,8 +576,8 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
             <div className="space-y-1">
               {[
                 { id: 'osm', label: 'Estándar (Callejero)' },
-                { id: 'grayscale', label: 'Satelital (B&N)' },
-                { id: 'satellite', label: 'Satelital (Color)' }
+                { id: 'grayscale', label: 'Estándar (B&N)' },
+                { id: 'satellite', label: 'Satelital (Banda Roja)' }
               ].map((l) => (
                 <button 
                   key={l.id} 

@@ -56,13 +56,14 @@
   transition: filter 0.3s ease;
 }
 
-/* Filtro de Banda Roja (Escala de Grises Técnica) */
+/* Capa OSM en Blanco y Negro (Grayscale estándar) */
 .map-container-grayscale .ol-base-layer canvas {
-  filter: url('#red-band-filter') brightness(1.1) contrast(1.4) !important;
+  filter: grayscale(1) brightness(1.1) contrast(1.1) !important;
 }
 
+/* Capa Satelital en Banda Roja (Filtro Espectral SVG) */
 .map-container-satellite .ol-base-layer canvas {
-  filter: saturate(1.2) contrast(1.1) !important;
+  filter: url('#red-band-filter') brightness(1.1) contrast(1.4) !important;
 }
 
 /* Asegurar que ninguna otra capa vectorial sea afectada por los filtros del contenedor base */
