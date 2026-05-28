@@ -107,12 +107,18 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
     codesLayerRef.current = codesLayer;
 
-    const initialSource = activeLayer === 'satellite' 
-      ? new XYZ({ url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 19 })
-      : new OSM();
+    const getInitialSource = () => {
+      if (activeLayer === 'satellite' || activeLayer === 'grayscale') {
+        return new XYZ({ 
+          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', 
+          maxZoom: 19 
+        });
+      }
+      return new OSM();
+    };
 
     const baseLayer = new TileLayer({
-      source: initialSource,
+      source: getInitialSource(),
       className: 'ol-base-layer',
     });
     baseLayerRef.current = baseLayer;
@@ -293,7 +299,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     if (!baseLayerRef.current) return;
     const baseLayer = baseLayerRef.current;
     
-    if (activeLayer === 'satellite') {
+    if (activeLayer === 'satellite' || activeLayer === 'grayscale') {
       baseLayer.setSource(new XYZ({
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         maxZoom: 19
@@ -513,6 +519,16 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       activeLayer === 'grayscale' && "map-container-grayscale",
       activeLayer === 'satellite' && "map-container-satellite"
     )}>
+      {/* Filtro SVG para simulación de Banda Roja (Red Band Grayscale) */}
+      <svg className="hidden">
+        <filter id="red-band-filter">
+          <feColorMatrix type="matrix" values="1 0 0 0 0 
+                                               1 0 0 0 0 
+                                               1 0 0 0 0 
+                                               0 0 0 1 0" />
+        </filter>
+      </svg>
+
       <div ref={mapRef} className="absolute inset-0 z-10" />
       <div ref={tooltipRef} className="map-tooltip" />
       
@@ -558,10 +574,21 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           </PopoverTrigger>
           <PopoverContent className="w-48 p-2 shadow-2xl rounded-none" align="end" side="top">
             <div className="space-y-1">
-              {['osm', 'grayscale', 'satellite'].map((l) => (
-                <button key={l} onClick={() => onLayerChange?.(l as any)} className={cn("w-full flex items-center justify-between p-2 text-[11px] font-medium rounded-none", activeLayer === l ? "bg-primary text-white" : "hover:bg-muted")}>
-                  <div className="flex items-center gap-2 capitalize">{l === 'osm' ? 'Estándar' : l === 'grayscale' ? 'Grises' : 'Satélite'}</div>
-                  {activeLayer === l && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+              {[
+                { id: 'osm', label: 'Estándar (Callejero)' },
+                { id: 'grayscale', label: 'Satelital (B&N)' },
+                { id: 'satellite', label: 'Satelital (Color)' }
+              ].map((l) => (
+                <button 
+                  key={l.id} 
+                  onClick={() => onLayerChange?.(l.id as any)} 
+                  className={cn(
+                    "w-full flex items-center justify-between p-2 text-[11px] font-medium rounded-none", 
+                    activeLayer === l.id ? "bg-primary text-white" : "hover:bg-muted"
+                  )}
+                >
+                  <div className="flex items-center gap-2">{l.label}</div>
+                  {activeLayer === l.id && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                 </button>
               ))}
             </div>

@@ -56,8 +56,9 @@
   transition: filter 0.3s ease;
 }
 
+/* Filtro de Banda Roja (Escala de Grises Técnica) */
 .map-container-grayscale .ol-base-layer canvas {
-  filter: grayscale(100%) brightness(0.9) contrast(1.2) !important;
+  filter: url('#red-band-filter') brightness(1.1) contrast(1.4) !important;
 }
 
 .map-container-satellite .ol-base-layer canvas {
@@ -69,19 +70,19 @@
   filter: none !important;
 }
 
-/* Tooltip del mapa - Actualizado: Más transparente, sin bordes, solo nombres y sin negrita */
+/* Tooltip del mapa */
 .map-tooltip {
   position: absolute;
-  background: rgba(243, 244, 246, 0.6); /* Más transparente */
+  background: rgba(243, 244, 246, 0.6);
   color: #000;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 11px;
-  font-weight: 400; /* Removida la negrita */
+  font-weight: 400;
   pointer-events: none;
   white-space: pre-line;
   z-index: 1000;
-  border: none; /* Sin bordes */
+  border: none;
   transform: translate(-50%, -100%);
   box-shadow: 0 2px 4px -1px rgb(0 0 0 / 0.1);
   display: none;
