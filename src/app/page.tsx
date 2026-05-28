@@ -431,43 +431,46 @@ export default function Home() {
                           <button 
                             key={idx} 
                             onClick={() => handleSelectResult(result)} 
-                            className="w-full text-left p-2.5 hover:bg-primary/5 rounded-md transition-colors flex items-start gap-3 border-b last:border-0"
+                            className="w-full text-left p-3 hover:bg-primary/5 rounded-md transition-colors flex items-start gap-4 border-b last:border-0"
                           >
                             <div className={cn(
-                              "mt-0.5 p-1.5 rounded",
+                              "mt-1 p-2 rounded shadow-sm",
                               result.type === 'station' ? "bg-primary/10 text-foreground" : 
                               result.type === 'report' ? "bg-accent/10 text-accent" :
                               result.type === 'planilla' ? "bg-neutral-800 text-white" :
                               "bg-muted text-muted-foreground"
                             )}>
-                              {result.type === 'station' ? <Database className="h-3.5 w-3.5" /> : 
-                               result.type === 'report' ? <FileText className="h-3.5 w-3.5" /> :
-                               result.type === 'planilla' ? <ListTodo className="h-3.5 w-3.5" /> :
-                               <MapPin className="h-3.5 w-3.5" />}
+                              {result.type === 'station' ? <Database className="h-4 w-4" /> : 
+                               result.type === 'report' ? <FileText className="h-4 w-4" /> :
+                               result.type === 'planilla' ? <ListTodo className="h-4 w-4" /> :
+                               <MapPin className="h-4 w-4" />}
                             </div>
                             <div className="flex-1 overflow-hidden">
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="text-[11px] font-bold leading-tight truncate text-foreground">{result.display_name}</p>
-                                {result.date && (
-                                  <div className="flex items-center gap-1 text-[8px] text-muted-foreground whitespace-nowrap bg-muted/30 px-1.5 py-0.5 rounded">
-                                    <Clock className="h-2 w-2" />
-                                    {formatDateLabel(result.date)}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center justify-between gap-2 mt-0.5">
-                                <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold truncate">
-                                  {result.type === 'station' ? 'Estación de Monitoreo' : 
-                                   result.type === 'report' ? `Reporte • ${result.trelloCode}` : 
-                                   result.type === 'planilla' ? `Planilla • ${result.trelloCode}` : 
-                                   'Lugar / Ubicación'}
-                                </p>
-                                {result.author && (
-                                  <div className="flex items-center gap-1 text-[8px] text-muted-foreground italic normal-case shrink-0 opacity-70">
-                                    <User className="h-2 w-2" />
-                                    {getUserNameByEmail(result.author)}
-                                  </div>
-                                )}
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[13px] font-normal leading-tight truncate text-black">{result.display_name}</p>
+                                  {result.date && (
+                                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap bg-muted/30 px-1.5 py-0.5 rounded">
+                                      <Clock className="h-2.5 w-2.5" />
+                                      {formatDateLabel(result.date)}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-normal truncate">
+                                    {result.type === 'station' ? 'Estación de Monitoreo' : 
+                                     result.type === 'report' ? `Reporte • ${result.trelloCode}` : 
+                                     result.type === 'planilla' ? `Planilla • ${result.trelloCode}` : 
+                                     'Lugar / Ubicación'}
+                                  </p>
+                                  {result.author && (
+                                    <div className="flex items-center gap-1 text-[10px] text-black font-normal italic shrink-0">
+                                      <div className="h-1 w-1 rounded-full bg-primary/40 mr-1" />
+                                      <User className="h-2.5 w-2.5" />
+                                      {getUserNameByEmail(result.author)}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </button>
