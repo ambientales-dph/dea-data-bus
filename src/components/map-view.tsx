@@ -412,14 +412,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     });
 
     selectionLayerRef.current.setStyle(() => {
-      if (isDraggable) {
-        return new Style({
-          image: new CircleStyle({
-            radius: 4,
-            fill: new Fill({ color: 'rgba(34, 197, 94, 0.5)' }),
-          })
-        });
-      }
       return new Style({
         image: new CircleStyle({ 
           radius: 8, 
@@ -524,10 +516,14 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       <div ref={mapRef} className="absolute inset-0 z-10" />
       <div ref={tooltipRef} className="map-tooltip" />
       
-      <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
-        <div className="absolute w-12 h-[0.5px] bg-black" />
-        <div className="absolute h-12 w-[0.5px] bg-black" />
-        <div className="absolute w-4 h-4 rounded-full border-[0.5px] border-black" />
+      {/* Retícula de precisión con blend mode auto-adaptativo */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center"
+        style={{ mixBlendMode: 'difference' }}
+      >
+        <div className="absolute w-12 h-[0.5px] bg-white opacity-90" />
+        <div className="absolute h-12 w-[0.5px] bg-white opacity-90" />
+        <div className="absolute w-4 h-4 rounded-full border-[0.5px] border-white opacity-90" />
       </div>
 
       <div className="absolute bottom-6 right-6 z-40 flex flex-row items-center gap-1.5">
