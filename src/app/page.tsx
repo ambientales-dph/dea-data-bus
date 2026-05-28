@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin, ListTodo } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin, ListTodo, Clock } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -48,6 +48,8 @@ interface SearchResult {
   formId?: string;
   templateId?: string;
   trelloCode?: string;
+  date?: any;
+  author?: string;
 }
 
 const MIN_SIDEBAR_WIDTH = 320;
@@ -208,6 +210,12 @@ export default function Home() {
     return match ? match[0] : fullName.substring(0, 8);
   };
 
+  const formatDateLabel = (timestamp: any) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  };
+
   useEffect(() => {
     const rawQuery = searchQuery.trim();
     const q = normalizeText(rawQuery);
@@ -232,7 +240,9 @@ export default function Home() {
         display_name: String(s.name),
         lat: String(s.latitude),
         lon: String(s.longitude),
-        stationId: s.id
+        stationId: s.id,
+        date: s.createdAt,
+        author: s.userEmail
       }));
 
     // 2. Reportes
@@ -252,12 +262,14 @@ export default function Home() {
           lon: String(station.longitude),
           stationId: station.id,
           reportId: r.id,
-          trelloCode: getProjectCode(r.trelloCardName || '')
+          trelloCode: getProjectCode(r.trelloCardName || ''),
+          date: r.createdAt,
+          author: r.createdByEmail
         };
       })
       .filter((r): r is SearchResult => r !== null);
 
-    // 3. Planillas (NUEVO)
+    // 3. Planillas
     const planillaResults: SearchResult[] = [];
     const seenPlanillas = new Set<string>();
 
@@ -291,7 +303,9 @@ export default function Home() {
             reportId: report.id,
             formId: fid,
             templateId: detectedTemplate,
-            trelloCode: getProjectCode(report.trelloCardName || '')
+            trelloCode: getProjectCode(report.trelloCardName || ''),
+            date: s.timestamp,
+            author: s.userEmail
           });
         }
       }
@@ -417,7 +431,7 @@ export default function Home() {
                           <button 
                             key={idx} 
                             onClick={() => handleSelectResult(result)} 
-                            className="w-full text-left p-2 hover:bg-primary/5 rounded-md transition-colors flex items-start gap-3 border-b last:border-0"
+                            className="w-full text-left p-2.5 hover:bg-primary/5 rounded-md transition-colors flex items-start gap-3 border-b last:border-0"
                           >
                             <div className={cn(
                               "mt-0.5 p-1.5 rounded",
@@ -432,13 +446,29 @@ export default function Home() {
                                <MapPin className="h-3.5 w-3.5" />}
                             </div>
                             <div className="flex-1 overflow-hidden">
-                              <p className="text-[11px] font-bold leading-tight truncate text-foreground">{result.display_name}</p>
-                              <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">
-                                {result.type === 'station' ? 'Estación de Monitoreo' : 
-                                 result.type === 'report' ? `Reporte • ${result.trelloCode}` : 
-                                 result.type === 'planilla' ? `Planilla • ${result.trelloCode}` : 
-                                 'Lugar / Ubicación'}
-                              </p>
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[11px] font-bold leading-tight truncate text-foreground">{result.display_name}</p>
+                                {result.date && (
+                                  <div className="flex items-center gap-1 text-[8px] text-muted-foreground whitespace-nowrap bg-muted/30 px-1.5 py-0.5 rounded">
+                                    <Clock className="h-2 w-2" />
+                                    {formatDateLabel(result.date)}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between gap-2 mt-0.5">
+                                <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold truncate">
+                                  {result.type === 'station' ? 'Estación de Monitoreo' : 
+                                   result.type === 'report' ? `Reporte • ${result.trelloCode}` : 
+                                   result.type === 'planilla' ? `Planilla • ${result.trelloCode}` : 
+                                   'Lugar / Ubicación'}
+                                </p>
+                                {result.author && (
+                                  <div className="flex items-center gap-1 text-[8px] text-muted-foreground italic normal-case shrink-0 opacity-70">
+                                    <User className="h-2 w-2" />
+                                    {getUserNameByEmail(result.author)}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </button>
                         ))
