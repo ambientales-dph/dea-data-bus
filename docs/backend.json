@@ -41,7 +41,7 @@
         "reportId": { "type": "string", "description": "Referencia al reporte de origen." },
         "formId": { "type": "string", "description": "ID único de la instancia de la planilla dentro del reporte." },
         "stationId": { "type": "string", "description": "Referencia a la estación de origen." },
-        "medium": { "type": "string", "enum": ["agua_superficial", "agua_subterranea", "suelo", "sedimentos"], "description": "Medio ambiental (Matriz)." },
+        "medium": { "type": "string", "enum": ["agua_superficial", "agua_subterranea", "suelo", "sedimentos", "aire"], "description": "Medio ambiental (Matriz)." },
         "parameterType": { "type": "string", "description": "Categoría del parámetro (Fisicoquímico, etc)." },
         "analyte": { "type": "string", "description": "Nombre del analito (pH, Pb, etc)." },
         "value": { "type": "string", "description": "Valor numérico o resultado de la medición." },

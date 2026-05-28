@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -58,6 +59,8 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
         if (s.medium === 'suelo') {
           if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') protocol = 'suelo_geotecnia';
           else protocol = 'suelo_edafologico';
+        } else if (s.medium === 'aire') {
+          protocol = 'calidad_aire';
         }
         groups[fid] = { medium: s.medium || 'otro', protocol, samples: [] };
       }
@@ -108,6 +111,7 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
   const protocolLabel = (protocol: string | undefined, medium: string) => {
     if (protocol === 'suelo_geotecnia') return 'Mecánica de suelos (MS-001)';
     if (protocol === 'suelo_edafologico') return 'Perfil Edafológico (PE-001)';
+    if (protocol === 'calidad_aire' || medium === 'aire') return 'Calidad de Aire (CA-001)';
     const labels: any = { agua_superficial: 'Agua Superficial (AS-001)', agua_subterranea: 'Freatímetro (FTA-001)', suelo: 'Suelo', sedimentos: 'Sedimento' };
     return labels[medium] || medium;
   };

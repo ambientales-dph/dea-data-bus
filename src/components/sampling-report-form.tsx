@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -15,6 +16,7 @@ import { CheckCircle2, Loader2, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FreatimetroFormIntegrated } from './freatimetro-form-integrated';
 import { SurfaceWaterFormIntegrated } from './surface-water-form-integrated';
+import { AirQualityFormIntegrated } from './air-quality-form-integrated';
 import { PlanillaEdafologicaForm } from './planilla-edafologica-form';
 import { SuelosGeotecniaFormIntegrated } from './suelos-geotecnia-form';
 import { PgaysChecklistForm } from './pgays-checklist-form';
@@ -22,7 +24,7 @@ import { MONITORING_TEMPLATES } from '@/app/lib/monitoring-constants';
 import { TechnicianLink } from './technician-link';
 
 const analyteSchema = z.object({
-  medium: z.enum(['agua_superficial', 'agua_subterranea', 'suelo', 'sedimentos']),
+  medium: z.enum(['agua_superficial', 'agua_subterranea', 'suelo', 'sedimentos', 'aire']),
   parameterType: z.string().min(2, 'Requerido'),
   analyte: z.string().min(1, 'Requerido'),
   value: z.string().min(1, 'Requerido'),
@@ -183,6 +185,10 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     return lowerTemplateId.includes('superficial') || lowerTemplateName.includes('superficial');
   }, [lowerTemplateId, lowerTemplateName]);
 
+  const isAirQuality = useMemo(() => {
+    return lowerTemplateId === 'calidad_aire' || lowerTemplateName.includes('aire');
+  }, [lowerTemplateId, lowerTemplateName]);
+
   const isSueloEdafologico = useMemo(() => {
     return lowerTemplateId === 'suelo_edafologico' || (lowerTemplateId.includes('suelo') && lowerTemplateId.includes('pe-001'));
   }, [lowerTemplateId]);
@@ -201,6 +207,10 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
 
   if (isAguaSuperficial) {
     return <SurfaceWaterFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
+  }
+
+  if (isAirQuality) {
+    return <AirQualityFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
   }
 
   if (isSueloEdafologico) {

@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Definición estática de protocolos y datos geográficos para funcionamiento offline.
  */
@@ -27,6 +28,19 @@ export const MONITORING_TEMPLATES = [
       { nombre: "pH", categoria: "Campo", unidades: "upH" },
       { nombre: "Conductividad", categoria: "Campo", unidades: "μS/cm" },
       { nombre: "Temperatura", categoria: "Campo", unidades: "°C" }
+    ]
+  },
+  {
+    id: "calidad_aire",
+    nombre: "Calidad de Aire (Protocolo CA-001)",
+    medium: "aire",
+    parametros: [
+      { nombre: "PM10", categoria: "Particulado", unidades: "µg/m³" },
+      { nombre: "PM2.5", categoria: "Particulado", unidades: "µg/m³" },
+      { nombre: "CO", categoria: "Gases", unidades: "ppm" },
+      { nombre: "NO2", categoria: "Gases", unidades: "ppm" },
+      { nombre: "SO2", categoria: "Gases", unidades: "ppm" },
+      { nombre: "O3", categoria: "Gases", unidades: "ppm" }
     ]
   },
   {
