@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin, ListTodo, Clock } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, GripHorizontal, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin, ListTodo, Clock } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,7 @@ interface SearchResult {
 }
 
 const MIN_SIDEBAR_WIDTH = 320;
+const HEADER_HEIGHT = 64; // h-16 en píxeles
 
 const normalizeText = (text: string) => {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -61,6 +62,7 @@ const normalizeText = (text: string) => {
 export default function Home() {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(420);
+  const [mapHeight, setMapHeight] = useState(40); // 40% de altura inicial en móvil
   const [isResizing, setIsResizing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -166,17 +168,38 @@ export default function Home() {
     signOut(auth);
   };
 
-  const startResizing = useCallback(() => {
-    if (!isMobile) setIsResizing(true);
-  }, [isMobile]);
+  const startResizing = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // Evitar que el touch scroll del navegador interfiera
+    if ('touches' in e) {
+      // No hacemos preventDefault aquí para no bloquear el inicio del gesto si el navegador es estricto
+    }
+    setIsResizing(true);
+  }, []);
 
   const stopResizing = useCallback(() => {
     setIsResizing(false);
   }, []);
 
-  const resize = useCallback((mouseMoveEvent: MouseEvent) => {
-    if (isResizing && !isMobile) {
-      const newWidth = window.innerWidth - mouseMoveEvent.clientX;
+  const resize = useCallback((event: MouseEvent | TouchEvent) => {
+    if (!isResizing) return;
+
+    // Obtener coordenadas de mouse o touch
+    const clientX = 'touches' in event ? event.touches[0].clientX : (event as MouseEvent).clientX;
+    const clientY = 'touches' in event ? event.touches[0].clientY : (event as MouseEvent).clientY;
+
+    if (isMobile) {
+      // Lógica de redimensionamiento vertical para móvil
+      const availableHeight = window.innerHeight - HEADER_HEIGHT;
+      const relativeY = clientY - HEADER_HEIGHT;
+      const newHeightPct = (relativeY / availableHeight) * 100;
+      
+      // Limitar entre 20% y 80% del mapa
+      if (newHeightPct >= 20 && newHeightPct <= 80) {
+        setMapHeight(newHeightPct);
+      }
+    } else {
+      // Lógica de redimensionamiento horizontal para desktop
+      const newWidth = window.innerWidth - clientX;
       const maxWidth = window.innerWidth * 0.95;
       
       if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= maxWidth) {
@@ -188,9 +211,14 @@ export default function Home() {
   useEffect(() => {
     window.addEventListener("mousemove", resize);
     window.addEventListener("mouseup", stopResizing);
+    window.addEventListener("touchmove", resize, { passive: false });
+    window.addEventListener("touchend", stopResizing);
+    
     return () => {
       window.removeEventListener("mousemove", resize);
       window.removeEventListener("mouseup", stopResizing);
+      window.removeEventListener("touchmove", resize);
+      window.removeEventListener("touchend", stopResizing);
     };
   }, [resize, stopResizing]);
 
@@ -384,7 +412,7 @@ export default function Home() {
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
       <div className={cn(
         "flex h-screen w-full flex-col bg-background overflow-hidden",
-        isResizing && "cursor-col-resize select-none"
+        isResizing && "cursor-col-resize md:cursor-col-resize cursor-row-resize select-none"
       )}>
         <header className="flex h-16 items-center justify-between border-b bg-white px-3 md:px-6 shadow-sm z-[60] shrink-0">
           <div className="flex items-center gap-2 md:gap-4 flex-1">
@@ -537,7 +565,12 @@ export default function Home() {
         </header>
 
         <div className="flex flex-1 flex-col md:flex-row overflow-hidden relative">
-          <div className="w-full h-[40vh] md:h-auto md:flex-1 relative overflow-hidden bg-muted/20">
+          <div 
+            style={{ 
+              height: isMobile ? `${mapHeight}vh` : 'auto' 
+            }}
+            className="w-full md:h-auto md:flex-1 relative overflow-hidden bg-muted/20"
+          >
             <div className="absolute inset-0">
               <MapView 
                 onPointSelect={handlePointSelect} 
@@ -548,25 +581,34 @@ export default function Home() {
                 isDraggable={isDraggable}
               />
             </div>
-            {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
+            {isResizing && <div className="absolute inset-0 z-50 md:cursor-col-resize cursor-row-resize" />}
           </div>
 
           <div 
             onMouseDown={startResizing} 
+            onTouchStart={startResizing}
             className={cn(
-              "hidden md:flex w-2 items-center justify-center cursor-col-resize hover:bg-primary/20 transition-colors z-40 relative group", 
+              "flex w-full md:w-2 h-2 md:h-full items-center justify-center cursor-row-resize md:cursor-col-resize hover:bg-primary/20 transition-colors z-40 relative group", 
               isResizing && "bg-primary/30"
             )}
           >
-            <div className="w-[1px] h-full bg-border group-hover:bg-primary/50" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-border rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Tirador para Desktop (Vertical) */}
+            <div className="hidden md:block w-[1px] h-full bg-border group-hover:bg-primary/50" />
+            <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-border rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
               <GripVertical className="h-3 w-3 text-muted-foreground" />
+            </div>
+
+            {/* Tirador para Móvil (Horizontal - Tipo Pill) */}
+            <div className="md:hidden w-12 h-1 bg-border group-hover:bg-primary/50 rounded-full" />
+            <div className="md:hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-border rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              <GripHorizontal className="h-3 w-3 text-muted-foreground" />
             </div>
           </div>
 
           <div 
             style={{ 
-              width: !isMobile ? `${sidebarWidth}px` : '100%' 
+              width: !isMobile ? `${sidebarWidth}px` : '100%',
+              height: isMobile ? `${100 - mapHeight}vh` : 'auto'
             }} 
             className="flex-1 md:flex-none border-t md:border-t-0 md:border-l bg-white shadow-xl flex flex-col overflow-hidden z-20"
           >
