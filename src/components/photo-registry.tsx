@@ -7,7 +7,7 @@ import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Camera, Loader2, Upload, Trash2, CloudOff, Image as ImageIcon, Download, CheckSquare, Cloud, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
+import { offlineStorage, OfflinePhoto, PendingDeletion } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
 import { getUserNameByEmail } from '@/app/lib/auth-config';
 import { TechnicianLink } from './technician-link';
@@ -61,22 +61,13 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
   }, [loadPending]);
 
   const handleUpload = useCallback(async (photoId: string, file: Blob, fileName: string, capturedAt: number) => {
-    // CASO OFFLINE: Marcar como "Cosa Juzgada" y ocultar botones
     if (!navigator.onLine) {
-      toast({
-        title: "Subida programada",
-        description: "Sin señal. La foto se subirá sola apenas recuperes conexión.",
-      });
-      
-      // Actualizamos el storage local
       await offlineStorage.markForSync(photoId);
-      
-      // Actualizamos el estado local de React INMEDIATAMENTE para que los botones desaparezcan
       setPendingPhotos(prev => prev.map(p => p.id === photoId ? { ...p, syncRequested: true } : p));
+      toast({ title: "En cola para sincronizar" });
       return;
     }
 
-    // CASO ONLINE: Proceder con la subida normal
     if (!user || !storage || !db) return;
     if (uploadingIds.includes(photoId)) return;
 
@@ -129,32 +120,52 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       await offlineStorage.removePhoto(photoId);
       setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
       
-      if (gallery.length > 0) fetchGallery();
+      fetchGallery();
       
     } catch (error: any) {
       console.error('Fallo en sincronización:', error);
-      toast({ variant: "destructive", title: "Error de subida", description: "Reintentá en unos minutos." });
     } finally {
       setUploadingIds(prev => prev.filter(id => id !== photoId));
     }
-  }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, gallery.length, toast]);
+  }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, toast]);
 
-  // VIGÍA DE CONEXIÓN: Sincronización automática de lo que ya fue "juzgado"
-  useEffect(() => {
-    const syncQueued = () => {
-      if (navigator.onLine && user) {
-        // Buscamos todas las que tienen syncRequested: true
-        pendingPhotos.forEach(photo => {
-          if (photo.syncRequested && !uploadingIds.includes(photo.id)) {
-            handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp);
-          }
-        });
+  // VIGÍA DE SINCRONIZACIÓN (Subidas y Borrados)
+  const processQueues = useCallback(async () => {
+    if (!navigator.onLine || !user || !db || !storage) return;
+
+    // 1. Procesar Borrados Pendientes
+    const pendingDeletions = await offlineStorage.getPendingDeletions();
+    for (const del of pendingDeletions) {
+      try {
+        if (del.storagePath) {
+          const fileRef = ref(storage, del.storagePath);
+          await deleteObject(fileRef).catch(() => {});
+        }
+        await deleteDoc(doc(db, 'samples', del.id));
+        await offlineStorage.removePendingDeletion(del.id);
+      } catch (e) {
+        console.error("Error procesando borrado en cola:", e);
       }
-    };
+    }
 
-    window.addEventListener('online', syncQueued);
-    return () => window.removeEventListener('online', syncQueued);
-  }, [pendingPhotos, user, handleUpload, uploadingIds]);
+    // 2. Procesar Subidas Pendientes
+    const allPending = await offlineStorage.getPendingPhotos(formId);
+    for (const photo of allPending) {
+      if (photo.syncRequested && !uploadingIds.includes(photo.id)) {
+        await handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp);
+      }
+    }
+
+    // Refrescar galería si hubo cambios
+    if (pendingDeletions.length > 0) fetchGallery();
+  }, [user, db, storage, formId, handleUpload, uploadingIds]);
+
+  // Disparar procesamiento al montar y al detectar señal
+  useEffect(() => {
+    processQueues();
+    window.addEventListener('online', processQueues);
+    return () => window.removeEventListener('online', processQueues);
+  }, [processQueues]);
 
   const handleCaptureClick = () => {
     if (fileInputRef.current) fileInputRef.current.click();
@@ -186,7 +197,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       await offlineStorage.savePhoto(newPhoto);
       setPendingPhotos(prev => [newPhoto, ...prev]);
       setIsProcessing(false);
-      toast({ title: "Captura guardada localmente" });
+      toast({ title: "Guardada localmente" });
       
     } catch (error) {
       console.error('Error capturando:', error);
@@ -199,7 +210,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
   const handleDeletePending = async (photoId: string) => {
     await offlineStorage.removePhoto(photoId);
     setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
-    toast({ title: "Captura descartada" });
   };
 
   const fetchGallery = async () => {
@@ -215,10 +225,14 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       );
       
       const snapshot = await getDocs(q);
-      const docsMapped = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      
+      // Filtrar localmente por si hay borrados pendientes que aún figuran en la DB
+      const pendingDels = await offlineStorage.getPendingDeletions();
+      const delIds = new Set(pendingDels.map(d => d.id));
+
+      const docsMapped = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(photo => !delIds.has(photo.id));
       
       setGallery(docsMapped);
       setSelectedIds([]);
@@ -226,6 +240,43 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       console.error("Error galería:", error);
     } finally {
       setIsFetchingGallery(false);
+    }
+  };
+
+  const executeDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const isOnline = navigator.onLine;
+
+      for (const id of selectedIds) {
+        const photo = gallery.find(p => p.id === id);
+        if (!photo) continue;
+
+        if (isOnline && db && storage) {
+          // ONLINE: Borrado real inmediato
+          if (photo.storagePath) {
+            const fileRef = ref(storage, photo.storagePath);
+            await deleteObject(fileRef).catch(() => {});
+          }
+          await deleteDoc(doc(db, 'samples', id));
+        } else {
+          // OFFLINE: Encolar borrado
+          await offlineStorage.queueDeletion(id, photo.storagePath);
+        }
+      }
+
+      // Actualizar UI inmediatamente (Cosa Juzgada visual)
+      setGallery(prev => prev.filter(p => !selectedIds.includes(p.id)));
+      setSelectedIds([]);
+      toast({ 
+        title: isOnline ? "Evidencias eliminadas" : "Borrados encolados", 
+        description: !isOnline ? "Se eliminarán de la red cuando vuelvas a tener señal." : undefined
+      });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -294,39 +345,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     }, 'image/jpeg', 0.90);
   };
 
-  const handleBulkDownload = async () => {
-    const selectedPhotos = gallery.filter(p => selectedIds.includes(p.id));
-    for (const photo of selectedPhotos) {
-      await handleDownloadWithWatermark(photo);
-    }
-  };
-
-  const executeDelete = async () => {
-    setIsDeleting(true);
-    try {
-      for (const id of selectedIds) {
-        const photo = gallery.find(p => p.id === id);
-        if (!photo) continue;
-        const isAuthor = photo.authorEmail === user?.email || photo.userEmail === user?.email;
-        if (!isAuthor) continue;
-
-        try {
-          const fileRef = ref(storage!, photo.value);
-          await deleteObject(fileRef);
-        } catch (e) {}
-        await deleteDoc(doc(db!, 'samples', id));
-      }
-      setGallery(prev => prev.filter(p => !selectedIds.includes(p.id)));
-      setSelectedIds([]);
-      toast({ title: "Registros eliminados" });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteModal(false);
-    }
-  };
-
   const btnBase = "flex flex-col items-center justify-center p-2.5 bg-white hover:bg-neutral-50 transition-all disabled:opacity-40";
   const btnLabel = "text-[8px] font-normal uppercase text-center leading-tight mt-1";
 
@@ -342,7 +360,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
             {pendingPhotos.length > 0 && (
               <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-100 border border-neutral-300 text-black">
                 <CloudOff className="h-2.5 w-2.5 animate-pulse" />
-                <span className="text-[7px] font-normal uppercase">{pendingPhotos.length} Pendiente(s) local</span>
+                <span className="text-[7px] font-normal uppercase">{pendingPhotos.length} Pendiente(s)</span>
               </div>
             )}
           </div>
@@ -356,7 +374,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
               {isFetchingGallery ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
               <span className={btnLabel}>Ver ({gallery.length})</span>
             </button>
-            <button onClick={handleBulkDownload} disabled={selectedIds.length === 0} className={cn(btnBase, "text-primary")}>
+            <button onClick={() => { gallery.filter(p => selectedIds.includes(p.id)).forEach(handleDownloadWithWatermark) }} disabled={selectedIds.length === 0} className={cn(btnBase, "text-primary")}>
               <Download className="h-4 w-4" />
               <span className={btnLabel}>Bajar</span>
             </button>
@@ -371,11 +389,9 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                {pendingPhotos.map(photo => (
                   <div key={photo.id} className="relative aspect-square border border-black bg-neutral-200 overflow-hidden">
                     <img src={URL.createObjectURL(photo.file)} alt="P" className="w-full h-full object-cover grayscale opacity-70" />
-                    
-                    <div className="absolute top-1 left-1 bg-black/80 p-0.5 rounded-sm shadow-md">
+                    <div className="absolute top-1 left-1 bg-black/80 p-0.5 rounded-sm">
                        <CloudOff className="h-3 w-3 text-white" />
                     </div>
-
                     <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/10">
                        {uploadingIds.includes(photo.id) ? (
                           <Loader2 className="h-4 w-4 animate-spin text-white" />
@@ -385,20 +401,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                           </div>
                        ) : (
                           <>
-                            <button 
-                              onClick={() => handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp)} 
-                              className="p-2 bg-white rounded-full shadow-xl text-primary hover:bg-neutral-100 transition-all active:scale-90"
-                              title="Subir ahora"
-                            >
-                                <Upload className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleDeletePending(photo.id)} 
-                              className="p-2 bg-white rounded-full shadow-xl text-destructive hover:bg-neutral-100 transition-all active:scale-90"
-                              title="Descartar"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
+                            <button onClick={() => handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp)} className="p-2 bg-white rounded-full shadow-xl text-primary"><Upload className="h-4 w-4" /></button>
+                            <button onClick={() => handleDeletePending(photo.id)} className="p-2 bg-white rounded-full shadow-xl text-destructive"><X className="h-4 w-4" /></button>
                           </>
                        )}
                     </div>
@@ -423,13 +427,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                      <Cloud className="h-2 w-2 text-white" />
                   </div>
                   {selectedIds.includes(photo.id) && (
-                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                      <CheckSquare className="h-4 w-4 text-white" />
-                    </div>
+                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center"><CheckSquare className="h-4 w-4 text-white" /></div>
                   )}
-                  <div className="absolute bottom-0 right-0 bg-black/40 px-1 text-[6px] text-white">
-                    <TechnicianLink email={photo.userEmail} className="text-white hover:text-white" />
-                  </div>
                 </div>
               ))}
             </div>
@@ -443,7 +442,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
         <AlertDialogContent className="border-t-4 border-t-destructive rounded-none">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-sm font-normal uppercase">Borrar Evidencias</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs">¿Confirmás la eliminación permanente de {selectedIds.length} fotos?</AlertDialogDescription>
+            <AlertDialogDescription className="text-xs">
+              {navigator.onLine 
+                ? `¿Confirmás la eliminación permanente de ${selectedIds.length} fotos?`
+                : `Estás sin señal. Las fotos desaparecerán de la galería ahora y se borrarán de la red automáticamente apenas recuperes conexión.`}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row gap-2">
             <AlertDialogCancel className="flex-1 rounded-none border-black m-0 text-[10px] uppercase">Cancelar</AlertDialogCancel>

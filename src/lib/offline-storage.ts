@@ -11,6 +11,15 @@ const offlinePhotosStore = localforage.createInstance({
   description: 'Fotos capturadas sin conexión pendientes de sincronización'
 });
 
+/**
+ * Almacén para borrados pendientes (IDs de documentos y rutas de storage).
+ */
+const pendingDeletionsStore = localforage.createInstance({
+  name: 'DEADataBus',
+  storeName: 'pending_deletions',
+  description: 'Registros y archivos pendientes de eliminar en la nube'
+});
+
 export interface OfflinePhoto {
   id: string;
   reportId: string;
@@ -23,7 +32,13 @@ export interface OfflinePhoto {
   syncRequested?: boolean; // Indica si el usuario ya ordenó la subida
 }
 
+export interface PendingDeletion {
+  id: string; // ID del documento en Firestore
+  storagePath?: string; // Ruta en Firebase Storage
+}
+
 export const offlineStorage = {
+  // --- GESTIÓN DE FOTOS ---
   async savePhoto(photo: OfflinePhoto) {
     return await offlinePhotosStore.setItem(photo.id, {
       ...photo,
@@ -53,11 +68,20 @@ export const offlineStorage = {
     return await offlinePhotosStore.removeItem(id);
   },
 
-  async getAllPending(): Promise<OfflinePhoto[]> {
-    const photos: OfflinePhoto[] = [];
-    await offlinePhotosStore.iterate((value: OfflinePhoto) => {
-      photos.push(value);
+  // --- GESTIÓN DE BORRADOS ---
+  async queueDeletion(id: string, storagePath?: string) {
+    return await pendingDeletionsStore.setItem(id, { id, storagePath });
+  },
+
+  async getPendingDeletions(): Promise<PendingDeletion[]> {
+    const deletions: PendingDeletion[] = [];
+    await pendingDeletionsStore.iterate((value: PendingDeletion) => {
+      deletions.push(value);
     });
-    return photos;
+    return deletions;
+  },
+
+  async removePendingDeletion(id: string) {
+    return await pendingDeletionsStore.removeItem(id);
   }
 };
