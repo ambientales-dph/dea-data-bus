@@ -12,6 +12,7 @@ import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
 import { getUserNameByEmail } from '@/app/lib/auth-config';
 import { TechnicianLink } from './technician-link';
+import { compressImage } from '@/lib/image-processing';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,9 +39,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
   const { toast } = useToast();
   
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
-  const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
@@ -72,7 +71,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     const deltaMs = t2 - capturedAt;
 
     try {
-      // Intento obtener coordenadas si es posible
       const getCoords = (): Promise<{ lat: number | null; lon: number | null }> => {
         return new Promise((resolve) => {
           if (!navigator.geolocation) return resolve({ lat: null, lon: null });
@@ -116,7 +114,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       await offlineStorage.removePhoto(photoId);
       setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
       
-      // Si la galería estaba abierta, la refrescamos para que aparezca la nueva foto sincronizada
       if (gallery.length > 0) fetchGallery();
       
     } catch (error: any) {
@@ -126,7 +123,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     }
   }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, gallery.length]);
 
-  // AUTO-SYNC: Efecto que dispara la subida cuando hay red
   useEffect(() => {
     if (navigator.onLine && pendingPhotos.length > 0 && user) {
       pendingPhotos.forEach(photo => {
@@ -158,16 +154,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     const t1 = Date.now();
 
     try {
-      const options = {
-        maxSizeMB: 0.2,
-        maxWidthOrHeight: 1024,
-        useWebWorker: true,
-        preserveExif: true,
-      };
-      
-      const imageCompression = (await import('browser-image-compression')).default;
-      const compressed = await imageCompression(file, options);
-      
+      // Usamos la utilidad estática para evitar errores de carga de chunks dinámicos
+      const compressed = await compressImage(file);
       const photoId = crypto.randomUUID();
       
       await offlineStorage.savePhoto({
@@ -183,7 +171,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
 
       await loadPending();
       
-      // Intentamos subir inmediatamente si hay red
       if (navigator.onLine) {
         handleUpload(photoId, compressed, `${photoId}.jpg`, t1);
       }
@@ -364,13 +351,9 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                {pendingPhotos.map(photo => (
                   <div key={photo.id} className="relative aspect-square border border-black bg-neutral-200">
                     <img src={URL.createObjectURL(photo.file)} alt="P" className="w-full h-full object-cover grayscale opacity-60" />
-                    
-                    {/* Indicador Offline superior izquierdo */}
                     <div className="absolute top-1 left-1 bg-black/60 p-0.5 rounded-sm">
                        <CloudOff className="h-3 w-3 text-white" />
                     </div>
-
-                    {/* Botón de subida siempre visible */}
                     <div className="absolute inset-0 flex items-center justify-center">
                        <button 
                          onClick={() => handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp)} 
@@ -401,12 +384,9 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                   )}
                 >
                   <img src={photo.value} alt="E" className="w-full h-full object-cover" />
-                  
-                  {/* Icono de nube (ya en storage) */}
                   <div className="absolute top-0.5 left-0.5 bg-green-500/80 p-0.5 rounded-full">
                      <Cloud className="h-2 w-2 text-white" />
                   </div>
-
                   {selectedIds.includes(photo.id) && (
                     <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                       <CheckSquare className="h-4 w-4 text-white" />
