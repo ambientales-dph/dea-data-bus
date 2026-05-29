@@ -1,18 +1,17 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDoc, getDocs } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDoc, getDocs, Timestamp } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useDoc } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle2, Loader2, Clock, User } from 'lucide-react';
+import { CheckCircle2, Loader2, Clock, User, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FreatimetroFormIntegrated } from './freatimetro-form-integrated';
 import { SurfaceWaterFormIntegrated } from './surface-water-form-integrated';
@@ -46,6 +45,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   const [isSavingPlanilla, setIsSavingPlanilla] = useState(false);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
+  const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
 
   const reportRef = useMemo(() => {
     if (!db || !reportId) return null;
@@ -75,6 +75,10 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
         }
         if (!foundMetadata.timestamp || (s.timestamp && s.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
           foundMetadata = { user: s.userEmail || user?.email || '', timestamp: s.fechaServidor || s.timestamp };
+          if (s.timestamp) {
+             const date = s.timestamp.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
+             setManualDate(date.toISOString().slice(0, 16));
+          }
         }
         if (s.isDeferred !== undefined) foundDeferred = s.isDeferred;
       });
@@ -121,7 +125,6 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     const activeParams = template.parametros || template.parameters || [];
 
     try {
-      // Capturamos GPS una vez por lote de guardado para eficiencia
       const location = await getCurrentGPSLocation();
 
       for (const param of activeParams) {
@@ -129,7 +132,6 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
         if (entry && entry.value !== undefined && entry.value !== null && entry.value.trim() !== '') {
           const medium = template.medium || param.mediumKey || 'agua_superficial';
           
-          // Delta Time Calculation
           const t1 = entry.capturedAt || Date.now();
           const t2 = Date.now();
           const deltaMs = t2 - t1;
@@ -146,9 +148,9 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
             value: entry.value,
             latitude: location?.latitude ?? null,
             longitude: location?.longitude ?? null,
-            retrasoSincronizacionMs: deltaMs,
+            retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
             fechaServidor: serverTimestamp(),
-            timestamp: serverTimestamp(),
+            timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
             isDeferred,
             userId: user.uid,
             userEmail: user.email
@@ -259,8 +261,21 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
               <CardTitle className="text-sm font-black uppercase tracking-tight text-foreground">{template?.nombre || template?.name || 'Carga de Analitos'}</CardTitle>
               <div className="flex flex-col gap-0.5">
                 <CardDescription className="text-[10px] font-bold uppercase">Planilla ID: <span className="text-foreground">{formId}</span></CardDescription>
-                <div className="flex items-center gap-3 text-[9px] text-muted-foreground font-black uppercase tracking-tight">
-                  <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+                <div className="flex flex-wrap items-center gap-3 text-[9px] text-muted-foreground font-black uppercase tracking-tight">
+                  {isDeferred ? (
+                    <div className="flex items-center gap-1.5 bg-white border border-black px-2 py-0.5 rounded-sm">
+                      <Calendar className="h-3 w-3 text-red-600" />
+                      <input 
+                        type="datetime-local" 
+                        value={manualDate} 
+                        onChange={(e) => setManualDate(e.target.value)}
+                        disabled={isDeferredLocked}
+                        className="bg-transparent border-none p-0 text-[9px] font-black uppercase outline-none focus:ring-0 w-32"
+                      />
+                    </div>
+                  ) : (
+                    <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+                  )}
                   
                   <button 
                     onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)}

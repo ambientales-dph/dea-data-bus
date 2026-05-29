@@ -1,14 +1,13 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, Clock, User, Plus, Trash2, Mountain, ThermometerSun, Layers as LayersIcon, Droplets, Search, MapPin, Locate, Tag, CheckCircle2 } from 'lucide-react';
+import { Loader2, Check, Clock, User, Plus, Trash2, Mountain, ThermometerSun, Layers as LayersIcon, Droplets, Search, MapPin, Locate, Tag, CheckCircle2, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
@@ -45,6 +44,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
+  const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
 
   const [osmQuery, setOsmQuery] = useState('');
   const [osmResults, setOsmResults] = useState<OSMResult[]>([]);
@@ -77,6 +77,10 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
             foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
+            if (data.timestamp) {
+               const date = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
+               setManualDate(date.toISOString().slice(0, 16));
+            }
           }
           if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
 
@@ -111,10 +115,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
 
     setSavingFields(prev => ({ ...prev, [name]: true }));
     
-    // Captura GPS de alta precisión en tiempo real
     const location = await getCurrentGPSLocation();
-
-    // Delta Time Calculation
     const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
     const t2 = Date.now();
     const deltaMs = t2 - t1;
@@ -132,9 +133,9 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         value: `${value}`,
         latitude: location?.latitude || null,
         longitude: location?.longitude || null,
-        retrasoSincronizacionMs: deltaMs,
+        retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
         fechaServidor: serverTimestamp(),
-        timestamp: serverTimestamp(),
+        timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
         isDeferred,
         userId: user.uid,
         userEmail: user.email
@@ -316,8 +317,21 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           <h1 className="text-sm font-black uppercase tracking-tight text-black font-headline">Suelos • PE-001</h1>
           <div className="flex flex-col gap-0.5 mt-1">
             <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
-            <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter mt-1">
-              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+            <div className="flex flex-wrap items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter mt-1">
+              {isDeferred ? (
+                <div className="flex items-center gap-1.5 bg-white border border-black px-2 py-0.5 rounded-sm">
+                  <Calendar className="h-3 w-3 text-red-600" />
+                  <input 
+                    type="datetime-local" 
+                    value={manualDate} 
+                    onChange={(e) => setManualDate(e.target.value)}
+                    disabled={isDeferredLocked}
+                    className="bg-transparent border-none p-0 text-[9px] font-black uppercase outline-none focus:ring-0 w-32"
+                  />
+                </div>
+              ) : (
+                <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+              )}
               
               <button 
                 onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)}
