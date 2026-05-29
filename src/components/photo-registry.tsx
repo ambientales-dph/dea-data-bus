@@ -5,12 +5,11 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, query, where, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera, Loader2, Upload, Trash2, CloudOff, Image as ImageIcon, Download, CheckSquare, Cloud, X } from 'lucide-react';
+import { Camera, Loader2, Upload, Trash2, CloudOff, ImageIcon, Download, CheckSquare, Cloud, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { offlineStorage, OfflinePhoto, PendingDeletion } from '@/lib/offline-storage';
+import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
 import { getUserNameByEmail } from '@/app/lib/auth-config';
-import { TechnicianLink } from './technician-link';
 import { compressImage } from '@/lib/image-processing';
 import {
   AlertDialog,
@@ -64,7 +63,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     if (!navigator.onLine) {
       await offlineStorage.markForSync(photoId);
       setPendingPhotos(prev => prev.map(p => p.id === photoId ? { ...p, syncRequested: true } : p));
-      toast({ title: "En cola para sincronizar" });
       return;
     }
 
@@ -127,13 +125,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     } finally {
       setUploadingIds(prev => prev.filter(id => id !== photoId));
     }
-  }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, toast]);
+  }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds]);
 
-  // VIGÍA DE SINCRONIZACIÓN (Subidas y Borrados)
   const processQueues = useCallback(async () => {
     if (!navigator.onLine || !user || !db || !storage) return;
 
-    // 1. Procesar Borrados Pendientes
     const pendingDeletions = await offlineStorage.getPendingDeletions();
     for (const del of pendingDeletions) {
       try {
@@ -148,7 +144,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       }
     }
 
-    // 2. Procesar Subidas Pendientes
     const allPending = await offlineStorage.getPendingPhotos(formId);
     for (const photo of allPending) {
       if (photo.syncRequested && !uploadingIds.includes(photo.id)) {
@@ -156,11 +151,9 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       }
     }
 
-    // Refrescar galería si hubo cambios
     if (pendingDeletions.length > 0) fetchGallery();
   }, [user, db, storage, formId, handleUpload, uploadingIds]);
 
-  // Disparar procesamiento al montar y al detectar señal
   useEffect(() => {
     processQueues();
     window.addEventListener('online', processQueues);
@@ -225,8 +218,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       );
       
       const snapshot = await getDocs(q);
-      
-      // Filtrar localmente por si hay borrados pendientes que aún figuran en la DB
       const pendingDels = await offlineStorage.getPendingDeletions();
       const delIds = new Set(pendingDels.map(d => d.id));
 
@@ -253,19 +244,16 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
         if (!photo) continue;
 
         if (isOnline && db && storage) {
-          // ONLINE: Borrado real inmediato
           if (photo.storagePath) {
             const fileRef = ref(storage, photo.storagePath);
             await deleteObject(fileRef).catch(() => {});
           }
           await deleteDoc(doc(db, 'samples', id));
         } else {
-          // OFFLINE: Encolar borrado
           await offlineStorage.queueDeletion(id, photo.storagePath);
         }
       }
 
-      // Actualizar UI inmediatamente (Cosa Juzgada visual)
       setGallery(prev => prev.filter(p => !selectedIds.includes(p.id)));
       setSelectedIds([]);
       toast({ 
@@ -298,8 +286,9 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
 
     ctx.drawImage(img, 0, 0);
 
-    const fontSize = Math.max(12, Math.floor(canvas.width * 0.02));
-    ctx.font = `bold ${fontSize}px "Encode Sans", sans-serif`;
+    // Ajuste Sutil de Marca de Agua: Tamaño reducido al 50% (factor 0.01)
+    const fontSize = Math.max(8, Math.floor(canvas.width * 0.01));
+    ctx.font = `${fontSize}px "Encode Sans", sans-serif`; // Sin negrita
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
 
@@ -324,12 +313,15 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     let currentY = canvas.height - padding;
     
     watermarkLines.forEach((line) => {
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = fontSize / 4;
+      // Halo negro extremadamente fino para sutileza
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.lineWidth = 0.5;
       ctx.strokeText(line, canvas.width - padding, currentY);
-      ctx.fillStyle = 'white';
+      
+      // Texto blanco fino
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.fillText(line, canvas.width - padding, currentY);
-      currentY -= fontSize * 1.3;
+      currentY -= fontSize * 1.25;
     });
 
     canvas.toBlob((blob) => {
