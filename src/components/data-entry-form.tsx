@@ -531,7 +531,8 @@ export function DataEntryForm({
         activeView !== 'edit-station' && 
         activeView !== 'select-template' && 
         activeView !== 'report-entry' && 
-        activeView !== 'consult'
+        activeView !== 'consult' &&
+        activeView !== 'surveys'
       ) {
         if (selectedPoint.stationId) {
           setActiveView('summary');
