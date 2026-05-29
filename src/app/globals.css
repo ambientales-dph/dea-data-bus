@@ -56,9 +56,9 @@
   transition: filter 0.3s ease;
 }
 
-/* Capa OSM en Blanco y Negro (Grayscale estándar) */
+/* Capa OSM en Blanco y Negro (Grayscale estándar) - Brillo y contraste NORMALES */
 .map-container-grayscale .ol-base-layer canvas {
-  filter: grayscale(1) brightness(1.1) contrast(1.1) !important;
+  filter: grayscale(1) !important;
 }
 
 /* Capa Satelital en Banda Roja (Filtro Espectral SVG) */
