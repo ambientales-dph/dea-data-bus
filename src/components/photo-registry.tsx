@@ -313,13 +313,13 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     let currentY = canvas.height - padding;
     
     watermarkLines.forEach((line) => {
-      // Halo negro extremadamente fino para sutileza
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+      // Halo blanco pleno y bien fino para contraste técnico
+      ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 0.5;
       ctx.strokeText(line, canvas.width - padding, currentY);
       
-      // Texto blanco fino
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      // Texto negro pleno para máxima legibilidad
+      ctx.fillStyle = '#000000';
       ctx.fillText(line, canvas.width - padding, currentY);
       currentY -= fontSize * 1.25;
     });
