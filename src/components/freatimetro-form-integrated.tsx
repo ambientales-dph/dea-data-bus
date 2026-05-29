@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -57,6 +58,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [isDeferred, setIsDeferred] = useState(false);
   const hasSetInitialId = useRef(false);
 
   const stationRef = useMemo(() => {
@@ -92,6 +94,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         const newFormData = { ...initialFormData };
         const newSavedFields: Record<string, boolean> = {};
         let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundDeferred = false;
 
         snapshot.docs.forEach(doc => {
           const data = doc.data();
@@ -101,6 +104,8 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
             foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
           }
+
+          if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
 
           const fieldKey = analyteToKeyMap[analyte];
           if (fieldKey) {
@@ -112,6 +117,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         setFormData(prev => ({ ...prev, ...newFormData }));
         setSavedFields(newSavedFields);
         setMetadata(foundMetadata);
+        setIsDeferred(foundDeferred);
       } catch (e) {
         console.error("Error fetching", e);
       } finally {
@@ -183,6 +189,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
         timestamp: serverTimestamp(), 
+        isDeferred,
         userId: user.uid,
         userEmail: user.email
       };
@@ -227,6 +234,8 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const inputClass = "h-7 w-28 border-none bg-neutral-50 px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none";
   const sectionHeaderClass = "flex items-center bg-neutral-100 px-4 py-2 border-y border-neutral-400 mt-2 first:mt-0";
 
+  const isDeferredLocked = Object.keys(savedFields).length > 0;
+
   return (
     <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
       <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-3 flex justify-between items-center">
@@ -236,6 +245,22 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
             <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
             <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter mt-1">
               <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+              
+              <button 
+                onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)}
+                disabled={isDeferredLocked}
+                className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all",
+                  isDeferred 
+                    ? "bg-red-50 border-red-200 text-red-600" 
+                    : "bg-green-50 border-green-200 text-green-600",
+                  isDeferredLocked ? "opacity-100 cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"
+                )}
+              >
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+              </button>
+
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>

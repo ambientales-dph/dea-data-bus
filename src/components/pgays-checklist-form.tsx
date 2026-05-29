@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, Clock, User, Camera, ClipboardCheck, PenTool } from 'lucide-react';
+import { Loader2, Check, Clock, User, Camera, ClipboardCheck, PenTool, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
@@ -63,6 +63,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
   const [openPhotos, setOpenPhotos] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [isDeferred, setIsDeferred] = useState(false);
 
   useEffect(() => {
     const fetchExistingData = async () => {
@@ -79,6 +80,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
         const newFormData: Record<string, PgaysEntry> = {};
         const newSavedFields: Record<string, boolean> = {};
         let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundDeferred = false;
 
         snapshot.docs.forEach(doc => {
           const data = doc.data();
@@ -90,11 +92,13 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
             foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
           }
+          if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
         });
 
         setFormData(newFormData);
         setSavedFields(newSavedFields);
         setMetadata(foundMetadata);
+        setIsDeferred(foundDeferred);
       } catch (e) {
         console.error("Error fetching PGAyS data", e);
       } finally {
@@ -137,6 +141,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
         timestamp: serverTimestamp(),
+        isDeferred,
         userId: user.uid,
         userEmail: user.email
       };
@@ -189,6 +194,8 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
   if (isLoadingExisting) {
     return <div className="p-12 text-center text-xs animate-pulse font-normal uppercase text-black">Cargando Inspección PGAyS...</div>;
   }
+
+  const isDeferredLocked = Object.keys(savedFields).length > 0;
 
   const renderItem = (item: { id: string, label: string, dynamic?: boolean }) => {
     const customLabelKey = `${item.id}:custom_label`;
@@ -287,6 +294,22 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
            <p className="text-[10px] text-neutral-600 font-normal uppercase leading-none tracking-tight">Planilla ID: {formId}</p>
            <div className="flex items-center gap-3 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
               <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+              
+              <button 
+                onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)}
+                disabled={isDeferredLocked}
+                className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all",
+                  isDeferred 
+                    ? "bg-red-50 border-red-200 text-red-600" 
+                    : "bg-green-50 border-green-200 text-green-600",
+                  isDeferredLocked ? "opacity-100 cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"
+                )}
+              >
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+              </button>
+
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
            </div>
         </div>

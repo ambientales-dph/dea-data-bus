@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, Clock, User, Wind } from 'lucide-react';
+import { Loader2, Check, Clock, User, Wind, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
@@ -30,6 +31,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [isDeferred, setIsDeferred] = useState(false);
 
   const params = [
     { name: "PM10", unit: "µg/m³", cat: "Particulado", desc: "Nación/Prov: 150 (24hs) • OMS: 45 (24hs)" },
@@ -55,6 +57,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
         const newFormData: AirQualityData = {};
         const newSavedFields: Record<string, boolean> = {};
         let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundDeferred = false;
 
         snapshot.docs.forEach(doc => {
           const data = doc.data();
@@ -64,11 +67,13 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
             foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
           }
+          if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
         });
 
         setFormData(newFormData);
         setSavedFields(newSavedFields);
         setMetadata(foundMetadata);
+        setIsDeferred(foundDeferred);
       } catch (e) {
         console.error("Error fetching air data", e);
       } finally {
@@ -121,6 +126,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
         timestamp: serverTimestamp(),
+        isDeferred,
         userId: user.uid,
         userEmail: user.email
       };
@@ -164,6 +170,8 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
   const subLabelClass = "text-[10px] text-neutral-500 font-normal leading-tight mt-1";
   const inputClass = "h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black font-normal text-right focus:ring-0 outline-none";
 
+  const isDeferredLocked = Object.keys(savedFields).length > 0;
+
   return (
     <div className="mx-auto w-full border border-black bg-white font-body shadow-sm rounded-none overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
       <div className="border-b border-black bg-neutral-100 px-4 py-4 flex justify-between items-center">
@@ -176,6 +184,22 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
             <p className="text-[10px] text-neutral-600 font-normal uppercase leading-none tracking-tight">Planilla ID: {formId}</p>
             <div className="flex items-center gap-3 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
               <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+              
+              <button 
+                onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)}
+                disabled={isDeferredLocked}
+                className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all",
+                  isDeferred 
+                    ? "bg-red-50 border-red-200 text-red-600" 
+                    : "bg-green-50 border-green-200 text-green-600",
+                  isDeferredLocked ? "opacity-100 cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"
+                )}
+              >
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+              </button>
+
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>

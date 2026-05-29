@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -44,6 +45,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   const [planillaValues, setPlanillaValues] = useState<Record<string, ManualEntry>>({});
   const [isSavingPlanilla, setIsSavingPlanilla] = useState(false);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [isDeferred, setIsDeferred] = useState(false);
 
   const reportRef = useMemo(() => {
     if (!db || !reportId) return null;
@@ -65,6 +67,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     if (samplesData && samplesData.length > 0) {
       const existingValues: Record<string, ManualEntry> = {};
       let foundMetadata = { user: user?.email || '', timestamp: null };
+      let foundDeferred = false;
       
       samplesData.forEach((s: any) => {
         if (s.analyte && s.value) {
@@ -73,9 +76,11 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
         if (!foundMetadata.timestamp || (s.timestamp && s.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
           foundMetadata = { user: s.userEmail || user?.email || '', timestamp: s.fechaServidor || s.timestamp };
         }
+        if (s.isDeferred !== undefined) foundDeferred = s.isDeferred;
       });
       setPlanillaValues(existingValues);
       setMetadata(foundMetadata);
+      setIsDeferred(foundDeferred);
     } else {
       setPlanillaValues({});
       setMetadata({ user: user?.email || '', timestamp: null });
@@ -144,6 +149,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
             retrasoSincronizacionMs: deltaMs,
             fechaServidor: serverTimestamp(),
             timestamp: serverTimestamp(),
+            isDeferred,
             userId: user.uid,
             userEmail: user.email
           };
@@ -189,6 +195,8 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
       minute: '2-digit'
     });
   };
+
+  const isDeferredLocked = samplesData && samplesData.length > 0;
 
   const lowerTemplateId = templateId?.toLowerCase() || '';
   const lowerTemplateName = template?.nombre?.toLowerCase() || template?.name?.toLowerCase() || '';
@@ -253,6 +261,22 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
                 <CardDescription className="text-[10px] font-bold uppercase">Planilla ID: <span className="text-foreground">{formId}</span></CardDescription>
                 <div className="flex items-center gap-3 text-[9px] text-muted-foreground font-black uppercase tracking-tight">
                   <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+                  
+                  <button 
+                    onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)}
+                    disabled={isDeferredLocked}
+                    className={cn(
+                      "flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all",
+                      isDeferred 
+                        ? "bg-red-50 border-red-200 text-red-600" 
+                        : "bg-green-50 border-green-200 text-green-600",
+                      isDeferredLocked ? "opacity-100 cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"
+                    )}
+                  >
+                    <CheckCircle2 className="h-2.5 w-2.5" />
+                    <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+                  </button>
+
                   <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
                 </div>
               </div>

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Trash2, Printer, Check, Loader2, Clock, User, Locate, MapPin } from "lucide-react"
+import { Plus, Trash2, Printer, Check, Loader2, Clock, User, Locate, MapPin, CheckCircle2 } from "lucide-react"
 import { cn } from '@/lib/utils'
 import { PhotoRegistry } from './photo-registry'
 import { TechnicianLink } from './technician-link'
@@ -118,6 +118,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [isDeferred, setIsDeferred] = useState(false);
 
   useEffect(() => {
     const fetchExistingData = async () => {
@@ -135,6 +136,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         const newSavedFields: Record<string, boolean> = {};
         const layersMap: Record<string, Partial<CapaSuelo>> = {};
         let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundDeferred = false;
 
         snapshot.docs.forEach(doc => {
           const data = doc.data();
@@ -144,6 +146,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
             foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
           }
+          if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
 
           const layerMatch = analyte.match(/^L(\d+): (.*)/);
           if (layerMatch) {
@@ -205,6 +208,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         setCapas(initialCapas);
         setSavedFields(newSavedFields);
         setMetadata(foundMetadata);
+        setIsDeferred(foundDeferred);
       } catch (e) {
         console.error("Error fetching geotech data", e);
       } finally {
@@ -247,6 +251,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
         timestamp: serverTimestamp(),
+        isDeferred,
         userId: user.uid,
         userEmail: user.email
       };
@@ -337,6 +342,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
         timestamp: serverTimestamp(),
+        isDeferred,
         userId: user.uid,
         userEmail: user.email
       };
@@ -454,6 +460,8 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   const labelClass = "text-[11px] font-normal text-black tracking-tight font-headline leading-none w-1/3 shrink-0 uppercase";
   const inputClass = "h-7 flex-1 border-none bg-transparent px-2 text-[12px] font-code text-black font-normal text-right rounded-none focus:ring-0 outline-none placeholder:text-neutral-300";
 
+  const isDeferredLocked = Object.keys(savedFields).length > 0;
+
   return (
     <div className="mx-auto w-full border border-black bg-white font-body shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20 overflow-hidden">
       <div className="border-b-2 border-black bg-neutral-100 px-4 py-3 flex justify-between items-center print:hidden">
@@ -463,6 +471,22 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
             <p className="text-[10px] text-black font-normal uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
             <div className="flex items-center gap-3 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
               <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+              
+              <button 
+                onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)}
+                disabled={isDeferredLocked}
+                className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all",
+                  isDeferred 
+                    ? "bg-red-50 border-red-200 text-red-600" 
+                    : "bg-green-50 border-green-200 text-green-600",
+                  isDeferredLocked ? "opacity-100 cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"
+                )}
+              >
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+              </button>
+
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>

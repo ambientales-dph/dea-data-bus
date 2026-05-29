@@ -49,6 +49,7 @@
         "longitude": { "type": "number", "description": "Longitud capturada en el momento exacto del registro." },
         "retrasoSincronizacionMs": { "type": "integer", "description": "Milisegundos transcurridos entre la captura del dato y el envío efectivo." },
         "fechaServidor": { "type": "string", "format": "date-time", "description": "Timestamp oficial del servidor de base de datos." },
+        "isDeferred": { "type": "boolean", "description": "Indica si la carga es diferida (histórica) o real (en tiempo real)." },
         "userId": { "type": "string" },
         "userEmail": { "type": "string" }
       },

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, Clock, User, Plus, Trash2, Mountain, ThermometerSun, Layers as LayersIcon, Droplets, Search, MapPin, Locate, Tag } from 'lucide-react';
+import { Loader2, Check, Clock, User, Plus, Trash2, Mountain, ThermometerSun, Layers as LayersIcon, Droplets, Search, MapPin, Locate, Tag, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
@@ -44,6 +44,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [isDeferred, setIsDeferred] = useState(false);
 
   const [osmQuery, setOsmQuery] = useState('');
   const [osmResults, setOsmResults] = useState<OSMResult[]>([]);
@@ -66,6 +67,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         const newFormData: Record<string, SoilEntry> = {};
         const newSavedFields: Record<string, boolean> = {};
         let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundDeferred = false;
         let maxH = 1;
 
         snapshot.docs.forEach(doc => {
@@ -76,6 +78,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
             foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
           }
+          if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
 
           const hMatch = data.analyte.match(/^H(\d+):/);
           if (hMatch) {
@@ -88,6 +91,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         setSavedFields(newSavedFields);
         setMetadata(foundMetadata);
         setHorizontesCount(maxH);
+        setIsDeferred(foundDeferred);
         if (newFormData["Lugar"]) setOsmQuery(newFormData["Lugar"].value);
       } catch (e) {
         console.error("Error fetching soil data", e);
@@ -131,6 +135,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
         timestamp: serverTimestamp(),
+        isDeferred,
         userId: user.uid,
         userEmail: user.email
       };
@@ -219,33 +224,8 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     }
   };
 
-  const formatMunsell = (val: string) => {
-    let clean = val.toUpperCase().replace(/[^0-9A-Z/.]/g, '');
-    let raw = clean.replace(/[\s/]/g, '');
-    
-    const match = raw.match(/^([0-9.]+)?([A-Z]+)?(\d)?(\d)?/);
-    
-    if (match) {
-      const hueNum = match[1] || "";
-      const hueLetters = match[2] || "";
-      const value = match[3] || "";
-      const chroma = match[4] || "";
-      
-      let formatted = `${hueNum}${hueLetters}`;
-      
-      if (value) {
-        formatted += ` ${value}`;
-        if (chroma) {
-          formatted += `/${chroma}`;
-        }
-      }
-      return formatted;
-    }
-    return clean;
-  };
-
   const handleMunsellChange = (name: string, val: string) => {
-    const formatted = formatMunsell(val);
+    const formatted = val.toUpperCase();
     handleInputChange(name, formatted);
   };
 
@@ -327,6 +307,8 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     return <div className="p-12 text-center text-xs animate-pulse font-bold uppercase text-black">Cargando Planilla Edafologica...</div>;
   }
 
+  const isDeferredLocked = Object.keys(savedFields).length > 0;
+
   return (
     <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
       <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-3 flex justify-between items-center">
@@ -336,6 +318,22 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
             <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
             <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter mt-1">
               <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+              
+              <button 
+                onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)}
+                disabled={isDeferredLocked}
+                className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all",
+                  isDeferred 
+                    ? "bg-red-50 border-red-200 text-red-600" 
+                    : "bg-green-50 border-green-200 text-green-600",
+                  isDeferredLocked ? "opacity-100 cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"
+                )}
+              >
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+              </button>
+
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>
