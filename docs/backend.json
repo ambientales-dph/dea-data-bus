@@ -17,6 +17,22 @@
       },
       "required": ["name", "latitude", "longitude"]
     },
+    "Survey": {
+      "title": "Survey",
+      "description": "Un levantamiento que agrupa múltiples reportes de muestreo (Campaña).",
+      "type": "object",
+      "properties": {
+        "oid": { "type": "string", "description": "Identificador técnico (LV + Cuenca/Zona + Secuencial)." },
+        "description": { "type": "string" },
+        "trelloCardName": { "type": "string" },
+        "isDeferred": { "type": "boolean" },
+        "manualDate": { "type": "string", "format": "date-time" },
+        "createdByEmail": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["open", "closed"] }
+      },
+      "required": ["oid", "createdByEmail", "createdAt"]
+    },
     "Report": {
       "title": "Report",
       "description": "Un reporte de monitoreo que agrupa múltiples mediciones.",
@@ -24,6 +40,7 @@
       "properties": {
         "oid": { "type": "string", "description": "Identificador único técnico del reporte (RM + Cuenca + Secuencial)." },
         "stationId": { "type": "string", "description": "ID de la estación asociada." },
+        "surveyId": { "type": "string", "description": "ID del levantamiento al que pertenece (opcional)." },
         "trelloCardName": { "type": "string", "description": "Nombre de la tarjeta de Trello (Proyecto) asociada." },
         "description": { "type": "string", "description": "Notas o descripción técnica del reporte." },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -102,6 +119,10 @@
     "/stations/{stationId}": {
       "schema": "#/backend/entities/Station",
       "description": "Colección de puntos de muestreo fijos."
+    },
+    "/levantamientos/{surveyId}": {
+      "schema": "#/backend/entities/Survey",
+      "description": "Supercolección de levantamientos de campaña."
     },
     "/reports/{reportId}": {
       "schema": "#/backend/entities/Report",

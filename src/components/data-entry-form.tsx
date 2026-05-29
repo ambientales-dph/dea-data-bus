@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -12,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation, FolderOpen, Pencil, Settings, Trash2 } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation, FolderOpen, Pencil, Settings, Trash2, FolderKanban } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ import { MONITORING_TEMPLATES, BASIN_CODES_DATA } from '@/app/lib/monitoring-con
 import { isUserAdmin } from '@/app/lib/auth-config';
 import { AdminDeleteDialog } from './admin-delete-dialog';
 import { ref, listAll, deleteObject } from 'firebase/storage';
+import { SurveyManager } from './survey-manager';
 
 function isPointInPoly(pt: [number, number], poly: [number, number][][]) {
   for (let i = 0; i < poly.length; i++) {
@@ -48,16 +50,18 @@ const stationSchema = z.object({
 
 type StationValues = z.infer<typeof stationSchema>;
 
-export type FormView = 'summary' | 'create-station' | 'edit-station' | 'report-entry' | 'consult' | 'select-project' | 'select-template';
+export type FormView = 'summary' | 'create-station' | 'edit-station' | 'report-entry' | 'consult' | 'select-project' | 'select-template' | 'surveys';
 
 function DataExplorer({ 
   onSelectStation,
   onSelectReport,
-  onSelectPlanilla
+  onSelectPlanilla,
+  onSurveysClick
 }: { 
   onSelectStation: (point: SelectedPoint) => void,
   onSelectReport: (station: any, reportId: string) => void,
-  onSelectPlanilla: (station: any, reportId: string, formId: string, templateId: string) => void
+  onSelectPlanilla: (station: any, reportId: string, formId: string, templateId: string) => void,
+  onSurveysClick: () => void
 }) {
   const db = useFirestore();
   const [dynamicBasinNames, setDynamicBasinNames] = useState<Record<string, string>>({});
@@ -184,9 +188,14 @@ function DataExplorer({
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="space-y-4">
-        <h2 className="text-[10px] font-normal uppercase tracking-[0.2em] text-black flex items-center gap-2">
-          EXPLORADOR DE DATOS
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-[10px] font-normal uppercase tracking-[0.2em] text-black flex items-center gap-2">
+            EXPLORADOR DE DATOS
+          </h2>
+          <Button variant="outline" size="sm" onClick={onSurveysClick} className="h-8 text-[9px] font-black uppercase rounded-none border-black hover:bg-black hover:text-white transition-all">
+            <FolderKanban className="h-3 w-3 mr-1.5" /> Levantamientos
+          </Button>
+        </div>
         
         <div className="flex items-start gap-12 px-1">
           <div className="flex flex-col">
@@ -373,6 +382,9 @@ export function DataEntryForm({
   }, [db, user]);
   const { data: customTemplates } = useCollection(customTemplatesQuery);
 
+  const levantamientosQuery = useMemo(() => query(collection(db, 'levantamientos')), [db]);
+  const { data: levantamientos } = useCollection(levantamientosQuery);
+
   const currentReportSamplesQuery = useMemo(() => {
     if (!db || !user || !currentReportId) return null;
     return query(collection(db, 'samples'), where('reportId', '==', currentReportId));
@@ -386,6 +398,7 @@ export function DataEntryForm({
   const { data: currentReportData } = useDoc(reportRef);
 
   const [reportEditDesc, setReportEditDesc] = useState('');
+  const [reportSurveyId, setReportSurveyId] = useState<string>('sin-vinculo');
 
   useEffect(() => {
     if (currentReportData) {
@@ -394,6 +407,7 @@ export function DataEntryForm({
         setProjectSearch(currentReportData.trelloCardName);
       }
       setReportEditDesc(currentReportData.description || '');
+      setReportSurveyId(currentReportData.surveyId || 'sin-vinculo');
     }
   }, [currentReportData]);
 
@@ -903,7 +917,8 @@ export function DataEntryForm({
         createdAt: serverTimestamp(),
         createdByEmail: user.email,
         status: 'open',
-        editors: [user.email]
+        editors: [user.email],
+        surveyId: null
       };
 
       const docRef = await addDoc(reportsCol, reportData);
@@ -925,6 +940,7 @@ export function DataEntryForm({
     const updateData = {
       trelloCardName: selectedProject || '',
       description: reportEditDesc || '',
+      surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId
     };
     updateDoc(reportRef, updateData)
       .then(() => {
@@ -1024,12 +1040,17 @@ export function DataEntryForm({
     setActiveView('report-entry');
   };
 
+  if (activeView === 'surveys') {
+    return <SurveyManager onClose={() => setActiveView('summary')} />;
+  }
+
   if (!selectedPoint) {
     return (
       <DataExplorer 
         onSelectStation={handleExplorerSelectStation} 
         onSelectReport={handleExplorerSelectReport}
         onSelectPlanilla={handleExplorerSelectPlanilla}
+        onSurveysClick={() => setActiveView('surveys')}
       />
     );
   }
@@ -1161,6 +1182,21 @@ export function DataEntryForm({
                     <div className="flex items-center gap-2"><Settings className="h-4 w-4" /> Ajustes del Reporte</div>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 py-3 bg-neutral-50 border-t space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] uppercase font-normal text-black">Levantamiento (Agrupador)</Label>
+                      <Select value={reportSurveyId} onValueChange={setReportSurveyId}>
+                        <SelectTrigger className="h-10 text-xs rounded-none bg-white">
+                          <SelectValue placeholder="Sin vinculación" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sin-vinculo" className="text-xs">Sin vinculación</SelectItem>
+                          {levantamientos?.map((l: any) => (
+                            <SelectItem key={l.id} value={l.id} className="text-xs">{l.oid}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="space-y-2">
                       <Label className="text-[10px] uppercase font-normal text-black">Proyecto Asociado</Label>
                       <Select 
