@@ -45,9 +45,10 @@
         "parameterType": { "type": "string", "description": "Categoría del parámetro (Fisicoquímico, etc)." },
         "analyte": { "type": "string", "description": "Nombre del analito (pH, Pb, etc)." },
         "value": { "type": "string", "description": "Valor numérico o resultado de la medición." },
-        "timestamp": { "type": "string", "format": "date-time", "description": "Referencia temporal original (obsoleta en favor de fechaServidor)." },
-        "fechaServidor": { "type": "string", "format": "date-time", "description": "Timestamp oficial del servidor de base de datos." },
+        "latitude": { "type": "number", "description": "Latitud capturada en el momento exacto del registro." },
+        "longitude": { "type": "number", "description": "Longitud capturada en el momento exacto del registro." },
         "retrasoSincronizacionMs": { "type": "integer", "description": "Milisegundos transcurridos entre la captura del dato y el envío efectivo." },
+        "fechaServidor": { "type": "string", "format": "date-time", "description": "Timestamp oficial del servidor de base de datos." },
         "userId": { "type": "string" },
         "userEmail": { "type": "string" }
       },

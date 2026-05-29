@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -11,6 +12,8 @@ import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
 import { getUserNameByEmail } from '@/app/lib/auth-config';
 import { compressImage } from '@/lib/image-processing';
+import { getCurrentGPSLocation } from '@/lib/geo-utils';
+import piexif from 'piexifjs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,7 +62,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     loadPending();
   }, [loadPending]);
 
-  const handleUpload = useCallback(async (photoId: string, file: Blob, fileName: string, capturedAt: number) => {
+  const handleUpload = useCallback(async (photoId: string, file: Blob, fileName: string, capturedAt: number, lat?: number, lon?: number) => {
     if (!navigator.onLine) {
       await offlineStorage.markForSync(photoId);
       setPendingPhotos(prev => prev.map(p => p.id === photoId ? { ...p, syncRequested: true } : p));
@@ -75,18 +78,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     const deltaMs = t2 - capturedAt;
 
     try {
-      const getCoords = (): Promise<{ lat: number | null; lon: number | null }> => {
-        return new Promise((resolve) => {
-          if (!navigator.geolocation) return resolve({ lat: null, lon: null });
-          navigator.geolocation.getCurrentPosition(
-            (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-            () => resolve({ lat: null, lon: null }),
-            { timeout: 5000 }
-          );
-        });
-      };
-
-      const coords = await getCoords();
       const storageRef = ref(storage, `reports/${reportId}/${formId}/${fileName}`);
       const snapshot = await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(snapshot.ref);
@@ -105,8 +96,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
         timestamp: serverTimestamp(),
         userId: user.uid,
         userEmail: user.email,
-        latitude: coords.lat,
-        longitude: coords.lon,
+        latitude: lat || null,
+        longitude: lon || null,
         authorId: user.uid,
         authorEmail: user.email,
         capturedAt: serverTimestamp(),
@@ -147,7 +138,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     const allPending = await offlineStorage.getPendingPhotos(formId);
     for (const photo of allPending) {
       if (photo.syncRequested && !uploadingIds.includes(photo.id)) {
-        await handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp);
+        await handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp, photo.latitude, photo.longitude);
       }
     }
 
@@ -172,6 +163,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     const t1 = Date.now();
 
     try {
+      // Capturamos GPS antes de comprimir (momento exacto de la toma)
+      const location = await getCurrentGPSLocation();
       const compressed = await compressImage(file);
       const photoId = crypto.randomUUID();
       
@@ -184,13 +177,15 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
         file: compressed,
         fileName: `${photoId}.jpg`,
         timestamp: t1,
-        syncRequested: false
+        syncRequested: false,
+        latitude: location?.latitude,
+        longitude: location?.longitude
       };
 
       await offlineStorage.savePhoto(newPhoto);
       setPendingPhotos(prev => [newPhoto, ...prev]);
       setIsProcessing(false);
-      toast({ title: "Guardada localmente" });
+      toast({ title: location ? "Guardada con GPS" : "Guardada (Sin GPS)" });
       
     } catch (error) {
       console.error('Error capturando:', error);
@@ -268,6 +263,16 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     }
   };
 
+  // Ayudante para convertir grados decimales a formato racional EXIF
+  const toExifGPS = (deg: number) => {
+    const absolute = Math.abs(deg);
+    const degrees = Math.floor(absolute);
+    const minutesNotTruncated = (absolute - degrees) * 60;
+    const minutes = Math.floor(minutesNotTruncated);
+    const seconds = Math.floor((minutesNotTruncated - minutes) * 60 * 100);
+    return [[degrees, 1], [minutes, 1], [seconds, 100]];
+  };
+
   const handleDownloadWithWatermark = async (photo: any) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -286,9 +291,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
 
     ctx.drawImage(img, 0, 0);
 
-    // Ajuste Sutil de Marca de Agua: Tamaño reducido al 50% (factor 0.01)
     const fontSize = Math.max(8, Math.floor(canvas.width * 0.01));
-    ctx.font = `${fontSize}px "Encode Sans", sans-serif`; // Sin negrita
+    ctx.font = `${fontSize}px "Encode Sans", sans-serif`;
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
 
@@ -301,10 +305,12 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       hour: '2-digit', minute: '2-digit' 
     });
     
+    const technicianName = getUserNameByEmail(photo.authorEmail || photo.userEmail || null);
+    
     const watermarkLines = [
       `DEA DATA BUS - DPH`,
       `Ítem: ${photo.analyte || analyteTag}`,
-      `Técnico: ${getUserNameByEmail(photo.authorEmail || photo.userEmail || null)}`,
+      `Técnico: ${technicianName}`,
       `GPS: ${photo.latitude?.toFixed(6) || 'N/D'}, ${photo.longitude?.toFixed(6) || 'N/D'}`,
       `Fecha: ${dateStr}`
     ];
@@ -313,12 +319,9 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     let currentY = canvas.height - padding;
     
     watermarkLines.forEach((line) => {
-      // Halo blanco pleno y bien fino para contraste técnico
       ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 0.5;
       ctx.strokeText(line, canvas.width - padding, currentY);
-      
-      // Texto negro pleno para máxima legibilidad
       ctx.fillStyle = '#000000';
       ctx.fillText(line, canvas.width - padding, currentY);
       currentY -= fontSize * 1.25;
@@ -326,14 +329,54 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
 
     canvas.toBlob((blob) => {
       if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `FOTO_${Date.now()}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        
+        try {
+          // Construcción de cabeceras EXIF
+          const zeroth: any = {};
+          const exif: any = {};
+          const gps: any = {};
+
+          zeroth[piexif.ImageIFD.Software] = "DEA Data Bus (DPH)";
+          zeroth[piexif.ImageIFD.ImageDescription] = `${analyteTag} - Muestreo Ambiental`;
+          zeroth[piexif.ImageIFD.Artist] = technicianName;
+          
+          exif[piexif.ExifIFD.DateTimeOriginal] = dateStr.replace(/\//g, ":");
+          exif[piexif.ExifIFD.UserComment] = `Muestreo DPH. Estación: ${photo.stationId}. Reporte: ${photo.reportId}.`;
+
+          if (photo.latitude && photo.longitude) {
+            gps[piexif.GPSIFD.GPSLatitudeRef] = photo.latitude >= 0 ? "N" : "S";
+            gps[piexif.GPSIFD.GPSLatitude] = toExifGPS(photo.latitude);
+            gps[piexif.GPSIFD.GPSLongitudeRef] = photo.longitude >= 0 ? "E" : "W";
+            gps[piexif.GPSIFD.GPSLongitude] = toExifGPS(photo.longitude);
+          }
+
+          const exifObj = { "0th": zeroth, "Exif": exif, "GPS": gps };
+          const exifBytes = piexif.dump(exifObj);
+          
+          // Inyectamos EXIF en la imagen final
+          const newJpeg = piexif.insert(exifBytes, dataUrl);
+          
+          const a = document.createElement('a');
+          a.href = newJpeg;
+          a.download = `DPH_${photo.analyte?.replace(/\s+/g, '_')}_${Date.now()}.jpg`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } catch (err) {
+          // Si falla piexif, bajamos la imagen del canvas normal
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `DPH_IMG_${Date.now()}.jpg`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      };
+      reader.readAsDataURL(blob);
     }, 'image/jpeg', 0.90);
   };
 
@@ -381,8 +424,9 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                {pendingPhotos.map(photo => (
                   <div key={photo.id} className="relative aspect-square border border-black bg-neutral-200 overflow-hidden">
                     <img src={URL.createObjectURL(photo.file)} alt="P" className="w-full h-full object-cover grayscale opacity-70" />
-                    <div className="absolute top-1 left-1 bg-black/80 p-0.5 rounded-sm">
+                    <div className="absolute top-1 left-1 bg-black/80 p-0.5 rounded-sm flex items-center gap-1">
                        <CloudOff className="h-3 w-3 text-white" />
+                       {photo.latitude && <div className="h-1 w-1 bg-green-400 rounded-full" title="GPS OK" />}
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/10">
                        {uploadingIds.includes(photo.id) ? (
@@ -393,7 +437,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                           </div>
                        ) : (
                           <>
-                            <button onClick={() => handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp)} className="p-2 bg-white rounded-full shadow-xl text-primary"><Upload className="h-4 w-4" /></button>
+                            <button onClick={() => handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp, photo.latitude, photo.longitude)} className="p-2 bg-white rounded-full shadow-xl text-primary"><Upload className="h-4 w-4" /></button>
                             <button onClick={() => handleDeletePending(photo.id)} className="p-2 bg-white rounded-full shadow-xl text-destructive"><X className="h-4 w-4" /></button>
                           </>
                        )}
@@ -415,8 +459,9 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                   )}
                 >
                   <img src={photo.value} alt="E" className="w-full h-full object-cover" />
-                  <div className="absolute top-0.5 left-0.5 bg-green-500/80 p-0.5 rounded-full">
+                  <div className="absolute top-0.5 left-0.5 bg-green-500/80 p-0.5 rounded-full flex items-center gap-0.5">
                      <Cloud className="h-2 w-2 text-white" />
+                     {photo.latitude && <div className="w-0.5 h-0.5 bg-white rounded-full" />}
                   </div>
                   {selectedIds.includes(photo.id) && (
                     <div className="absolute inset-0 bg-primary/20 flex items-center justify-center"><CheckSquare className="h-4 w-4 text-white" /></div>

@@ -9,6 +9,7 @@ import { Loader2, Check, Clock, User, Wind } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
+import { getCurrentGPSLocation } from '@/lib/geo-utils';
 
 interface AirQualityData {
   [key: string]: { value: string | null; capturedAt: number | null };
@@ -97,6 +98,9 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
 
     setSavingFields(prev => ({ ...prev, [name]: true }));
     
+    // Captura GPS de alta precisión en tiempo real
+    const location = await getCurrentGPSLocation();
+
     // Delta Time Calculation
     const t1 = entry.capturedAt || Date.now();
     const t2 = Date.now();
@@ -113,9 +117,11 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
 
       const payload = {
         value: `${entry.value}`,
+        latitude: location?.latitude || null,
+        longitude: location?.longitude || null,
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
-        timestamp: serverTimestamp(), // Keep for legacy
+        timestamp: serverTimestamp(),
         userId: user.uid,
         userEmail: user.email
       };
@@ -136,7 +142,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
 
       updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       setSavedFields(prev => ({ ...prev, [name]: true }));
-      toast({ title: "Sincronizado", description: `${name} actualizado.` });
+      toast({ title: "Guardado", description: location ? "Sincronizado con GPS." : "Sincronizado." });
     } catch (error: any) {
       console.error(error);
     } finally {

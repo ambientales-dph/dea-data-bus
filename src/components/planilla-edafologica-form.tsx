@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { getCurrentGPSLocation } from '@/lib/geo-utils';
 
 interface Props {
   reportId: string;
@@ -106,6 +107,9 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
 
     setSavingFields(prev => ({ ...prev, [name]: true }));
     
+    // Captura GPS de alta precisión en tiempo real
+    const location = await getCurrentGPSLocation();
+
     // Delta Time Calculation
     const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
     const t2 = Date.now();
@@ -122,9 +126,11 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
 
       const payload = {
         value: `${value}`,
+        latitude: location?.latitude || null,
+        longitude: location?.longitude || null,
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
-        timestamp: serverTimestamp(), // Keep for legacy
+        timestamp: serverTimestamp(),
         userId: user.uid,
         userEmail: user.email
       };
@@ -145,7 +151,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
 
       updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       setSavedFields(prev => ({ ...prev, [name]: true }));
-      toast({ title: "Guardado", description: `${name} actualizado.` });
+      toast({ title: "Sincronizado", description: location ? "Dato con GPS." : "Dato guardado." });
     } catch (error: any) {
       console.error(error);
     } finally {
@@ -199,25 +205,18 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     setShowOSMResults(false);
   };
 
-  const captureGPS = () => {
-    if (!navigator.geolocation) {
-      toast({ variant: "destructive", title: "GPS no disponible", description: "Tu navegador no soporta geolocalización." });
-      return;
+  const captureGPS = async () => {
+    toast({ title: "Obteniendo coordenadas...", description: "Forzando alta precisión GPS." });
+    const location = await getCurrentGPSLocation();
+    
+    if (location) {
+      const val = `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
+      handleInputChange("Punto_Muestreo", val);
+      saveParam("Punto_Muestreo", "General", val);
+      toast({ title: "Ubicación capturada", description: val });
+    } else {
+      toast({ variant: "destructive", title: "Falla de GPS", description: "No se pudo obtener la ubicación física." });
     }
-
-    toast({ title: "Obteniendo coordenadas...", description: "Por favor, espera." });
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const val = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
-        handleInputChange("Punto_Muestreo", val);
-        saveParam("Punto_Muestreo", "General", val);
-        toast({ title: "Ubicación capturada", description: val });
-      },
-      (err) => {
-        toast({ variant: "destructive", title: "Error de GPS", description: "No se pudo obtener la ubicación." });
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   };
 
   const formatMunsell = (val: string) => {
@@ -250,9 +249,9 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     handleInputChange(name, formatted);
   };
 
-  const sectionHeaderClass = "flex items-center gap-2 bg-neutral-100 px-3 py-2 border-y border-neutral-400 mt-6 first:mt-0";
-  const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-3";
-  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none w-1/3 shrink-0";
+  const sectionHeaderClass = "flex items-center gap-2 bg-neutral-100 px-4 py-2 border-y border-neutral-400 mt-6 first:mt-0";
+  const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-4";
+  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none w-1/3 shrink-0 uppercase";
   const inputClass = "h-7 flex-1 border-none bg-transparent px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none placeholder:text-neutral-300";
 
   const renderField = (name: string, label: string, cat: string, placeholder = "---") => (
@@ -267,7 +266,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           placeholder={placeholder}
         />
         <button onClick={() => saveParam(name, cat)} className={cn("p-1 transition-colors", savedFields[name] ? "text-green-600" : "text-black hover:text-primary")}>
-          {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields[name] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-3.5 w-3.5" />}
+          {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields[name] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
         </button>
       </div>
     </div>
@@ -285,7 +284,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           placeholder="10YR 3/2"
         />
         <button onClick={() => saveParam(name, cat)} className={cn("p-1 transition-colors", savedFields[name] ? "text-green-600" : "text-black hover:text-primary")}>
-          {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields[name] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-3.5 w-3.5" />}
+          {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields[name] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
         </button>
       </div>
     </div>
@@ -307,7 +306,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           </SelectTrigger>
           <SelectContent>
             {options.map(opt => (
-              <SelectItem key={opt.v} value={opt.v} className="text-xs font-bold">{opt.l}</SelectItem>
+              <SelectItem key={opt.v} value={opt.v} className="text-xs font-bold uppercase">{opt.l}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -325,7 +324,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   };
 
   if (isLoadingExisting) {
-    return <div className="p-12 text-center text-xs animate-pulse font-bold uppercase">Cargando Planilla Edafologica...</div>;
+    return <div className="p-12 text-center text-xs animate-pulse font-bold uppercase text-black">Cargando Planilla Edafologica...</div>;
   }
 
   return (
@@ -334,7 +333,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         <div>
           <h1 className="text-sm font-black uppercase tracking-tight text-black font-headline">Suelos • PE-001</h1>
           <div className="flex flex-col gap-0.5 mt-1">
-            <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID: {formId}</p>
+            <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
             <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter mt-1">
               <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
@@ -364,7 +363,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
             )}
           </div>
           <button onClick={() => saveParam("Lugar", "General", osmQuery)} className={cn("p-1 transition-colors", savedFields["Lugar"] ? "text-green-600" : "text-black")}>
-            {savingFields["Lugar"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["Lugar"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-3.5 w-3.5" />}
+            {savingFields["Lugar"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["Lugar"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
           </button>
         </div>
         
@@ -395,11 +394,11 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
             onChange={(e) => handleInputChange("Punto_Muestreo", e.target.value)} 
             placeholder="Coordenadas o Ref."
           />
-          <button onClick={captureGPS} title="Capturar GPS" className="p-1 hover:bg-primary/5 rounded transition-colors">
+          <button onClick={captureGPS} title="Forzar GPS de Alta Precisión" className="p-1 hover:bg-primary/5 rounded transition-colors">
             <Locate className="h-4 w-4 text-primary" />
           </button>
           <button onClick={() => saveParam("Punto_Muestreo", "General")} className={cn("p-1 transition-colors", savedFields["Punto_Muestreo"] ? "text-green-600" : "text-black")}>
-            {savingFields["Punto_Muestreo"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["Punto_Muestreo"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-3.5 w-3.5" />}
+            {savingFields["Punto_Muestreo"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["Punto_Muestreo"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
           </button>
         </div>
       </div>
@@ -428,49 +427,32 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         const hPrefix = `H${hIdx}:`;
         return (
           <div key={hIdx} className="mb-6 border-b-2 border-neutral-200 pb-2">
-            <div className="bg-neutral-50 px-3 py-1.5 flex justify-between items-center border-y border-neutral-300">
+            <div className="bg-neutral-50 px-4 py-1.5 flex justify-between items-center border-y border-neutral-300">
               <span className="text-[11px] font-black uppercase text-primary tracking-widest">Horizonte {hIdx}</span>
               {hIdx > 1 && hIdx === horizontesCount && (
                 <button onClick={() => setHorizontesCount(prev => prev - 1)} className="text-destructive p-1 hover:bg-destructive/10 rounded transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
               )}
             </div>
-            {renderField(`${hPrefix} Horizonte`, "Denominación (A, Bt, C...)", "Horizontes")}
+            {renderField(`${hPrefix} Horizonte`, "Denominación", "Horizontes")}
             {renderField(`${hPrefix} Profundidad`, "Profundidad (cm)", "Horizontes", "0-20")}
-            {renderMunsellField(`${hPrefix} Color_Seco`, "Color Munsell (Seco)", "Horizontes")}
-            {renderMunsellField(`${hPrefix} Color_Humedo`, "Color Munsell (Húmedo)", "Horizontes")}
+            {renderMunsellField(`${hPrefix} Color_Seco`, "Munsell (Seco)", "Horizontes")}
+            {renderMunsellField(`${hPrefix} Color_Humedo`, "Munsell (Húmedo)", "Horizontes")}
             {renderSelect(`${hPrefix} Textura`, "Textura", "Horizontes", [
               {v: "A", l: "Arenosa"}, {v: "AF", l: "Arena Franca"}, {v: "FA", l: "Franco Arenosa"}, {v: "F", l: "Franca"}, {v: "FL", l: "Franco Limosa"}, {v: "L", l: "Limosa"}, {v: "FArA", l: "Franco Arcillo Arenosa"}, {v: "FAr", l: "Franco Arcillosa"}, {v: "FArL", l: "Franco Arcillo Limosa"}, {v: "ArA", l: "Arcillo Arenosa"}, {v: "ArL", l: "Arcillo Limosa"}, {v: "Ar", l: "Arcillosa"}
             ])}
             {renderSelect(`${hPrefix} Estructura`, "Estructura", "Horizontes", [
               {v: "granular", l: "Granular"}, {v: "bloques_ang", l: "Bloques Angulares"}, {v: "bloques_sub", l: "Bloques Subangulares"}, {v: "prismatica", l: "Prismática"}, {v: "columnar", l: "Columnar"}, {v: "laminar", l: "Laminar"}, {v: "sin_estructura", l: "Sin Estructura"}
             ])}
-            
-            {renderSelect(`${hPrefix} Consistencia_Seco`, "Consistencia (Seco)", "Horizontes", [
-              {v: "suelto", l: "Suelto"}, {v: "blando", l: "Blando"}, {v: "m_firme", l: "Moderadamente Firme"}, {v: "firme", l: "Firme"}, {v: "muy_firme", l: "Muy Firme"}, {v: "extrem_firme", l: "Extremadamente Firme"}
-            ])}
-            {renderSelect(`${hPrefix} Consistencia_Humedo`, "Consistencia (Húmedo)", "Horizontes", [
-              {v: "suelto", l: "Suelto"}, {v: "muy_friable", l: "Muy Friable"}, {v: "friable", l: "Friable"}, {v: "firme", l: "Firme"}, {v: "muy_firme", l: "Muy Firme"}, {v: "extrem_firme", l: "Extremadamente Firme"}
-            ])}
-            {renderSelect(`${hPrefix} Consistencia_Mojado_Adh`, "Consistencia (Mojado): Adherencia", "Horizontes", [
-              {v: "no_pegajoso", l: "No pegajoso"}, {v: "l_pegajoso", l: "Ligeramente pegajoso"}, {v: "pegajoso", l: "Pegajoso"}, {v: "m_pegajoso", l: "Muy pegajoso"}
-            ])}
-            {renderSelect(`${hPrefix} Consistencia_Mojado_Plas`, "Consistencia (Mojado): Plasticidad", "Horizontes", [
-              {v: "no_plastico", l: "No plástico"}, {v: "l_plastico", l: "Ligeramente plástico"}, {v: "plastico", l: "Plástico"}, {v: "m_plastico", l: "Muy plástico"}
-            ])}
-
             {renderSelect(`${hPrefix} Limite`, "Límite Inferior", "Horizontes", [
               {v: "abrupto", l: "Abrupto"}, {v: "claro", l: "Claro"}, {v: "gradual", l: "Gradual"}, {v: "difuso", l: "Difuso"}
             ])}
             {renderField(`${hPrefix} pH`, "pH", "Horizontes")}
-            {renderSelect(`${hPrefix} Raices`, "Raíces", "Horizontes", [
-              {v: "ninguna", l: "Ninguna"}, {v: "pocas", l: "Pocas"}, {v: "frecuentes", l: "Frecuentes"}, {v: "muchas", l: "Muchas"}
-            ])}
           </div>
         );
       })}
-      <div className="px-3 py-2">
-        <Button variant="outline" className="w-full h-10 border-dashed border-neutral-400 text-[11px] font-black uppercase tracking-widest text-neutral-500 hover:bg-neutral-50" onClick={() => setHorizontesCount(prev => prev + 1)}>
-          <Plus className="h-4 w-4 mr-2" /> Agregar Horizonte al Perfil
+      <div className="px-4 py-2">
+        <Button variant="outline" className="w-full h-10 border-dashed border-neutral-400 text-[11px] font-black uppercase tracking-widest text-neutral-500 hover:bg-neutral-50 rounded-none" onClick={() => setHorizontesCount(prev => prev + 1)}>
+          <Plus className="h-4 w-4 mr-2" /> Agregar Horizonte
         </Button>
       </div>
 
@@ -480,11 +462,11 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       {renderField("Simbolo", "Símbolo Cartográfico", "Clasificación")}
 
       <div className={sectionHeaderClass}><Droplets className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-black uppercase tracking-wider text-black">5. Registro Fotográfico</span></div>
-      <div className="px-3 py-4">
+      <div className="px-4 py-6">
         <PhotoRegistry reportId={reportId} formId={formId} stationId={stationId} medium="suelo" />
       </div>
 
-      <div className="bg-white p-4 border-t border-neutral-200">
+      <div className="bg-white p-4 border-t border-neutral-400">
         <button onClick={onClose} className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-[0.98]">Finalizar y Cerrar Planilla</button>
       </div>
     </div>

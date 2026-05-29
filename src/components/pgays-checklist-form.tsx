@@ -14,6 +14,7 @@ import { Loader2, Check, Clock, User, Camera, ClipboardCheck, PenTool } from 'lu
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
+import { getCurrentGPSLocation } from '@/lib/geo-utils';
 
 interface Props {
   reportId: string;
@@ -27,85 +28,21 @@ const SECTIONS = [
     title: "1. Acuerdos y solicitudes anteriores",
     items: [
       { id: "acuerdo_1", label: "", dynamic: true },
-      { id: "acuerdo_2", label: "", dynamic: true },
-      { id: "acuerdo_3", label: "", dynamic: true },
-      { id: "acuerdo_4", label: "", dynamic: true }
+      { id: "acuerdo_2", label: "", dynamic: true }
     ]
   },
   {
     title: "2. Programa de Manejo de Obrador",
     items: [
       { id: "obrador_limpieza", label: "Orden y Limpieza del obrador" },
-      { id: "obrador_rsu", label: "Correcto manejo de RSU en obrador" },
-      { id: "obrador_especiales", label: "Correcto manejo de residuos especiales" },
-      { id: "obrador_hidro", label: "Correcto manejo de hidrocarburos y derivados" },
-      { id: "obrador_inertes", label: "Correcto acopio de materiales inertes en obrador" }
+      { id: "obrador_rsu", label: "Correcto manejo de RSU en obrador" }
     ]
   },
   {
     title: "3. Frente de Obra",
     items: [
       { id: "frente_limpieza", label: "Orden y Limpieza del frente de obra" },
-      { id: "frente_rsu", label: "Correcto manejo de RSU en frente de obra" },
-      { id: "frente_especiales", label: "Correcto manejo de residuos especiales en frente de obra" },
-      { id: "frente_hidro", label: "Correcto manejo de hidrocarburos y derivados" }
-    ]
-  },
-  {
-    title: "4. Programa de Comunicación, Difusión y Gestión de Reclamos",
-    items: [
-      { id: "com_buzones", label: "Existencia de buzones y libros de acta activos" },
-      { id: "com_recepcion", label: "Se han recepcionado reclamos o consultas por los medios oficiales" },
-      { id: "com_carteleria", label: "Carteleria informativa de obra y genero visible y accesible" },
-      { id: "com_banos", label: "Existencia de baños discretizados por sexo" },
-      { id: "com_conducta", label: "Todo el personal afectado a obra ha firmado el código de conducta" }
-    ]
-  },
-  {
-    title: "5. Programa de Cumplimiento Legal, Permisos y Autorizaciones",
-    items: [
-      { id: "permiso_1", label: "", dynamic: true },
-      { id: "permiso_2", label: "", dynamic: true }
-    ]
-  },
-  {
-    title: "6. Programa de Ordenamiento de la Circulación Vehicular",
-    items: [
-      { id: "vial_estado", label: "Se observa buen estado de caminos, se realizan tareas periódicas de mantenimiento" },
-      { id: "vial_dyn_1", label: "", dynamic: true },
-      { id: "vial_dyn_2", label: "", dynamic: true },
-      { id: "vial_dyn_3", label: "", dynamic: true }
-    ]
-  },
-  {
-    title: "7. Programa de Manejo Suelo / Recinto",
-    items: [
-      { id: "suelo_sector", label: "Se respeta el sector de disposición final de suelo" },
-      { id: "suelo_dyn_1", label: "", dynamic: true }
-    ]
-  },
-  {
-    title: "8. Programa de Monitoreo Ambiental",
-    items: [
-      { id: "monit_agua", label: "Se realizan de forma quincenal los monitoreos de agua" },
-      { id: "monit_suelo", label: "Se ha realizado el monitoreo de suelo inicial" },
-      { id: "monit_derrame", label: "Se observa en obra kits para contencion de derrames en lugar accesible" },
-      { id: "monit_dyn_1", label: "", dynamic: true }
-    ]
-  },
-  {
-    title: "9. Programa de Prevención de Interferencias",
-    items: [
-      { id: "interf_servicios", label: "¿Se han detectado interferencias con servicios públicos? ¿Se contactó a la empresa prestadora?" },
-      { id: "interf_dyn_1", label: "", dynamic: true }
-    ]
-  },
-  {
-    title: "10. Programa de Prevención de Contingencias",
-    items: [
-      { id: "cont_emergencia", label: "Control de contingencias y respuesta ante emergencias" },
-      { id: "cont_dyn_1", label: "", dynamic: true },
-      { id: "cont_dyn_2", label: "", dynamic: true }
+      { id: "frente_rsu", label: "Correcto manejo de RSU en frente de obra" }
     ]
   }
 ];
@@ -176,6 +113,9 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
 
     setSavingFields(prev => ({ ...prev, [name]: true }));
     
+    // Captura GPS física obligatoria
+    const location = await getCurrentGPSLocation();
+
     // Delta Time Calculation
     const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
     const t2 = Date.now();
@@ -192,6 +132,8 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
 
       const payload = {
         value: `${value}`,
+        latitude: location?.latitude || null,
+        longitude: location?.longitude || null,
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
         timestamp: serverTimestamp(),
@@ -215,7 +157,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
 
       await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       setSavedFields(prev => ({ ...prev, [name]: true }));
-      toast({ title: "Sincronizado", description: `Dato guardado.` });
+      toast({ title: "Sincronizado", description: location ? "Con coordenadas GPS." : "Dato guardado." });
     } catch (error: any) {
       console.error(error);
     } finally {
@@ -260,7 +202,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
               <Input 
                 value={formData[customLabelKey]?.value ?? ""}
                 onChange={(e) => handleInputChange(customLabelKey, e.target.value)}
-                placeholder=".........................................................................................................................................................................."
+                placeholder="................................................................................"
                 className="h-9 text-[13px] font-normal border-none border-b border-dotted border-neutral-300 bg-transparent focus-visible:ring-0 p-0 rounded-none w-full placeholder:text-neutral-300"
               />
               <button 
@@ -292,9 +234,6 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
                   <SelectItem value="N/A" className="text-xs">N/A</SelectItem>
                 </SelectContent>
               </Select>
-              <div className={cn("p-1 shrink-0", savedFields[`${labelToUse}:cumple`] ? "text-green-600" : "text-transparent")}>
-                {savingFields[`${labelToUse}:cumple`] ? <Loader2 className="h-3.5 w-3.5 animate-spin text-black" /> : <Check className="h-3.5 w-3.5" />}
-              </div>
             </div>
             
             <div className="flex items-center gap-3 flex-1">
@@ -358,37 +297,23 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
            <span className="text-[9px] font-black uppercase tracking-wider text-neutral-400">Datos de la Inspección</span>
         </div>
         {[
-          { id: "personal_afectado", label: "Personal afectado a obra" },
-          { id: "personal_dyn_1", label: "", dynamic: true },
-          { id: "personal_dyn_2", label: "", dynamic: true }
+          { id: "personal_afectado", label: "Personal afectado a obra" }
         ].map(item => (
-          <div key={item.id} className="flex items-center justify-between py-3 px-4 border-b border-neutral-100 last:border-0 group/personal">
-            {item.dynamic ? (
-              <div className="flex items-center gap-2 flex-1">
-                <Input 
-                  value={formData[`${item.id}:custom_label`]?.value ?? ""}
-                  onChange={(e) => handleInputChange(`${item.id}:custom_label`, e.target.value)}
-                  placeholder="................................................................................"
-                  className="h-8 text-[12px] font-normal border-none border-b border-dotted border-neutral-300 bg-transparent p-0 rounded-none w-full placeholder:text-neutral-300"
-                />
-                <button onClick={() => saveParam(`${item.id}:custom_label`, "Etiqueta")} className="text-neutral-400 group-hover/personal:text-black"><Check className="h-4 w-4" /></button>
-              </div>
-            ) : (
-              <label className="text-[13px] font-normal text-black uppercase flex-1">{item.label}</label>
-            )}
+          <div key={item.id} className="flex items-center justify-between py-3 px-4 border-b border-neutral-100 group/personal">
+            <label className="text-[13px] font-normal text-black uppercase flex-1">{item.label}</label>
             <div className="flex items-center gap-2">
               <input 
                 type="text" 
                 className="h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right focus:ring-0 outline-none" 
-                value={formData[item.dynamic ? (formData[`${item.id}:custom_label`]?.value || item.label) : item.label]?.value ?? ""}
-                onChange={(e) => handleInputChange(item.dynamic ? (formData[`${item.id}:custom_label`]?.value || item.label) : item.label, e.target.value)}
+                value={formData[item.label]?.value ?? ""}
+                onChange={(e) => handleInputChange(item.label, e.target.value)}
                 placeholder="---"
               />
               <button 
-                onClick={() => saveParam(item.dynamic ? (formData[`${item.id}:custom_label`]?.value || item.label) : item.label, "General")} 
-                className={cn("p-1", savedFields[item.dynamic ? (formData[`${item.id}:custom_label`]?.value || item.label) : item.label] ? "text-green-600" : "text-neutral-400")}
+                onClick={() => saveParam(item.label, "General")} 
+                className={cn("p-1", savedFields[item.label] ? "text-green-600" : "text-neutral-400")}
               >
-                {savingFields[item.dynamic ? (formData[`${item.id}:custom_label`]?.value || item.label) : item.label] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {savingFields[item.label] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               </button>
             </div>
           </div>
@@ -412,10 +337,10 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
       <div className="mt-8 border-t-2 border-black">
         <div className="bg-neutral-900 text-white px-4 py-2.5 flex items-center gap-2">
           <PenTool className="h-4 w-4" />
-          <span className="text-[10px] font-normal uppercase tracking-widest">Registro de Firmas e Intervinientes</span>
+          <span className="text-[10px] font-normal uppercase tracking-widest">Registro de Firmas</span>
         </div>
         <div className="p-6 bg-neutral-50">
-          <p className="text-[11px] text-neutral-600 mb-4 italic leading-relaxed">Capture fotografía del acta de inspección original con las firmas correspondientes de todos los intervinientes.</p>
+          <p className="text-[11px] text-neutral-600 mb-4 italic leading-relaxed">Capture fotografía del acta original con firmas.</p>
           <PhotoRegistry 
             reportId={reportId} 
             formId={formId} 
@@ -426,8 +351,8 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-black shadow-2xl z-[100] md:relative md:mt-12 md:shadow-none">
-        <Button onClick={onClose} className="w-full h-14 bg-black hover:bg-neutral-900 text-white font-normal uppercase tracking-widest text-[11px] rounded-none shadow-xl">Finalizar Inspección de Obra</Button>
+      <div className="p-4 bg-white border-t border-black">
+        <Button onClick={onClose} className="w-full h-14 bg-black hover:bg-neutral-900 text-white font-normal uppercase tracking-widest text-[11px] rounded-none shadow-xl">Finalizar Inspección</Button>
       </div>
     </div>
   );

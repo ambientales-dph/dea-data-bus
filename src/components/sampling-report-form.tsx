@@ -22,6 +22,7 @@ import { SuelosGeotecniaFormIntegrated } from './suelos-geotecnia-form';
 import { PgaysChecklistForm } from './pgays-checklist-form';
 import { MONITORING_TEMPLATES } from '@/app/lib/monitoring-constants';
 import { TechnicianLink } from './technician-link';
+import { getCurrentGPSLocation } from '@/lib/geo-utils';
 
 interface ManualEntry {
   value: string;
@@ -32,7 +33,7 @@ interface SamplingReportFormProps {
   reportId: string;
   formId: string;
   stationId: string;
-  onClose: void;
+  onClose: () => void;
   templateId?: string;
 }
 
@@ -116,6 +117,9 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     const activeParams = template.parametros || template.parameters || [];
 
     try {
+      // Capturamos GPS una vez por lote de guardado para eficiencia
+      const location = await getCurrentGPSLocation();
+
       for (const param of activeParams) {
         const entry = planillaValues[param.nombre];
         if (entry && entry.value !== undefined && entry.value !== null && entry.value.trim() !== '') {
@@ -136,6 +140,8 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
 
           const payload = {
             value: entry.value,
+            latitude: location?.latitude || null,
+            longitude: location?.longitude || null,
             retrasoSincronizacionMs: deltaMs,
             fechaServidor: serverTimestamp(),
             timestamp: serverTimestamp(),
@@ -161,7 +167,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
       }
 
       if (savedCount > 0 && user.email && reportRef) await updateDoc(reportRef, { editors: arrayUnion(user.email) });
-      toast({ title: "Planilla sincronizada", description: `${savedCount} parámetros guardados.` });
+      toast({ title: "Planilla sincronizada", description: location ? `${savedCount} datos guardados con GPS.` : `${savedCount} datos guardados.` });
     } catch (e) {
       console.error(e);
       toast({ variant: "destructive", title: "Error", description: "Falla al guardar." });
@@ -236,13 +242,13 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
 
   return (
     <div className="space-y-4">
-      <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden">
-        <CardHeader className="p-3 pb-2">
+      <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden rounded-none">
+        <CardHeader className="p-4 pb-2 bg-neutral-50">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <CardTitle className="text-sm font-black uppercase tracking-tight text-foreground">{template?.nombre || template?.name || 'Carga de Analitos'}</CardTitle>
               <div className="flex flex-col gap-0.5">
-                <CardDescription className="text-[10px] font-bold">ID: <span className="text-foreground">{formId}</span></CardDescription>
+                <CardDescription className="text-[10px] font-bold uppercase">Planilla ID: <span className="text-foreground">{formId}</span></CardDescription>
                 <div className="flex items-center gap-3 text-[9px] text-muted-foreground font-black uppercase tracking-tight">
                   <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
                   <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
@@ -251,40 +257,42 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-3 pt-0">
+        <CardContent className="p-0">
           {template ? (
-            <div className="space-y-2 animate-in fade-in duration-300">
-              <div className="grid grid-cols-1 gap-1.5">
+            <div className="animate-in fade-in duration-300">
+              <div className="divide-y divide-neutral-200">
                 {(template.parametros || template.parameters || []).map((param: any) => (
-                  <div key={param.nombre} className="flex items-center gap-2 p-2 rounded-sm bg-muted/20 border border-muted-20 hover:border-primary/20 transition-all">
+                  <div key={param.nombre} className="flex items-center gap-2 p-3 hover:bg-neutral-50 transition-all">
                     <div className="flex-1 min-w-0">
-                      <Label className="text-[10px] font-black text-foreground block leading-none truncate">{param.nombre}</Label>
-                      <span className="text-[8px] text-muted-foreground uppercase font-bold">{param.categoria} • {param.unidades}</span>
+                      <Label className="text-[11px] font-black text-foreground block leading-tight uppercase">{param.nombre}</Label>
+                      <span className="text-[9px] text-muted-foreground uppercase font-bold">{param.categoria} • {param.unidades}</span>
                     </div>
-                    <Input 
-                      placeholder="Valor" 
-                      className="h-8 w-24 text-[11px] font-code py-0 px-2 bg-white text-right border-input font-bold text-foreground"
+                    <input 
+                      placeholder="---" 
+                      className="h-8 w-24 text-[12px] font-code py-0 px-2 bg-neutral-100 border-none text-right font-bold text-foreground focus:ring-0 outline-none"
                       value={planillaValues[param.nombre]?.value || ''}
                       onChange={(e) => handleValueChange(param.nombre, e.target.value)}
                     />
                   </div>
                 ))}
               </div>
-              <Button onClick={handleSavePlanilla} className="w-full h-10 mt-2 bg-primary hover:bg-primary/90 text-[10px] font-black uppercase tracking-widest text-white shadow-md" disabled={isSavingPlanilla}>
-                {isSavingPlanilla ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                Guardar Datos
-              </Button>
+              <div className="p-4 bg-white">
+                <Button onClick={handleSavePlanilla} className="w-full h-12 bg-primary hover:bg-primary/90 text-[11px] font-black uppercase tracking-widest text-white shadow-md rounded-none" disabled={isSavingPlanilla}>
+                  {isSavingPlanilla ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  Guardar y Sincronizar (GPS)
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="py-8 flex flex-col items-center justify-center text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin mb-2" /><p className="text-xs">Cargando protocolo...</p>
+            <div className="py-20 flex flex-col items-center justify-center text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin mb-2" /><p className="text-[10px] font-black uppercase tracking-widest">Cargando protocolo...</p>
             </div>
           )}
         </CardContent>
       </Card>
       
       <div className="flex justify-end">
-        <Button onClick={onClose} variant="outline" className="text-[10px] font-black uppercase tracking-widest border-foreground text-foreground hover:bg-foreground/5">Listo / Finalizar</Button>
+        <Button onClick={onClose} variant="outline" className="text-[10px] font-black uppercase tracking-widest border-black text-black hover:bg-black/5 rounded-none h-10">Cerrar Planilla</Button>
       </div>
     </div>
   );

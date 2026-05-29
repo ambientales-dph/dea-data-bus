@@ -9,6 +9,7 @@ import { Loader2, Check, CheckCircle2, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
+import { getCurrentGPSLocation } from '@/lib/geo-utils';
 
 export interface SurfaceWaterEntry {
   value: string | number | null;
@@ -36,13 +37,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
 
-  const stationRef = useMemo(() => {
-    if (!db || !stationId || stationId.trim() === '') return null;
-    return doc(db, 'stations', stationId);
-  }, [db, stationId]);
-  
-  const { data: stationData } = useDoc(stationRef);
-
   const sections = [
     {
       title: "1. Fisicoquímicos y Sólidos",
@@ -50,8 +44,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         { name: "Turbidez/Turbiedad", unit: "NTU", cat: "Fisicoquímico", desc: "Monitoreo. Ley 24.051 / Dec. 831/93." },
         { name: "Sólidos Suspendidos", unit: "mg/l", cat: "Sólidos", desc: "Nivel Guía: 100 mg/l (Dec. 831/93)." },
         { name: "Sólidos totales", unit: "mg/l", cat: "Sólidos", desc: "Ref. Dec. 831/93 / Res. ADA (Prov. BA)." },
-        { name: "Dureza Total", unit: "mg/l", cat: "Fisicoquímico", desc: "Variable segun geología de cuenca." },
-        { name: "Alcalinidad Tot", unit: "mg/l", cat: "Fisicoquímico", desc: "Indicador de capacidad tampón del agua." }
+        { name: "Dureza Total", unit: "mg/l", cat: "Fisicoquímico", desc: "Variable segun geología de cuenca." }
       ]
     },
     {
@@ -60,9 +53,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         { name: "Nitrógeno Amoniacal", unit: "mg/l", cat: "Nutrientes", desc: "Nivel Guía: 0.02 mg/l (Dec. 831/93)." },
         { name: "Nitrógeno total", unit: "mg/l", cat: "Nutrientes", desc: "Indicador de eutrofización. Dec. 831/93." },
         { name: "Fosforo total", unit: "mg/l", cat: "Nutrientes", desc: "Nivel Guía: 0.025 mg/l (lagos) Dec. 831/93." },
-        { name: "Clorofila a", unit: "ug/l", cat: "Biología", desc: "Biomasa algal. Ref. ADA (Prov. BA)." },
-        { name: "DBO5", unit: "mg/l", cat: "Orgánicos", desc: "Guía: 5 mg/l (Vida acuática) Dec. 831/93." },
-        { name: "DQO", unit: "mg/l", cat: "Orgánicos", desc: "Ref: ADA (Prov. BA) / Dec. 831/93." }
+        { name: "DBO5", unit: "mg/l", cat: "Orgánicos", desc: "Guía: 5 mg/l (Vida acuática) Dec. 831/93." }
       ]
     },
     {
@@ -76,21 +67,9 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
       title: "4. Metales",
       params: [
         { name: "Arsenico", unit: "mg/l", cat: "Metales", desc: "Nivel Guía: 0.05 mg/l. Dec. 831/93." },
-        { name: "Cadmio", unit: "ug/l", cat: "Metales", desc: "Nivel Guía: 0.2-2 ug/l según dureza. Dec. 831/93." },
+        { name: "Cadmio", unit: "ug/l", cat: "Metales", desc: "Nivel Guía: 0.2-2 ug/l según dureza." },
         { name: "Cromo", unit: "mg/l", cat: "Metales", desc: "Nivel Guía: 0.05 mg/l (Cr VI) Dec. 831/93." },
-        { name: "Plomo", unit: "mg/l", cat: "Metales", desc: "Nivel Guía: 0.05 mg/l. Dec. 831/93." },
-        { name: "Zinc", unit: "mg/l", cat: "Metales", desc: "Nivel Guía: 0.1 mg/l. Dec. 831/93." }
-      ]
-    },
-    {
-      title: "5. Iones y Otros",
-      params: [
-        { name: "Cloruros", unit: "mg/l", cat: "Iones", desc: "Nivel Guía: 250 mg/l (Bebida) Dec. 831/93." },
-        { name: "Sulfatos", unit: "mg/l", cat: "Iones", desc: "Nivel Guía: 250 mg/l (Bebida) Dec. 831/93." },
-        { name: "Nitratos", unit: "mg/l", cat: "Iones", desc: "Nivel Guía: 10 mg/l (como N) Dec. 831/93." },
-        { name: "Nitritos", unit: "mg/l", cat: "Iones", desc: "Nivel Guía: 1 mg/l (como N) Dec. 831/93." },
-        { name: "Sodio", unit: "mg/l", cat: "Iones", desc: "Ref. Dec. 831/93 / ADA (Prov. BA)." },
-        { name: "Glifosato", unit: "mg/l", cat: "Plaguicidas", desc: "Ref. Dec. 831/93 / Res. ADA." }
+        { name: "Plomo", unit: "mg/l", cat: "Metales", desc: "Nivel Guía: 0.05 mg/l. Dec. 831/93." }
       ]
     }
   ];
@@ -152,6 +131,9 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
     setSavingFields(prev => ({ ...prev, [name]: true }));
     
+    // Capturamos ubicación exacta con alta precisión
+    const location = await getCurrentGPSLocation();
+
     // Delta Time Calculation
     const t1 = entry.capturedAt || Date.now();
     const t2 = Date.now();
@@ -168,9 +150,11 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
       const payload = {
         value: `${entry.value}`,
+        latitude: location?.latitude || null,
+        longitude: location?.longitude || null,
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
-        timestamp: serverTimestamp(), // Keep for legacy
+        timestamp: serverTimestamp(),
         userId: user.uid,
         userEmail: user.email
       };
@@ -191,7 +175,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
       updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       setSavedFields(prev => ({ ...prev, [name]: true }));
-      toast({ title: "Guardado", description: `${name} actualizado.` });
+      toast({ title: "Guardado", description: location ? "Sincronizado con GPS." : "Sincronizado." });
     } catch (error: any) {
       console.error(error);
     } finally {
@@ -202,35 +186,29 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   const formatTimestamp = (ts: any) => {
     if (!ts) return new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const date = ts.toDate ? ts.toDate() : new Date(ts);
-    return date.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   if (isLoadingExisting) {
-    return <div className="p-8 text-center text-xs animate-pulse font-bold uppercase">Cargando datos de planilla...</div>;
+    return <div className="p-8 text-center text-xs animate-pulse font-bold uppercase text-black">Cargando datos de planilla...</div>;
   }
 
-  const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group";
-  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none";
+  const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-4";
+  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none uppercase";
   const subLabelClass = "text-[9px] text-neutral-600 font-medium leading-tight mt-1";
-  const inputClass = "h-7 w-28 border-none bg-transparent px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none";
-  const sectionHeaderClass = "flex items-center bg-neutral-100 px-3 py-1.5 border-y border-neutral-400 mt-2 first:mt-0";
+  const inputClass = "h-7 w-28 border-none bg-neutral-50 px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none";
+  const sectionHeaderClass = "flex items-center bg-neutral-100 px-4 py-2 border-y border-neutral-400 mt-2 first:mt-0";
 
   return (
     <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
-      <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-2 flex justify-between items-center">
+      <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-3 flex justify-between items-center">
         <div>
-          <h1 className="text-xs font-black uppercase tracking-tight text-black font-headline">Agua Superficial • AS-001</h1>
-          <div className="flex flex-col gap-0.5 mt-0.5">
-            <p className="text-[9px] text-neutral-600 font-bold uppercase leading-none">ID: {formId.substring(0, 8)}</p>
-            <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter">
-              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
-              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
+          <h1 className="text-sm font-black uppercase tracking-tight text-black font-headline">Agua Superficial • AS-001</h1>
+          <div className="flex flex-col gap-0.5 mt-1">
+            <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
+            <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter mt-1">
+              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>
         </div>
@@ -242,7 +220,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
             <div className={sectionHeaderClass}>
               <span className="text-[10px] font-black uppercase tracking-wider text-black">{section.title}</span>
             </div>
-            <div className="px-3">
+            <div className="p-0">
               {section.params.map((param, pIdx) => (
                 <div key={pIdx} className={rowClass}>
                   <div className="flex flex-col flex-1">
@@ -266,7 +244,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                       ) : savedFields[param.name] ? (
                         <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div>
                       ) : (
-                        <Check className="h-3.5 w-3.5" />
+                        <Check className="h-4 w-4" />
                       )}
                     </button>
                   </div>
@@ -276,7 +254,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
           </div>
         ))}
 
-        <div className="px-3 py-4">
+        <div className="px-4 py-6 bg-neutral-50">
           <PhotoRegistry 
             reportId={reportId} 
             formId={formId} 
@@ -286,7 +264,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         </div>
       </div>
 
-      <div className="bg-white p-4">
+      <div className="bg-white p-4 border-t border-neutral-400">
         <button onClick={onClose} className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-md">Finalizar y Cerrar Planilla</button>
       </div>
     </div>

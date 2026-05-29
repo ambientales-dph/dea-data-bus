@@ -9,6 +9,7 @@ import { Loader2, CheckCircle2, Info, Check, Send, ArrowLeft, Clock, User } from
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
+import { getCurrentGPSLocation } from '@/lib/geo-utils';
 
 export interface FreatimetroEntry {
   value: number | string | null;
@@ -159,6 +160,9 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
 
     setSavingFields(prev => ({ ...prev, [key]: true }));
     
+    // Captura GPS con alta precisión
+    const location = await getCurrentGPSLocation();
+
     // Delta Time Calculation
     const t1 = entry.capturedAt || Date.now();
     const t2 = Date.now();
@@ -175,9 +179,11 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
 
       const payload = {
         value: `${entry.value}`,
+        latitude: location?.latitude || null,
+        longitude: location?.longitude || null,
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
-        timestamp: serverTimestamp(), // Keep for legacy
+        timestamp: serverTimestamp(), 
         userId: user.uid,
         userEmail: user.email
       };
@@ -198,7 +204,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
 
       updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       setSavedFields(prev => ({ ...prev, [key]: true }));
-      toast({ title: "Guardado", description: `${label} actualizado.` });
+      toast({ title: "Guardado", description: location ? "Sincronizado con GPS." : "Sincronizado." });
     } catch (error: any) {
       console.error(error);
     } finally {
@@ -209,35 +215,29 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const formatTimestamp = (ts: any) => {
     if (!ts) return new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const date = ts.toDate ? ts.toDate() : new Date(ts);
-    return date.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return date.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   if (isLoadingExisting) {
-    return <div className="p-8 text-center text-xs animate-pulse font-bold uppercase">Cargando datos de planilla...</div>;
+    return <div className="p-8 text-center text-xs animate-pulse font-bold uppercase text-black">Cargando datos de planilla...</div>;
   }
 
-  const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group";
-  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none";
+  const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-4";
+  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none uppercase";
   const subLabelClass = "text-[9px] text-neutral-600 font-medium leading-tight mt-1";
-  const inputClass = "h-7 w-28 border-none bg-transparent px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none";
-  const sectionHeaderClass = "flex items-center bg-neutral-100 px-3 py-1.5 border-y border-neutral-400 mt-2 first:mt-0";
+  const inputClass = "h-7 w-28 border-none bg-neutral-50 px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none";
+  const sectionHeaderClass = "flex items-center bg-neutral-100 px-4 py-2 border-y border-neutral-400 mt-2 first:mt-0";
 
   return (
     <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
-      <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-2 flex justify-between items-center">
+      <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-3 flex justify-between items-center">
         <div>
-          <h1 className="text-xs font-black uppercase tracking-tight text-black font-headline">Freatímetros • FTA-001</h1>
-          <div className="flex flex-col gap-0.5 mt-0.5">
-            <p className="text-[9px] text-neutral-600 font-bold uppercase leading-none">ID: {formId.substring(0, 8)}</p>
-            <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter">
-              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
-              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
+          <h1 className="text-sm font-black uppercase tracking-tight text-black font-headline">Freatímetros • FTA-001</h1>
+          <div className="flex flex-col gap-0.5 mt-1">
+            <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
+            <div className="flex items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter mt-1">
+              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>
         </div>
@@ -245,9 +245,9 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
 
       <div className="p-0">
         <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">1. Identificación y Geometría</span></div>
-        <div className="px-3">
+        <div className="p-0">
           <div className={rowClass}>
-            <div className="flex flex-col flex-1"><label className={labelClass}>ID Pozo</label><span className={subLabelClass}>Nombre o identificación técnica</span></div>
+            <div className="flex flex-col flex-1"><label className={labelClass}>ID Pozo</label><span className={subLabelClass}>Identificación técnica del freatímetro.</span></div>
             <input type="text" className={inputClass} value={formData.idPozo.value ?? ""} onChange={(e) => handleInputChange("idPozo", e.target.value)} />
           </div>
           <div className={rowClass}>
@@ -259,11 +259,11 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
               <input type="number" step="any" className={inputClass} value={formData.cotaBrocal.value ?? ""} onChange={(e) => handleInputChange("cotaBrocal", e.target.value)} />
               <button onClick={() => saveIndividualParam('cotaBrocal', 'Cota Brocal', 'Geometría')} className={cn("p-1 transition-colors", savedFields['cotaBrocal'] ? "text-green-600" : "text-black")}>
                 {savingFields['cotaBrocal'] ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : savedFields['cotaBrocal'] ? (
-                  <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div>
+                  <div className="rounded-full bg-green-100 p-0.5"><Check className="h-3 w-3 text-green-600" /></div>
                 ) : (
-                  <Check className="h-3.5 w-3.5" />
+                  <Check className="h-4 w-4" />
                 )}
               </button>
             </div>
@@ -271,12 +271,12 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         </div>
 
         <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">2. Mediciones de Campo (In Situ)</span></div>
-        <div className="px-3">
+        <div className="p-0">
           {[
             { key: 'nivelEstatico', name: 'Nivel Estático', unit: 'm', type: 'Campo', desc: 'Profundidad desde brocal. Ley 24.051 / Dec. 831/93.' },
             { key: 'ph', name: 'pH', unit: 'upH', type: 'Campo', desc: 'Guía: 6.5-8.5. Dec. 831/93 (Fuente de agua).' },
             { key: 'conductividad', name: 'Conductividad', unit: 'μS/cm', type: 'Campo', desc: 'Ref: ADA (Prov. BA) / Dec. 831/93.' },
-            { key: 'temperatura', name: 'Temperatura', unit: '°C', type: 'Campo', desc: 'Variable. Influencia en solubilidad de metales.' }
+            { key: 'temperatura', name: 'Temperatura', unit: '°C', type: 'Campo', desc: 'Influencia en solubilidad de metales.' }
           ].map((field) => (
             <div key={field.key} className={rowClass}>
               <div className="flex flex-col flex-1">
@@ -287,11 +287,11 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
                 <input type="number" step="any" className={inputClass} value={(formData as any)[field.key].value ?? ""} onChange={(e) => handleInputChange(field.key as any, e.target.value)} />
                 <button onClick={() => saveIndividualParam(field.key as any, field.name, field.type)} className={cn("p-1 transition-colors", savedFields[field.key] ? "text-green-600" : "text-black")}>
                   {savingFields[field.key] ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : savedFields[field.key] ? (
-                    <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div>
+                    <div className="rounded-full bg-green-100 p-0.5"><Check className="h-3 w-3 text-green-600" /></div>
                   ) : (
-                    <Check className="h-3.5 w-3.5" />
+                    <Check className="h-4 w-4" />
                   )}
                 </button>
               </div>
@@ -300,12 +300,12 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         </div>
 
         <div className={sectionHeaderClass}><span className="text-[10px] font-black uppercase tracking-wider text-black">3. Resultados de Laboratorio</span></div>
-        <div className="px-3">
+        <div className="p-0">
           {[
             { key: 'plomo', name: 'Plomo (Pb)', unit: 'mg/L', type: 'Laboratorio', desc: 'Nivel Guía: 0.05 mg/L. Dec. 831/93.' },
             { key: 'cadmio', name: 'Cadmio (Cd)', unit: 'mg/L', type: 'Laboratorio', desc: 'Nivel Guía: 0.005 mg/L. Dec. 831/93.' },
             { key: 'arsenico', name: 'Arsénico (As)', unit: 'mg/L', type: 'Laboratorio', desc: 'Nivel Guía: 0.05 mg/L. Dec. 831/93.' },
-            { key: 'tph', name: 'TPH (Hidrocarburos)', unit: 'mg/L', type: 'Laboratorio', desc: 'Guía: Res. 405/19 (Nación) / Res. ADA 618/06.' }
+            { key: 'tph', name: 'TPH (Hidrocarburos)', unit: 'mg/L', type: 'Laboratorio', desc: 'Ref: Res. ADA 618/06.' }
           ].map((field) => (
             <div key={field.key} className={rowClass}>
               <div className="flex flex-col flex-1">
@@ -316,11 +316,11 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
                 <input type="number" step="any" className={inputClass} value={(formData as any)[field.key].value ?? ""} onChange={(e) => handleInputChange(field.key as any, e.target.value)} />
                 <button onClick={() => saveIndividualParam(field.key as any, field.name, field.type)} className={cn("p-1 transition-colors", savedFields[field.key] ? "text-green-600" : "text-black")}>
                   {savingFields[field.key] ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : savedFields[field.key] ? (
-                    <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div>
+                    <div className="rounded-full bg-green-100 p-0.5"><Check className="h-3 w-3 text-green-600" /></div>
                   ) : (
-                    <Check className="h-3.5 w-3.5" />
+                    <Check className="h-4 w-4" />
                   )}
                 </button>
               </div>
@@ -328,26 +328,26 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
           ))}
         </div>
 
-        <div className="bg-black px-4 py-4 flex items-center justify-between mt-2">
+        <div className="bg-black px-6 py-5 flex items-center justify-between mt-4">
           <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase text-white">Cota de Agua Estimada</span>
-            <span className="text-[8px] font-bold text-neutral-400">Cálculo: CB - NE (m s.n.m.)</span>
+            <span className="text-[11px] font-black uppercase text-white tracking-widest">Cota de Agua Estimada</span>
+            <span className="text-[9px] font-bold text-neutral-400">Cálculo: CB - NE (m s.n.m.)</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-xl font-black text-white font-code">{cotaAgua !== null ? `${cotaAgua} m` : "—"}</span>
+            <span className="text-2xl font-black text-white font-code">{cotaAgua !== null ? `${cotaAgua} m` : "—"}</span>
             <button onClick={() => saveIndividualParam('cotaAgua', 'Cota de Agua', 'Cálculo')} className={cn("p-1 transition-colors", savedFields['cotaAgua'] ? "text-green-400" : "text-white")}>
               {savingFields['cotaAgua'] ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : savedFields['cotaAgua'] ? (
-                <div className="rounded-full bg-green-500 p-1"><Check className="h-3 w-3 text-white" /></div>
+                <div className="rounded-full bg-green-500 p-1.5"><Check className="h-4 w-4 text-white" /></div>
               ) : (
-                <Check className="h-5 w-5" />
+                <Check className="h-6 w-6" />
               )}
             </button>
           </div>
         </div>
 
-        <div className="px-3 py-4">
+        <div className="px-4 py-6 bg-neutral-50">
           <PhotoRegistry 
             reportId={reportId} 
             formId={formId} 
@@ -357,8 +357,8 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         </div>
       </div>
 
-      <div className="bg-white p-4">
-        <button onClick={onClose} className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-md">Finalizar y Cerrar Planilla</button>
+      <div className="bg-white p-4 border-t border-neutral-400">
+        <button onClick={onClose} className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-xl">Finalizar y Cerrar Planilla</button>
       </div>
     </div>
   );
