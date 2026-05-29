@@ -357,7 +357,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     const mainStrokeColor = activeLayer === 'satellite' ? '#2DEDAF' : 'rgba(13, 145, 102, 0.8)';
     const highlightFillColor = activeLayer === 'satellite' ? 'rgba(45, 237, 175, 0.2)' : 'rgba(13, 145, 102, 0.2)';
     
-    // Estilo para la capa codigos_cuencas.json (Controla el Relleno del Resaltado y Etiquetas en zoom bajo)
+    // Estilo para la capa codigos_cuencas.json (Controla el Relleno del Resaltado - SIN ETIQUETAS)
     const codesStyleFunction = (feature: any, resolution: number) => {
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
@@ -373,18 +373,11 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         });
       }
 
-      // Si no está resaltado: Bordes y etiquetas solo en zoom bajo (< 7)
+      // Si no está resaltado: Bordes solo en zoom bajo (< 7) para visualización general
       if (zoom < 7) {
-        const label = `${fCode} ${feature.get('nombre_2') || ''}`.trim();
         return new Style({
           stroke: new Stroke({ color: mainStrokeColor, width: 1 }),
-          fill: new Fill({ color: 'rgba(0,0,0,0)' }),
-          text: new Text({
-            text: label,
-            font: '10px "Encode Sans", sans-serif',
-            fill: new Fill({ color: activeLayer === 'satellite' ? '#2DEDAF' : '#0D9166' }),
-            stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 2 }),
-          })
+          fill: new Fill({ color: 'rgba(0,0,0,0)' })
         });
       }
 

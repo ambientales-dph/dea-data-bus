@@ -1060,7 +1060,7 @@ export function DataEntryForm({
   if (activeView === 'surveys') {
     return <SurveyManager onClose={() => setActiveView('summary')} onSurveySelected={(s) => {
        if (s && s.oid && onBasinHighlight) {
-          const match = s.oid.match(/^LV-([A-Za-z]{2,4})-\d{4}$/);
+          const match = s.oid.match(/^LV-?([A-Za-z]{2,4})/);
           if (match) onBasinHighlight(match[1]);
        } else if (onBasinHighlight) {
           onBasinHighlight(null);
