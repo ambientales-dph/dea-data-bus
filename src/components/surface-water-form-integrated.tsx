@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -150,8 +149,8 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
       const payload = {
         value: `${entry.value}`,
-        latitude: location?.latitude || null,
-        longitude: location?.longitude || null,
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
         timestamp: serverTimestamp(),
@@ -160,9 +159,9 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
       };
 
       if (!snapshot.empty) {
-        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
+        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
       } else {
-        addDoc(collection(db, 'samples'), {
+        await addDoc(collection(db, 'samples'), {
           ...payload,
           medium: 'agua_superficial',
           parameterType: category,
@@ -173,11 +172,15 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         });
       }
 
-      updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
+      await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       setSavedFields(prev => ({ ...prev, [name]: true }));
-      toast({ title: "Guardado", description: location ? "Sincronizado con GPS." : "Sincronizado." });
+      toast({ 
+        title: "Guardado", 
+        description: location ? "Dato sincronizado con GPS." : "Guardado (Sin señal de GPS)." 
+      });
     } catch (error: any) {
       console.error(error);
+      toast({ variant: "destructive", title: "Error al guardar", description: "No se pudo sincronizar el dato." });
     } finally {
       setSavingFields(prev => ({ ...prev, [name]: false }));
     }
@@ -186,7 +189,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   const formatTimestamp = (ts: any) => {
     if (!ts) return new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const date = ts.toDate ? ts.toDate() : new Date(ts);
-    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   if (isLoadingExisting) {

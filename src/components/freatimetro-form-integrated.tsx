@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -179,8 +178,8 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
 
       const payload = {
         value: `${entry.value}`,
-        latitude: location?.latitude || null,
-        longitude: location?.longitude || null,
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
         retrasoSincronizacionMs: deltaMs,
         fechaServidor: serverTimestamp(),
         timestamp: serverTimestamp(), 
@@ -189,9 +188,9 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
       };
 
       if (!snapshot.empty) {
-        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
+        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
       } else {
-        addDoc(collection(db, 'samples'), {
+        await addDoc(collection(db, 'samples'), {
           ...payload,
           medium: 'agua_subterranea',
           parameterType: type,
@@ -202,9 +201,9 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         });
       }
 
-      updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
+      await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       setSavedFields(prev => ({ ...prev, [key]: true }));
-      toast({ title: "Guardado", description: location ? "Sincronizado con GPS." : "Sincronizado." });
+      toast({ title: "Guardado", description: location ? "Sincronizado con GPS." : "Sincronizado (Sin GPS)." });
     } catch (error: any) {
       console.error(error);
     } finally {

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -140,8 +139,8 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
 
           const payload = {
             value: entry.value,
-            latitude: location?.latitude || null,
-            longitude: location?.longitude || null,
+            latitude: location?.latitude ?? null,
+            longitude: location?.longitude ?? null,
             retrasoSincronizacionMs: deltaMs,
             fechaServidor: serverTimestamp(),
             timestamp: serverTimestamp(),
@@ -150,9 +149,9 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
           };
 
           if (!snapshot.empty) {
-            updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
+            await updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
           } else {
-            addDoc(samplesCol, {
+            await addDoc(samplesCol, {
               ...payload,
               medium,
               parameterType: param.categoria,
@@ -167,10 +166,13 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
       }
 
       if (savedCount > 0 && user.email && reportRef) await updateDoc(reportRef, { editors: arrayUnion(user.email) });
-      toast({ title: "Planilla sincronizada", description: location ? `${savedCount} datos guardados con GPS.` : `${savedCount} datos guardados.` });
+      toast({ 
+        title: "Planilla sincronizada", 
+        description: location ? `${savedCount} datos guardados con GPS.` : `${savedCount} datos guardados (Sin señal GPS).` 
+      });
     } catch (e) {
       console.error(e);
-      toast({ variant: "destructive", title: "Error", description: "Falla al guardar." });
+      toast({ variant: "destructive", title: "Error", description: "Falla al guardar los datos." });
     } finally {
       setIsSavingPlanilla(false);
     }
@@ -250,8 +252,8 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
               <div className="flex flex-col gap-0.5">
                 <CardDescription className="text-[10px] font-bold uppercase">Planilla ID: <span className="text-foreground">{formId}</span></CardDescription>
                 <div className="flex items-center gap-3 text-[9px] text-muted-foreground font-black uppercase tracking-tight">
-                  <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatTimestamp(metadata.timestamp)}</span>
-                  <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
+                  <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
+                  <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
                 </div>
               </div>
             </div>
