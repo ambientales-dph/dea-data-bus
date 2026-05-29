@@ -88,17 +88,17 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
+    // Capa de detalle: cuencas_dph.json
     const basinsLayer = new VectorLayer({
       source: basinsSource.current,
       zIndex: 5,
-      minZoom: 6.5
     });
     basinsLayerRef.current = basinsLayer;
 
+    // Capa de códigos y resaltado: codigos_cuencas.json
     const codesLayer = new VectorLayer({
       source: codesSource.current,
-      zIndex: 4,
-      maxZoom: 6.5
+      zIndex: 6, // Un nivel arriba para que el relleno del resaltado no sea tapado
     });
     codesLayerRef.current = codesLayer;
 
@@ -353,45 +353,75 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   useEffect(() => {
     if (!basinsLayerRef.current || !codesLayerRef.current) return;
     
-    // El color cambia a #2DEDAF si estamos en modo satelital
-    const strokeColor = activeLayer === 'satellite' ? '#2DEDAF' : 'rgba(13, 145, 102, 0.7)';
-    const fillColor = activeLayer === 'satellite' ? 'rgba(45, 237, 175, 0.05)' : 'rgba(13, 145, 102, 0.05)';
+    // Configuración de colores
+    const mainStrokeColor = activeLayer === 'satellite' ? '#2DEDAF' : 'rgba(13, 145, 102, 0.8)';
+    const highlightFillColor = activeLayer === 'satellite' ? 'rgba(45, 237, 175, 0.2)' : 'rgba(13, 145, 102, 0.2)';
     
-    const vectorStyleFunction = (feature: any, resolution: number) => {
+    // Estilo para la capa codigos_cuencas.json (Controla el Relleno del Resaltado y Etiquetas en zoom bajo)
+    const codesStyleFunction = (feature: any, resolution: number) => {
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
-      const strokeWidth = (zoom && zoom >= 10) ? 3 : 1;
-      let textStyle = undefined;
-
-      const fCode = feature.get('CODIGO') || feature.get('cod_letras') || '';
+      const fCode = feature.get('CODIGO') || '';
       const isHighlighted = highlightedBasinCode && fCode === highlightedBasinCode;
-      
-      if (zoom && zoom >= 7) {
-        const codLetras = feature.get('cod_letras') || feature.get('CODIGO') || '';
-        const subregion = feature.get('subregion') || feature.get('nombre_2') || '';
-        const label = `${codLetras} ${subregion}`.trim();
-        if (label) {
-          textStyle = new Text({
+
+      // Si está resaltado: Relleno 20% SIN BORDES
+      if (isHighlighted) {
+        return new Style({
+          fill: new Fill({ color: highlightFillColor }),
+          stroke: new Stroke({ color: 'rgba(0,0,0,0)', width: 0 }),
+          zIndex: 90
+        });
+      }
+
+      // Si no está resaltado: Bordes y etiquetas solo en zoom bajo (< 7)
+      if (zoom < 7) {
+        const label = `${fCode} ${feature.get('nombre_2') || ''}`.trim();
+        return new Style({
+          stroke: new Stroke({ color: mainStrokeColor, width: 1 }),
+          fill: new Fill({ color: 'rgba(0,0,0,0)' }),
+          text: new Text({
             text: label,
             font: '10px "Encode Sans", sans-serif',
             fill: new Fill({ color: activeLayer === 'satellite' ? '#2DEDAF' : '#0D9166' }),
-            stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 3 }),
-          });
-        }
+            stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 2 }),
+          })
+        });
       }
-      return new Style({
-        stroke: new Stroke({ 
-          color: isHighlighted ? '#2DEDAF' : strokeColor, 
-          width: isHighlighted ? strokeWidth + 2 : strokeWidth 
-        }),
-        fill: new Fill({ color: isHighlighted ? fillColor : 'rgba(0, 0, 0, 0)' }), 
-        text: textStyle,
-        zIndex: isHighlighted ? 100 : 5
-      });
+
+      return new Style({}); // Invisible en zoom alto si no está resaltado
     };
 
-    basinsLayerRef.current.setStyle(vectorStyleFunction);
-    codesLayerRef.current.setStyle(vectorStyleFunction);
+    // Estilo para la capa cuencas_dph.json (Controla los bordes detallados en zoom alto)
+    const basinsStyleFunction = (feature: any, resolution: number) => {
+      const view = mapInstance.current?.getView();
+      const zoom = view ? view.getZoomForResolution(resolution) : 0;
+
+      // Solo visible en zoom alto (>= 7)
+      if (zoom >= 7) {
+        const codLetras = feature.get('cod_letras') || '';
+        const subregion = feature.get('subregion') || '';
+        const isHighlighted = highlightedBasinCode && codLetras === highlightedBasinCode;
+
+        return new Style({
+          stroke: new Stroke({ 
+            color: isHighlighted ? '#2DEDAF' : mainStrokeColor, 
+            width: isHighlighted ? 3 : 2 
+          }),
+          fill: new Fill({ color: 'rgba(0,0,0,0)' }), // Siempre transparente el interior
+          text: new Text({
+            text: `${codLetras} ${subregion}`.trim(),
+            font: '10px "Encode Sans", sans-serif',
+            fill: new Fill({ color: activeLayer === 'satellite' ? '#2DEDAF' : '#0D9166' }),
+            stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 3 }),
+          })
+        });
+      }
+
+      return new Style({}); // Invisible en zoom bajo
+    };
+
+    codesLayerRef.current.setStyle(codesStyleFunction);
+    basinsLayerRef.current.setStyle(basinsStyleFunction);
   }, [activeLayer, highlightedBasinCode]);
 
   useEffect(() => {
@@ -524,7 +554,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       activeLayer === 'grayscale' && "map-container-grayscale",
       activeLayer === 'satellite' && "map-container-satellite"
     )}>
-      {/* Filtro SVG para simulación de Banda Roja (Red Band Grayscale) */}
       <svg className="hidden">
         <filter id="red-band-filter">
           <feColorMatrix type="matrix" values="1 0 0 0 0 
@@ -537,7 +566,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       <div ref={mapRef} className="absolute inset-0 z-10" />
       <div ref={tooltipRef} className="map-tooltip" />
       
-      {/* Retícula de precisión con blend mode auto-adaptativo */}
       <div 
         className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center"
         style={{ mixBlendMode: 'difference' }}
