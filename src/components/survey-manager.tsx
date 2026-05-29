@@ -44,13 +44,22 @@ export function SurveyManager({ onClose, onSelectSurvey }: SurveyManagerProps) {
   // Report linking
   const [reportSearch, setReportReportSearch] = useState('');
   
-  const surveysQuery = useMemo(() => query(collection(db, 'levantamientos'), orderBy('createdAt', 'desc')), [db]);
+  const surveysQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'levantamientos'), orderBy('createdAt', 'desc'));
+  }, [db, user]);
   const { data: surveys, loading: surveysLoading } = useCollection(surveysQuery);
 
-  const selectedSurveyRef = useMemo(() => selectedSurveyId ? doc(db, 'levantamientos', selectedSurveyId) : null, [db, selectedSurveyId]);
+  const selectedSurveyRef = useMemo(() => {
+    if (!db || !selectedSurveyId) return null;
+    return doc(db, 'levantamientos', selectedSurveyId);
+  }, [db, selectedSurveyId]);
   const { data: selectedSurveyData } = useDoc(selectedSurveyRef);
 
-  const allReportsQuery = useMemo(() => query(collection(db, 'reports')), [db]);
+  const allReportsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'reports'));
+  }, [db, user]);
   const { data: allReports } = useCollection(allReportsQuery);
 
   const linkedReports = useMemo(() => {

@@ -64,15 +64,25 @@ function DataExplorer({
   onSurveysClick: () => void
 }) {
   const db = useFirestore();
+  const { user } = useUser();
   const [dynamicBasinNames, setDynamicBasinNames] = useState<Record<string, string>>({});
 
-  const stationsQuery = useMemo(() => query(collection(db, 'stations'), orderBy('name', 'asc')), [db]);
+  const stationsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'stations'), orderBy('name', 'asc'));
+  }, [db, user]);
   const { data: stations, loading: stationsLoading } = useCollection(stationsQuery);
 
-  const reportsQuery = useMemo(() => query(collection(db, 'reports')), [db]);
+  const reportsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'reports'));
+  }, [db, user]);
   const { data: reports, loading: reportsLoading } = useCollection(reportsQuery);
 
-  const samplesQuery = useMemo(() => query(collection(db, 'samples')), [db]);
+  const samplesQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'samples'));
+  }, [db, user]);
   const { data: samples, loading: samplesLoading } = useCollection(samplesQuery);
 
   useEffect(() => {
@@ -382,7 +392,10 @@ export function DataEntryForm({
   }, [db, user]);
   const { data: customTemplates } = useCollection(customTemplatesQuery);
 
-  const levantamientosQuery = useMemo(() => query(collection(db, 'levantamientos')), [db]);
+  const levantamientosQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'levantamientos'));
+  }, [db, user]);
   const { data: levantamientos } = useCollection(levantamientosQuery);
 
   const currentReportSamplesQuery = useMemo(() => {
