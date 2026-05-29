@@ -86,24 +86,17 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
-    const vectorStyle = new Style({
-      stroke: new Stroke({ color: 'rgba(13, 145, 102, 0.7)', width: 1 }),
-      fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }) 
-    });
-
     const basinsLayer = new VectorLayer({
       source: basinsSource.current,
       zIndex: 5,
-      minZoom: 6.5,
-      style: vectorStyle
+      minZoom: 6.5
     });
     basinsLayerRef.current = basinsLayer;
 
     const codesLayer = new VectorLayer({
       source: codesSource.current,
       zIndex: 4,
-      maxZoom: 6.5,
-      style: vectorStyle
+      maxZoom: 6.5
     });
     codesLayerRef.current = codesLayer;
 
@@ -358,7 +351,9 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   useEffect(() => {
     if (!basinsLayerRef.current || !codesLayerRef.current) return;
     
-    const strokeColor = 'rgba(13, 145, 102, 0.7)';
+    // El color cambia a #2DEDAF si estamos en modo satelital
+    const strokeColor = activeLayer === 'satellite' ? '#2DEDAF' : 'rgba(13, 145, 102, 0.7)';
+    
     const vectorStyleFunction = (feature: any, resolution: number) => {
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
@@ -373,7 +368,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           textStyle = new Text({
             text: label,
             font: '10px "Encode Sans", sans-serif',
-            fill: new Fill({ color: activeLayer === 'satellite' ? 'white' : '#0D9166' }),
+            fill: new Fill({ color: activeLayer === 'satellite' ? '#2DEDAF' : '#0D9166' }),
             stroke: new Stroke({ color: activeLayer === 'satellite' ? 'black' : 'white', width: 3 }),
           });
         }
