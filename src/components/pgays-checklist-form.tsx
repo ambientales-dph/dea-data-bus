@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -109,12 +110,17 @@ const SECTIONS = [
   }
 ];
 
+interface PgaysEntry {
+  value: any;
+  capturedAt: number | null;
+}
+
 export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Props) {
   const { toast } = useToast();
   const db = useFirestore();
   const { user } = useUser();
   
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, PgaysEntry>>({});
   const [savingFields, setSavingFields] = useState<Record<string, boolean>>({});
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [openPhotos, setOpenPhotos] = useState<Record<string, boolean>>({});
@@ -133,7 +139,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
         );
         const snapshot = await getDocs(q);
         
-        const newFormData: Record<string, any> = {};
+        const newFormData: Record<string, PgaysEntry> = {};
         const newSavedFields: Record<string, boolean> = {};
         let foundMetadata = { user: user?.email || '', timestamp: null };
 
@@ -141,11 +147,11 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
           const data = doc.data();
           if (data.parameterType === "Fotografía") return;
 
-          newFormData[data.analyte] = data.value;
+          newFormData[data.analyte] = { value: data.value, capturedAt: null };
           newSavedFields[data.analyte] = true;
           
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.timestamp };
+            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
           }
         });
 
@@ -164,11 +170,17 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
 
   const saveParam = async (name: string, category: string, valueOverride?: any) => {
     if (!user || !db) return;
-    const value = valueOverride !== undefined ? valueOverride : formData[name];
+    const entry = formData[name];
+    const value = valueOverride !== undefined ? valueOverride : entry?.value;
     if (value === null || value === undefined || value === "") return;
 
     setSavingFields(prev => ({ ...prev, [name]: true }));
     
+    // Delta Time Calculation
+    const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
+    const t2 = Date.now();
+    const deltaMs = t2 - t1;
+
     try {
       const q = query(
         collection(db, 'samples'),
@@ -178,25 +190,26 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
       );
       const snapshot = await getDocs(q);
 
+      const payload = {
+        value: `${value}`,
+        retrasoSincronizacionMs: deltaMs,
+        fechaServidor: serverTimestamp(),
+        timestamp: serverTimestamp(),
+        userId: user.uid,
+        userEmail: user.email
+      };
+
       if (!snapshot.empty) {
-        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), {
-          value: `${value}`,
-          timestamp: serverTimestamp(),
-          userId: user.uid,
-          userEmail: user.email
-        });
+        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
       } else {
-        await addDoc(collection(db, 'samples'), {
+        addDoc(collection(db, 'samples'), {
+          ...payload,
           medium: 'sedimentos',
           parameterType: category,
           analyte: name,
-          value: `${value}`,
           reportId,
           formId,
           stationId,
-          userId: user.uid,
-          userEmail: user.email,
-          timestamp: serverTimestamp(),
         });
       }
 
@@ -211,7 +224,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
   };
 
   const handleInputChange = (name: string, value: any) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: { value, capturedAt: Date.now() } }));
     if (savedFields[name]) {
       setSavedFields(prev => {
         const next = { ...prev };
@@ -237,7 +250,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
 
   const renderItem = (item: { id: string, label: string, dynamic?: boolean }) => {
     const customLabelKey = `${item.id}:custom_label`;
-    const labelToUse = item.dynamic ? (formData[customLabelKey] || item.label) : item.label;
+    const labelToUse = item.dynamic ? (formData[customLabelKey]?.value || item.label) : item.label;
     
     return (
       <div key={item.id} className="p-4 bg-white border-b border-neutral-100 last:border-0 hover:bg-neutral-50/30 transition-colors">
@@ -245,7 +258,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
           {item.dynamic ? (
             <div className="flex items-center gap-2 group/label">
               <Input 
-                value={formData[customLabelKey] ?? ""}
+                value={formData[customLabelKey]?.value ?? ""}
                 onChange={(e) => handleInputChange(customLabelKey, e.target.value)}
                 placeholder=".........................................................................................................................................................................."
                 className="h-9 text-[13px] font-normal border-none border-b border-dotted border-neutral-300 bg-transparent focus-visible:ring-0 p-0 rounded-none w-full placeholder:text-neutral-300"
@@ -264,7 +277,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-1 shrink-0">
               <Select 
-                value={formData[`${labelToUse}:cumple`] ?? ""} 
+                value={formData[`${labelToUse}:cumple`]?.value ?? ""} 
                 onValueChange={(val) => {
                   handleInputChange(`${labelToUse}:cumple`, val);
                   saveParam(`${labelToUse}:cumple`, "Inspección", val);
@@ -289,7 +302,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
                 <Input 
                   placeholder="Observaciones..."
                   className="h-8 text-[12px] border-none bg-transparent focus-visible:ring-0 p-0 font-body placeholder:text-neutral-400"
-                  value={formData[`${labelToUse}:obs`] ?? ""}
+                  value={formData[`${labelToUse}:obs`]?.value ?? ""}
                   onChange={(e) => handleInputChange(`${labelToUse}:obs`, e.target.value)}
                 />
                 <button 
@@ -353,7 +366,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
             {item.dynamic ? (
               <div className="flex items-center gap-2 flex-1">
                 <Input 
-                  value={formData[`${item.id}:custom_label`] ?? ""}
+                  value={formData[`${item.id}:custom_label`]?.value ?? ""}
                   onChange={(e) => handleInputChange(`${item.id}:custom_label`, e.target.value)}
                   placeholder="................................................................................"
                   className="h-8 text-[12px] font-normal border-none border-b border-dotted border-neutral-300 bg-transparent p-0 rounded-none w-full placeholder:text-neutral-300"
@@ -367,15 +380,15 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
               <input 
                 type="text" 
                 className="h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right focus:ring-0 outline-none" 
-                value={formData[item.dynamic ? (formData[`${item.id}:custom_label`] || item.label) : item.label] ?? ""}
-                onChange={(e) => handleInputChange(item.dynamic ? (formData[`${item.id}:custom_label`] || item.label) : item.label, e.target.value)}
+                value={formData[item.dynamic ? (formData[`${item.id}:custom_label`]?.value || item.label) : item.label]?.value ?? ""}
+                onChange={(e) => handleInputChange(item.dynamic ? (formData[`${item.id}:custom_label`]?.value || item.label) : item.label, e.target.value)}
                 placeholder="---"
               />
               <button 
-                onClick={() => saveParam(item.dynamic ? (formData[`${item.id}:custom_label`] || item.label) : item.label, "General")} 
-                className={cn("p-1", savedFields[item.dynamic ? (formData[`${item.id}:custom_label`] || item.label) : item.label] ? "text-green-600" : "text-neutral-400")}
+                onClick={() => saveParam(item.dynamic ? (formData[`${item.id}:custom_label`]?.value || item.label) : item.label, "General")} 
+                className={cn("p-1", savedFields[item.dynamic ? (formData[`${item.id}:custom_label`]?.value || item.label) : item.label] ? "text-green-600" : "text-neutral-400")}
               >
-                {savingFields[item.dynamic ? (formData[`${item.id}:custom_label`] || item.label) : item.label] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {savingFields[item.dynamic ? (formData[`${item.id}:custom_label`]?.value || item.label) : item.label] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               </button>
             </div>
           </div>
@@ -396,7 +409,6 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
         ))}
       </div>
 
-      {/* Sección de Firmas */}
       <div className="mt-8 border-t-2 border-black">
         <div className="bg-neutral-900 text-white px-4 py-2.5 flex items-center gap-2">
           <PenTool className="h-4 w-4" />

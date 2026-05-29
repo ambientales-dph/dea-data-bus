@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -26,12 +27,17 @@ interface OSMResult {
   lon: string;
 }
 
+interface SoilEntry {
+  value: any;
+  capturedAt: number | null;
+}
+
 export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }: Props) {
   const { toast } = useToast();
   const db = useFirestore();
   const { user } = useUser();
   
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, SoilEntry>>({});
   const [horizontesCount, setHorizontesCount] = useState(1);
   const [savingFields, setSavingFields] = useState<Record<string, boolean>>({});
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
@@ -56,18 +62,18 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         );
         const snapshot = await getDocs(q);
         
-        const newFormData: Record<string, any> = {};
+        const newFormData: Record<string, SoilEntry> = {};
         const newSavedFields: Record<string, boolean> = {};
         let foundMetadata = { user: user?.email || '', timestamp: null };
         let maxH = 1;
 
         snapshot.docs.forEach(doc => {
           const data = doc.data();
-          newFormData[data.analyte] = data.value;
+          newFormData[data.analyte] = { value: data.value, capturedAt: null };
           newSavedFields[data.analyte] = true;
           
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.timestamp };
+            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
           }
 
           const hMatch = data.analyte.match(/^H(\d+):/);
@@ -81,7 +87,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         setSavedFields(newSavedFields);
         setMetadata(foundMetadata);
         setHorizontesCount(maxH);
-        if (newFormData["Lugar"]) setOsmQuery(newFormData["Lugar"]);
+        if (newFormData["Lugar"]) setOsmQuery(newFormData["Lugar"].value);
       } catch (e) {
         console.error("Error fetching soil data", e);
       } finally {
@@ -94,11 +100,17 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
 
   const saveParam = async (name: string, category: string, valueOverride?: any) => {
     if (!user || !db) return;
-    const value = valueOverride !== undefined ? valueOverride : formData[name];
+    const entry = formData[name];
+    const value = valueOverride !== undefined ? valueOverride : entry?.value;
     if (value === null || value === undefined || value === "") return;
 
     setSavingFields(prev => ({ ...prev, [name]: true }));
     
+    // Delta Time Calculation
+    const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
+    const t2 = Date.now();
+    const deltaMs = t2 - t1;
+
     try {
       const q = query(
         collection(db, 'samples'),
@@ -108,29 +120,30 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       );
       const snapshot = await getDocs(q);
 
+      const payload = {
+        value: `${value}`,
+        retrasoSincronizacionMs: deltaMs,
+        fechaServidor: serverTimestamp(),
+        timestamp: serverTimestamp(), // Keep for legacy
+        userId: user.uid,
+        userEmail: user.email
+      };
+
       if (!snapshot.empty) {
-        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), {
-          value: `${value}`,
-          timestamp: serverTimestamp(),
-          userId: user.uid,
-          userEmail: user.email
-        });
+        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
       } else {
-        await addDoc(collection(db, 'samples'), {
+        addDoc(collection(db, 'samples'), {
+          ...payload,
           medium: 'suelo',
           parameterType: category,
           analyte: name,
-          value: `${value}`,
           reportId,
           formId,
           stationId,
-          userId: user.uid,
-          userEmail: user.email,
-          timestamp: serverTimestamp(),
         });
       }
 
-      await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
+      updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       setSavedFields(prev => ({ ...prev, [name]: true }));
       toast({ title: "Guardado", description: `${name} actualizado.` });
     } catch (error: any) {
@@ -141,7 +154,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   };
 
   const handleInputChange = (name: string, value: any) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: { value, capturedAt: Date.now() } }));
     if (savedFields[name]) {
       setSavedFields(prev => {
         const next = { ...prev };
@@ -249,7 +262,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         <input 
           type="text" 
           className={inputClass} 
-          value={formData[name] ?? ""} 
+          value={formData[name]?.value ?? ""} 
           onChange={(e) => handleInputChange(name, e.target.value)} 
           placeholder={placeholder}
         />
@@ -267,7 +280,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         <input 
           type="text" 
           className={cn(inputClass, "uppercase")}
-          value={formData[name] ?? ""} 
+          value={formData[name]?.value ?? ""} 
           onChange={(e) => handleMunsellChange(name, e.target.value)} 
           placeholder="10YR 3/2"
         />
@@ -283,7 +296,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       <label className={labelClass}>{label}</label>
       <div className="flex items-center gap-2 flex-1 justify-end">
         <Select 
-          value={formData[name] ?? ""} 
+          value={formData[name]?.value ?? ""} 
           onValueChange={(val) => {
             handleInputChange(name, val);
             saveParam(name, cat, val);
@@ -378,7 +391,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           <input 
             type="text" 
             className={inputClass} 
-            value={formData["Punto_Muestreo"] ?? ""} 
+            value={formData["Punto_Muestreo"]?.value ?? ""} 
             onChange={(e) => handleInputChange("Punto_Muestreo", e.target.value)} 
             placeholder="Coordenadas o Ref."
           />

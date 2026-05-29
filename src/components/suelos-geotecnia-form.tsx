@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
@@ -27,6 +28,7 @@ interface CapaSuelo {
   limiteIP: string
   humedad: string
   clasificacionUSCS: string
+  capturedAt: Record<string, number | null>
 }
 
 const patronesDisponibles = [
@@ -103,11 +105,11 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   const db = useFirestore();
   const { user } = useUser();
   
-  const [formData, setFormData] = useState<Record<string, any>>({
-    sondeoNumero: "",
-    ubicacion: "",
-    profundidadTotal: "",
-    observaciones: ""
+  const [formData, setFormData] = useState<Record<string, { value: any; capturedAt: number | null }>>({
+    sondeoNumero: { value: "", capturedAt: null },
+    ubicacion: { value: "", capturedAt: null },
+    profundidadTotal: { value: "", capturedAt: null },
+    observaciones: { value: "", capturedAt: null }
   });
 
   const [capas, setCapas] = useState<CapaSuelo[]>([]);
@@ -139,14 +141,14 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           const value = data.value;
 
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.timestamp };
+            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
           }
 
           const layerMatch = analyte.match(/^L(\d+): (.*)/);
           if (layerMatch) {
             const lId = layerMatch[1];
             const field = layerMatch[2] as keyof CapaSuelo;
-            if (!layersMap[lId]) layersMap[lId] = { id: lId };
+            if (!layersMap[lId]) layersMap[lId] = { id: lId, capturedAt: {} };
             
             if (field === 'nivelFreatico') {
               layersMap[lId][field] = value === 'true';
@@ -155,7 +157,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
             }
             newSavedFields[analyte] = true;
           } else {
-            newFormData[analyte] = value;
+            newFormData[analyte] = { value, capturedAt: null };
             newSavedFields[analyte] = true;
           }
         });
@@ -174,7 +176,8 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           limiteLL: l.limiteLL || "",
           limiteIP: l.limiteIP || "",
           humedad: l.humedad || "",
-          clasificacionUSCS: l.clasificacionUSCS || ""
+          clasificacionUSCS: l.clasificacionUSCS || "",
+          capturedAt: l.capturedAt || {}
         } as CapaSuelo)).sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
         if (initialCapas.length === 0) {
@@ -192,7 +195,8 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
             limiteLL: "",
             limiteIP: "",
             humedad: "",
-            clasificacionUSCS: ""
+            clasificacionUSCS: "",
+            capturedAt: {}
           });
         }
 
@@ -212,11 +216,17 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
 
   const saveParam = async (name: string, category: string, valueOverride?: any) => {
     if (!user || !db) return;
-    const value = valueOverride !== undefined ? valueOverride : formData[name];
+    const entry = formData[name];
+    const value = valueOverride !== undefined ? valueOverride : entry?.value;
     if (value === null || value === undefined || value === "") return;
 
     setSavingFields(prev => ({ ...prev, [name]: true }));
     
+    // Delta Time Calculation
+    const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
+    const t2 = Date.now();
+    const deltaMs = t2 - t1;
+
     try {
       const q = query(
         collection(db, 'samples'),
@@ -226,25 +236,26 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       );
       const snapshot = await getDocs(q);
 
+      const payload = {
+        value: `${value}`,
+        retrasoSincronizacionMs: deltaMs,
+        fechaServidor: serverTimestamp(),
+        timestamp: serverTimestamp(), // Keep for legacy
+        userId: user.uid,
+        userEmail: user.email
+      };
+
       if (!snapshot.empty) {
-        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), {
-          value: `${value}`,
-          timestamp: serverTimestamp(),
-          userId: user.uid,
-          userEmail: user.email
-        });
+        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
       } else {
-        await addDoc(collection(db, 'samples'), {
+        addDoc(collection(db, 'samples'), {
+          ...payload,
           medium: 'suelo',
           parameterType: category,
           analyte: name,
-          value: `${value}`,
           reportId,
           formId,
           stationId,
-          userId: user.uid,
-          userEmail: user.email,
-          timestamp: serverTimestamp(),
         });
       }
 
@@ -266,7 +277,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   };
 
   const handleFormChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: { value, capturedAt: Date.now() } }));
     if (savedFields[field]) {
       setSavedFields(prev => {
         const next = { ...prev };
@@ -303,6 +314,11 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     
     setSavingFields(prev => ({ ...prev, [analyteName]: true }));
     
+    const layer = capas.find(c => c.id === layerId);
+    const t1 = layer?.capturedAt[field as string] || Date.now();
+    const t2 = Date.now();
+    const deltaMs = t2 - t1;
+
     try {
       const q = query(
         collection(db, 'samples'),
@@ -312,25 +328,26 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       );
       const snapshot = await getDocs(q);
 
+      const payload = {
+        value: `${value}`,
+        retrasoSincronizacionMs: deltaMs,
+        fechaServidor: serverTimestamp(),
+        timestamp: serverTimestamp(),
+        userId: user.uid,
+        userEmail: user.email
+      };
+
       if (!snapshot.empty) {
-        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), {
-          value: `${value}`,
-          timestamp: serverTimestamp(),
-          userId: user.uid,
-          userEmail: user.email
-        });
+        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
       } else {
-        await addDoc(collection(db, 'samples'), {
+        addDoc(collection(db, 'samples'), {
+          ...payload,
           medium: 'suelo',
           parameterType: 'Estratigrafía',
           analyte: analyteName,
-          value: `${value}`,
           reportId,
           formId,
           stationId,
-          userId: user.uid,
-          userEmail: user.email,
-          timestamp: serverTimestamp(),
         });
       }
 
@@ -344,7 +361,11 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
 
   const handleCapaChange = (id: string, field: keyof CapaSuelo, value: string | boolean) => {
     setCapas((prev) =>
-      prev.map((capa) => (capa.id === id ? { ...capa, [field]: value } : capa))
+      prev.map((capa) => (capa.id === id ? { 
+        ...capa, 
+        [field]: value,
+        capturedAt: { ...capa.capturedAt, [field as string]: Date.now() }
+      } : capa))
     );
     const analyteName = `L${id}: ${field}`;
     if (savedFields[analyteName]) {
@@ -398,6 +419,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         limiteIP: "",
         humedad: "",
         clasificacionUSCS: "",
+        capturedAt: {}
       },
     ]);
   };
@@ -430,7 +452,6 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
 
   return (
     <div className="mx-auto w-full border border-black bg-white font-body shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20 overflow-hidden">
-      {/* Header técnico DPH */}
       <div className="border-b-2 border-black bg-neutral-100 px-4 py-3 flex justify-between items-center print:hidden">
         <div>
           <h1 className="text-sm font-normal uppercase tracking-tight text-black font-headline">Mecánica de suelos • MS-001</h1>
@@ -448,12 +469,11 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       </div>
 
       <div className="p-0 border-b border-black">
-        {/* Sondeo Nro */}
         <div className={rowClass}>
           <label className={labelClass}>Sondeo Nº</label>
           <div className="flex items-center gap-2 flex-1 justify-end">
             <Input
-              value={formData.sondeoNumero}
+              value={formData.sondeoNumero.value ?? ""}
               onChange={(e) => handleFormChange("sondeoNumero", e.target.value)}
               className={inputClass}
               placeholder="Ej: S-01"
@@ -464,12 +484,11 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           </div>
         </div>
 
-        {/* Ubicación con GPS */}
         <div className={rowClass}>
           <label className={labelClass}>Ubicación</label>
           <div className="flex items-center gap-2 flex-1 justify-end">
             <Input
-              value={formData.ubicacion}
+              value={formData.ubicacion.value ?? ""}
               onChange={(e) => handleFormChange("ubicacion", e.target.value)}
               className={inputClass}
               placeholder="Coordenadas o Ref."
@@ -483,12 +502,11 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           </div>
         </div>
 
-        {/* Profundidad Total */}
         <div className={rowClass}>
           <label className={labelClass}>Profundidad (m)</label>
           <div className="flex items-center gap-2 flex-1 justify-end">
             <Input
-              value={formData.profundidadTotal}
+              value={formData.profundidadTotal.value ?? ""}
               onChange={(e) => handleFormChange("profundidadTotal", e.target.value)}
               className={inputClass}
               placeholder="Total perforado"
@@ -500,7 +518,6 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         </div>
       </div>
 
-      {/* Tabla de Estratos */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[10px]">
           <thead>
@@ -600,7 +617,6 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         <Button variant="outline" size="sm" onClick={agregarCapa} className="w-full h-10 border-dashed border-neutral-400 font-normal uppercase text-[10px] tracking-widest text-black"><Plus className="h-4 w-4 mr-2" />Agregar Estrato al Perfil</Button>
       </div>
 
-      {/* Referencias Técnicas */}
       <div className="grid grid-cols-2 border-b border-black text-[9px] font-normal bg-neutral-50 text-black">
         <div className="p-2 border-r border-black space-y-0.5">
           <p><span className="font-normal">MI:</span> Muestra inalterada</p>
@@ -619,7 +635,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
            <span className="font-normal text-[10px] uppercase text-black">Observaciones:</span>
         </div>
         <div className="flex">
-          <Textarea value={formData.observaciones} onChange={(e) => handleFormChange("observaciones", e.target.value)} className="border-0 font-normal text-xs min-h-[80px] p-3 resize-none rounded-none text-black" />
+          <Textarea value={formData.observaciones.value ?? ""} onChange={(e) => handleFormChange("observaciones", e.target.value)} className="border-0 font-normal text-xs min-h-[80px] p-3 resize-none rounded-none text-black" />
           <button onClick={() => saveParam("observaciones", 'General')} className={cn("p-4 bg-white border-l border-black hover:bg-neutral-50 transition-colors", savedFields["observaciones"] ? "text-green-600" : "text-black")}>
             {savingFields["observaciones"] ? <Loader2 className="h-4 w-4 animate-spin" /> : savedFields["observaciones"] ? <div className="rounded-full bg-green-100 p-1"><Check className="h-4 w-4" /></div> : <Check className="h-4 w-4" />}
           </button>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -9,38 +10,35 @@ import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
 
+export interface FreatimetroEntry {
+  value: number | string | null;
+  capturedAt: number | null;
+}
+
 export interface FreatimetroData {
-  idPozo: string;
-  coordenadaX: number | null;
-  coordenadaY: number | null;
-  cotaBrocal: number | null;
-  fechaHora: string;
-  nivelEstatico: number | null;
-  profundidadTotal: number | null;
-  ph: number | null;
-  conductividad: number | null;
-  temperatura: number | null;
-  plomo: number | null;
-  cadmio: number | null;
-  arsenico: number | null;
-  tph: number | null;
+  idPozo: FreatimetroEntry;
+  cotaBrocal: FreatimetroEntry;
+  nivelEstatico: FreatimetroEntry;
+  ph: FreatimetroEntry;
+  conductividad: FreatimetroEntry;
+  temperatura: FreatimetroEntry;
+  plomo: FreatimetroEntry;
+  cadmio: FreatimetroEntry;
+  arsenico: FreatimetroEntry;
+  tph: FreatimetroEntry;
 }
 
 const initialFormData: FreatimetroData = {
-  idPozo: "",
-  coordenadaX: null,
-  coordenadaY: null,
-  cotaBrocal: null,
-  fechaHora: "",
-  nivelEstatico: null,
-  profundidadTotal: null,
-  ph: null,
-  conductividad: null,
-  temperatura: null,
-  plomo: null,
-  cadmio: null,
-  arsenico: null,
-  tph: null,
+  idPozo: { value: "", capturedAt: null },
+  cotaBrocal: { value: null, capturedAt: null },
+  nivelEstatico: { value: null, capturedAt: null },
+  ph: { value: null, capturedAt: null },
+  conductividad: { value: null, capturedAt: null },
+  temperatura: { value: null, capturedAt: null },
+  plomo: { value: null, capturedAt: null },
+  cadmio: { value: null, capturedAt: null },
+  arsenico: { value: null, capturedAt: null },
+  tph: { value: null, capturedAt: null },
 };
 
 interface Props {
@@ -70,7 +68,6 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const analyteToKeyMap: Record<string, keyof FreatimetroData> = {
     'Cota Brocal': 'cotaBrocal',
     'Nivel Estático': 'nivelEstatico',
-    'Phofundidad Total': 'profundidadTotal',
     'pH': 'ph',
     'Conductividad': 'conductividad',
     'Temperatura': 'temperatura',
@@ -99,15 +96,15 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         snapshot.docs.forEach(doc => {
           const data = doc.data();
           const analyte = data.analyte;
-          const value = parseFloat(data.value);
+          const value = data.value;
           
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.timestamp };
+            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
           }
 
           const fieldKey = analyteToKeyMap[analyte];
-          if (fieldKey && !isNaN(value)) {
-            (newFormData as any)[fieldKey] = value;
+          if (fieldKey) {
+            (newFormData as any)[fieldKey] = { value, capturedAt: null };
             newSavedFields[fieldKey] = true;
           }
         });
@@ -126,25 +123,25 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   }, [db, reportId, formId, user?.email]);
 
   useEffect(() => {
-    if (stationData?.name && !hasSetInitialId.current && !formData.idPozo) {
-      setFormData(prev => ({ ...prev, idPozo: stationData.name }));
+    if (stationData?.name && !hasSetInitialId.current && !formData.idPozo.value) {
+      setFormData(prev => ({ ...prev, idPozo: { value: stationData.name, capturedAt: Date.now() } }));
       hasSetInitialId.current = true;
     }
   }, [stationData?.name]);
 
   const cotaAgua = useMemo(() => {
-    if (formData.cotaBrocal !== null && formData.nivelEstatico !== null) {
-      return Number((formData.cotaBrocal - formData.nivelEstatico).toFixed(3));
+    const cb = typeof formData.cotaBrocal.value === 'string' ? parseFloat(formData.cotaBrocal.value) : formData.cotaBrocal.value;
+    const ne = typeof formData.nivelEstatico.value === 'string' ? parseFloat(formData.nivelEstatico.value) : formData.nivelEstatico.value;
+    if (cb !== null && ne !== null && !isNaN(cb as number) && !isNaN(ne as number)) {
+      return Number(((cb as number) - (ne as number)).toFixed(3));
     }
     return null;
-  }, [formData.cotaBrocal, formData.nivelEstatico]);
+  }, [formData.cotaBrocal.value, formData.nivelEstatico.value]);
 
   const handleInputChange = (field: keyof FreatimetroData, value: string) => {
     setFormData((prev) => ({
       ...prev,
-      [field]: field === "idPozo" || field === "fechaHora" 
-        ? value 
-        : value === "" ? null : parseFloat(value),
+      [field]: { value, capturedAt: Date.now() }
     }));
     if (savedFields[field]) {
       setSavedFields(prev => {
@@ -157,11 +154,16 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
 
   const saveIndividualParam = async (key: keyof FreatimetroData | 'cotaAgua', label: string, type: string) => {
     if (!user || !db) return;
-    const value = key === 'cotaAgua' ? cotaAgua : formData[key as keyof FreatimetroData];
-    if (value === null || value === undefined || value === "") return;
+    const entry = key === 'cotaAgua' ? { value: cotaAgua, capturedAt: Date.now() } : formData[key as keyof FreatimetroData];
+    if (entry.value === null || entry.value === undefined || entry.value === "") return;
 
     setSavingFields(prev => ({ ...prev, [key]: true }));
     
+    // Delta Time Calculation
+    const t1 = entry.capturedAt || Date.now();
+    const t2 = Date.now();
+    const deltaMs = t2 - t1;
+
     try {
       const q = query(
         collection(db, 'samples'),
@@ -171,29 +173,30 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
       );
       const snapshot = await getDocs(q);
 
+      const payload = {
+        value: `${entry.value}`,
+        retrasoSincronizacionMs: deltaMs,
+        fechaServidor: serverTimestamp(),
+        timestamp: serverTimestamp(), // Keep for legacy
+        userId: user.uid,
+        userEmail: user.email
+      };
+
       if (!snapshot.empty) {
-        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), {
-          value: `${value}`,
-          timestamp: serverTimestamp(),
-          userId: user.uid,
-          userEmail: user.email
-        });
+        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
       } else {
-        await addDoc(collection(db, 'samples'), {
+        addDoc(collection(db, 'samples'), {
+          ...payload,
           medium: 'agua_subterranea',
           parameterType: type,
           analyte: label,
-          value: `${value}`,
           reportId,
           formId,
           stationId,
-          userId: user.uid,
-          userEmail: user.email,
-          timestamp: serverTimestamp(),
         });
       }
 
-      await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
+      updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       setSavedFields(prev => ({ ...prev, [key]: true }));
       toast({ title: "Guardado", description: `${label} actualizado.` });
     } catch (error: any) {
@@ -245,7 +248,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         <div className="px-3">
           <div className={rowClass}>
             <div className="flex flex-col flex-1"><label className={labelClass}>ID Pozo</label><span className={subLabelClass}>Nombre o identificación técnica</span></div>
-            <input type="text" className={inputClass} value={formData.idPozo} onChange={(e) => handleInputChange("idPozo", e.target.value)} />
+            <input type="text" className={inputClass} value={formData.idPozo.value ?? ""} onChange={(e) => handleInputChange("idPozo", e.target.value)} />
           </div>
           <div className={rowClass}>
             <div className="flex flex-col flex-1">
@@ -253,7 +256,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
               <span className={subLabelClass}>Elevación del terreno. Referencia: IGM/IGN.</span>
             </div>
             <div className="flex items-center gap-2">
-              <input type="number" step="any" className={inputClass} value={formData.cotaBrocal ?? ""} onChange={(e) => handleInputChange("cotaBrocal", e.target.value)} />
+              <input type="number" step="any" className={inputClass} value={formData.cotaBrocal.value ?? ""} onChange={(e) => handleInputChange("cotaBrocal", e.target.value)} />
               <button onClick={() => saveIndividualParam('cotaBrocal', 'Cota Brocal', 'Geometría')} className={cn("p-1 transition-colors", savedFields['cotaBrocal'] ? "text-green-600" : "text-black")}>
                 {savingFields['cotaBrocal'] ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -281,7 +284,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
                 <span className={subLabelClass}>{field.desc}</span>
               </div>
               <div className="flex items-center gap-2">
-                <input type="number" step="any" className={inputClass} value={(formData as any)[field.key] ?? ""} onChange={(e) => handleInputChange(field.key as any, e.target.value)} />
+                <input type="number" step="any" className={inputClass} value={(formData as any)[field.key].value ?? ""} onChange={(e) => handleInputChange(field.key as any, e.target.value)} />
                 <button onClick={() => saveIndividualParam(field.key as any, field.name, field.type)} className={cn("p-1 transition-colors", savedFields[field.key] ? "text-green-600" : "text-black")}>
                   {savingFields[field.key] ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -310,7 +313,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
                 <span className={subLabelClass}>{field.desc}</span>
               </div>
               <div className="flex items-center gap-2">
-                <input type="number" step="any" className={inputClass} value={(formData as any)[field.key] ?? ""} onChange={(e) => handleInputChange(field.key as any, e.target.value)} />
+                <input type="number" step="any" className={inputClass} value={(formData as any)[field.key].value ?? ""} onChange={(e) => handleInputChange(field.key as any, e.target.value)} />
                 <button onClick={() => saveIndividualParam(field.key as any, field.name, field.type)} className={cn("p-1 transition-colors", savedFields[field.key] ? "text-green-600" : "text-black")}>
                   {savingFields[field.key] ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

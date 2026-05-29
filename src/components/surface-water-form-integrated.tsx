@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -9,8 +10,13 @@ import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
 
+export interface SurfaceWaterEntry {
+  value: string | number | null;
+  capturedAt: number | null;
+}
+
 export interface SurfaceWaterData {
-  [key: string]: string | number | null;
+  [key: string]: SurfaceWaterEntry;
 }
 
 interface Props {
@@ -107,11 +113,11 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
         snapshot.docs.forEach(doc => {
           const data = doc.data();
-          newFormData[data.analyte] = data.value;
+          newFormData[data.analyte] = { value: data.value, capturedAt: null };
           newSavedFields[data.analyte] = true;
           
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.timestamp };
+            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
           }
         });
 
@@ -129,7 +135,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   }, [db, reportId, formId, user?.email]);
 
   const handleInputChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: { value, capturedAt: Date.now() } }));
     if (savedFields[name]) {
       setSavedFields(prev => {
         const next = { ...prev };
@@ -141,11 +147,16 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
   const saveIndividualParam = async (name: string, category: string) => {
     if (!user || !db) return;
-    const value = formData[name];
-    if (value === null || value === undefined || value === "") return;
+    const entry = formData[name];
+    if (!entry || entry.value === null || entry.value === undefined || entry.value === "") return;
 
     setSavingFields(prev => ({ ...prev, [name]: true }));
     
+    // Delta Time Calculation
+    const t1 = entry.capturedAt || Date.now();
+    const t2 = Date.now();
+    const deltaMs = t2 - t1;
+
     try {
       const q = query(
         collection(db, 'samples'),
@@ -155,29 +166,30 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
       );
       const snapshot = await getDocs(q);
 
+      const payload = {
+        value: `${entry.value}`,
+        retrasoSincronizacionMs: deltaMs,
+        fechaServidor: serverTimestamp(),
+        timestamp: serverTimestamp(), // Keep for legacy
+        userId: user.uid,
+        userEmail: user.email
+      };
+
       if (!snapshot.empty) {
-        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), {
-          value: `${value}`,
-          timestamp: serverTimestamp(),
-          userId: user.uid,
-          userEmail: user.email
-        });
+        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
       } else {
-        await addDoc(collection(db, 'samples'), {
+        addDoc(collection(db, 'samples'), {
+          ...payload,
           medium: 'agua_superficial',
           parameterType: category,
           analyte: name,
-          value: `${value}`,
           reportId,
           formId,
           stationId,
-          userId: user.uid,
-          userEmail: user.email,
-          timestamp: serverTimestamp(),
         });
       }
 
-      await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
+      updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
       setSavedFields(prev => ({ ...prev, [name]: true }));
       toast({ title: "Guardado", description: `${name} actualizado.` });
     } catch (error: any) {
@@ -241,7 +253,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                     <input 
                       type="text" 
                       className={inputClass} 
-                      value={formData[param.name] ?? ""} 
+                      value={formData[param.name]?.value ?? ""} 
                       onChange={(e) => handleInputChange(param.name, e.target.value)} 
                       placeholder="---"
                     />

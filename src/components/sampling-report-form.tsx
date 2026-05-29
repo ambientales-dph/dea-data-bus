@@ -23,20 +23,16 @@ import { PgaysChecklistForm } from './pgays-checklist-form';
 import { MONITORING_TEMPLATES } from '@/app/lib/monitoring-constants';
 import { TechnicianLink } from './technician-link';
 
-const analyteSchema = z.object({
-  medium: z.enum(['agua_superficial', 'agua_subterranea', 'suelo', 'sedimentos', 'aire']),
-  parameterType: z.string().min(2, 'Requerido'),
-  analyte: z.string().min(1, 'Requerido'),
-  value: z.string().min(1, 'Requerido'),
-});
-
-type AnalyteValues = z.infer<typeof analyteSchema>;
+interface ManualEntry {
+  value: string;
+  capturedAt: number | null;
+}
 
 interface SamplingReportFormProps {
   reportId: string;
   formId: string;
   stationId: string;
-  onClose: () => void;
+  onClose: void;
   templateId?: string;
 }
 
@@ -45,7 +41,7 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   const db = useFirestore();
   const { user } = useUser();
   const [template, setTemplate] = useState<any>(null);
-  const [planillaValues, setPlanillaValues] = useState<Record<string, string>>({});
+  const [planillaValues, setPlanillaValues] = useState<Record<string, ManualEntry>>({});
   const [isSavingPlanilla, setIsSavingPlanilla] = useState(false);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
 
@@ -67,15 +63,15 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
 
   useEffect(() => {
     if (samplesData && samplesData.length > 0) {
-      const existingValues: Record<string, string> = {};
+      const existingValues: Record<string, ManualEntry> = {};
       let foundMetadata = { user: user?.email || '', timestamp: null };
       
       samplesData.forEach((s: any) => {
         if (s.analyte && s.value) {
-          existingValues[s.analyte] = s.value;
+          existingValues[s.analyte] = { value: s.value, capturedAt: null };
         }
         if (!foundMetadata.timestamp || (s.timestamp && s.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-          foundMetadata = { user: s.userEmail || user?.email || '', timestamp: s.timestamp };
+          foundMetadata = { user: s.userEmail || user?.email || '', timestamp: s.fechaServidor || s.timestamp };
         }
       });
       setPlanillaValues(existingValues);
@@ -104,6 +100,13 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     }
   }, [templateId, db]);
 
+  const handleValueChange = (name: string, value: string) => {
+    setPlanillaValues(prev => ({
+      ...prev,
+      [name]: { value, capturedAt: Date.now() }
+    }));
+  };
+
   const handleSavePlanilla = async () => {
     if (!user || !template || !db) return;
     setIsSavingPlanilla(true);
@@ -114,10 +117,15 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
 
     try {
       for (const param of activeParams) {
-        const val = planillaValues[param.nombre];
-        if (val !== undefined && val !== null && val.trim() !== '') {
+        const entry = planillaValues[param.nombre];
+        if (entry && entry.value !== undefined && entry.value !== null && entry.value.trim() !== '') {
           const medium = template.medium || param.mediumKey || 'agua_superficial';
           
+          // Delta Time Calculation
+          const t1 = entry.capturedAt || Date.now();
+          const t2 = Date.now();
+          const deltaMs = t2 - t1;
+
           const q = query(
             samplesCol,
             where('reportId', '==', reportId),
@@ -126,25 +134,26 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
           );
           const snapshot = await getDocs(q);
 
+          const payload = {
+            value: entry.value,
+            retrasoSincronizacionMs: deltaMs,
+            fechaServidor: serverTimestamp(),
+            timestamp: serverTimestamp(),
+            userId: user.uid,
+            userEmail: user.email
+          };
+
           if (!snapshot.empty) {
-            await updateDoc(doc(db, 'samples', snapshot.docs[0].id), {
-              value: val,
-              timestamp: serverTimestamp(),
-              userId: user.uid,
-              userEmail: user.email
-            });
+            updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
           } else {
-            await addDoc(samplesCol, {
+            addDoc(samplesCol, {
+              ...payload,
               medium,
               parameterType: param.categoria,
               analyte: param.nombre,
-              value: val,
               reportId,
               formId,
               stationId,
-              userId: user.uid,
-              userEmail: user.email,
-              timestamp: serverTimestamp(),
             });
           }
           savedCount++;
@@ -255,8 +264,8 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
                     <Input 
                       placeholder="Valor" 
                       className="h-8 w-24 text-[11px] font-code py-0 px-2 bg-white text-right border-input font-bold text-foreground"
-                      value={planillaValues[param.nombre] || ''}
-                      onChange={(e) => setPlanillaValues(prev => ({...prev, [param.nombre]: e.target.value}))}
+                      value={planillaValues[param.nombre]?.value || ''}
+                      onChange={(e) => handleValueChange(param.nombre, e.target.value)}
                     />
                   </div>
                 ))}

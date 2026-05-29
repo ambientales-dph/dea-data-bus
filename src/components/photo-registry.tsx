@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -30,7 +31,7 @@ interface PhotoRegistryProps {
   formId: string;
   stationId: string;
   medium: string;
-  analyteTag?: string; // Nuevo: permite asignar la foto a un ítem específico
+  analyteTag?: string;
 }
 
 export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag = "Evidencia Visual" }: PhotoRegistryProps) {
@@ -47,7 +48,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingKMZ, setIsExportingKMZ] = useState(false);
-  const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string } | null>(null);
+  const [localPhoto, setLocalPhoto] = useState<{ id: string; file: File; preview: string; capturedAt: number } | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<OfflinePhoto[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -58,8 +59,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     const loadPending = async () => {
       try {
         const pending = await offlineStorage.getPendingPhotos(formId);
-        // Filtrar pendientes que correspondan a este ítem si se usa el tag offline? 
-        // Por ahora cargamos por formId, la identificación de ítem se hace al subir.
         setPendingPhotos(pending);
       } catch (e) {
         console.error("Error cargando fotos offline:", e);
@@ -77,6 +76,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     if (!file || !user) return;
 
     setIsProcessing(true);
+    const t1 = Date.now();
+
     try {
       const options = {
         maxSizeMB: 0.2,
@@ -94,7 +95,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       const photoObj = {
         id: photoId,
         file: compressed as File,
-        preview: previewUrl
+        preview: previewUrl,
+        capturedAt: t1
       };
 
       setLocalPhoto(photoObj);
@@ -107,7 +109,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
         medium,
         file: compressed,
         fileName: `${photoId}.jpg`,
-        timestamp: Date.now()
+        timestamp: t1
       });
 
       const updatedPending = await offlineStorage.getPendingPhotos(formId);
@@ -138,13 +140,17 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     });
   };
 
-  const handleUpload = async (photoId: string, file: Blob, fileName: string) => {
+  const handleUpload = async (photoId: string, file: Blob, fileName: string, capturedAt: number) => {
     if (!user || !storage || !db) {
       toast({ variant: "destructive", title: "Error", description: "Servicios de Firebase no disponibles." });
       return;
     }
 
     setUploadingIds(prev => [...prev, photoId]);
+
+    // Delta Time Calculation
+    const t2 = Date.now();
+    const deltaMs = t2 - capturedAt;
 
     try {
       setIsLocating(true);
@@ -164,9 +170,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
         stationId,
         medium,
         parameterType: "Fotografía",
-        analyte: analyteTag, // Se usa el tag del ítem
+        analyte: analyteTag,
         value: downloadUrl,
         storagePath: snapshot.ref.fullPath,
+        retrasoSincronizacionMs: deltaMs,
+        fechaServidor: serverTimestamp(),
         timestamp: serverTimestamp(),
         userId: user.uid,
         userEmail: user.email,
@@ -268,8 +276,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
 
-    const date = photo.capturedAt?.toDate?.() || (photo.timestamp?.toDate?.()) || new Date();
-    const dateStr = date.toLocaleString('es-AR', { 
+    const serverDate = photo.fechaServidor?.toDate?.() || (photo.timestamp?.toDate?.()) || new Date();
+    const delay = photo.retrasoSincronizacionMs || 0;
+    const actualDate = new Date(serverDate.getTime() - delay);
+
+    const dateStr = actualDate.toLocaleString('es-AR', { 
       day: '2-digit', month: '2-digit', year: 'numeric', 
       hour: '2-digit', minute: '2-digit' 
     });
@@ -280,10 +291,10 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     
     const watermarkLines = [
       `DEA DATA BUS - DPH`,
-      `Ítem: ${analyteTag}`,
+      `Ítem: ${photo.analyte || analyteTag}`,
       `Técnico: ${technicianName}`,
       `GPS: ${lat}, ${lon}`,
-      `Fecha: ${dateStr}`
+      `Fecha (Real): ${dateStr}`
     ];
 
     const padding = fontSize;
@@ -306,7 +317,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `FOTO_${analyteTag.substring(0,10)}_${Date.now()}.jpg`;
+        a.download = `FOTO_${(photo.analyte || analyteTag).substring(0,10)}_${Date.now()}.jpg`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -447,12 +458,22 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                   <div className="relative aspect-square border border-black group">
                     <img src={localPhoto.preview} alt="C" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                       <button onClick={() => handleUpload(localPhoto.id, localPhoto.file, `${localPhoto.id}.jpg`)} className="p-1 bg-white text-primary">
+                       <button onClick={() => handleUpload(localPhoto!.id, localPhoto!.file, `${localPhoto!.id}.jpg`, localPhoto!.capturedAt)} className="p-1 bg-white text-primary">
                           {uploadingIds.includes(localPhoto.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
                        </button>
                     </div>
                   </div>
                )}
+               {pendingPhotos.map(photo => (
+                  <div key={photo.id} className="relative aspect-square border border-black group">
+                    <img src={URL.createObjectURL(photo.file)} alt="P" className="w-full h-full object-cover grayscale" />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                       <button onClick={() => handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp)} className="p-1 bg-white text-primary">
+                          {uploadingIds.includes(photo.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                       </button>
+                    </div>
+                  </div>
+               ))}
             </div>
           )}
 
