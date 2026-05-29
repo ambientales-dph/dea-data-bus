@@ -507,7 +507,7 @@ export function DataEntryForm({
         setEditLon(selectedPoint.lon.toString());
       }
       
-      lastPointKeyRef.current = `${selectedPoint.lat}-${selectedPoint.lon}-${selectedPoint.stationId}`;
+      lastPointKeyRef.current = `${selectedPoint.lat.toFixed(6)}-${selectedPoint.lon.toFixed(6)}-${selectedPoint.stationId}`;
       isInitialLoadRef.current = false;
     }
   }, [selectedPoint]);
@@ -518,7 +518,7 @@ export function DataEntryForm({
       return;
     }
 
-    const currentKey = `${selectedPoint.lat}-${selectedPoint.lon}-${selectedPoint.stationId}`;
+    const currentKey = `${selectedPoint.lat.toFixed(6)}-${selectedPoint.lon.toFixed(6)}-${selectedPoint.stationId}`;
 
     if (!isInitialLoadRef.current && lastPointKeyRef.current !== currentKey) {
       if (selectedPoint.formId && selectedPoint.reportId) {
@@ -526,7 +526,13 @@ export function DataEntryForm({
         setActiveFormId(selectedPoint.formId);
         setSelectedTemplate(selectedPoint.templateId || 'manual');
         setActiveView('report-entry');
-      } else if (activeView !== 'create-station' && activeView !== 'edit-station') {
+      } else if (
+        activeView !== 'create-station' && 
+        activeView !== 'edit-station' && 
+        activeView !== 'select-template' && 
+        activeView !== 'report-entry' && 
+        activeView !== 'consult'
+      ) {
         if (selectedPoint.stationId) {
           setActiveView('summary');
         } else {
@@ -976,6 +982,23 @@ export function DataEntryForm({
     setActiveView('select-template'); 
   };
 
+  const handleExplorerSelectReport = useCallback((station: any, reportId: string) => {
+    const point = {
+      lat: station.latitude,
+      lon: station.longitude,
+      stationId: station.id,
+      name: station.name,
+      basinCode: station.basinCode
+    };
+    
+    // Actualizamos el ref ANTES de disparar el update en Home para evitar el reseteo del useEffect
+    lastPointKeyRef.current = `${point.lat.toFixed(6)}-${point.lon.toFixed(6)}-${point.stationId}`;
+    
+    onPointUpdate(point);
+    setCurrentReportId(reportId);
+    setActiveView('select-template');
+  }, [onPointUpdate]);
+
   const handleReopenPlanilla = (planilla: { formId: string, medium: string, protocol?: string }) => {
     setActiveFormId(planilla.formId);
     let templateId = 'manual';
@@ -1027,24 +1050,10 @@ export function DataEntryForm({
   };
 
   const handleExplorerSelectStation = (point: SelectedPoint) => {
+    lastPointKeyRef.current = `${point.lat.toFixed(6)}-${point.lon.toFixed(6)}-${point.stationId}`;
     onPointUpdate(point);
-    lastPointKeyRef.current = `${point.lat}-${point.lon}-${point.stationId}`;
     setActiveView('summary');
   };
-
-  const handleExplorerSelectReport = useCallback((station: any, reportId: string) => {
-    const point = {
-      lat: station.latitude,
-      lon: station.longitude,
-      stationId: station.id,
-      name: station.name,
-      basinCode: station.basinCode
-    };
-    onPointUpdate(point);
-    lastPointKeyRef.current = `${point.lat}-${point.lon}-${point.stationId}`;
-    setCurrentReportId(reportId);
-    setActiveView('select-template');
-  }, [onPointUpdate]);
 
   const handleExplorerSelectPlanilla = (station: any, reportId: string, formId: string, templateId: string) => {
     const point = {
@@ -1054,8 +1063,8 @@ export function DataEntryForm({
       name: station.name,
       basinCode: station.basinCode
     };
+    lastPointKeyRef.current = `${point.lat.toFixed(6)}-${point.lon.toFixed(6)}-${point.stationId}`;
     onPointUpdate(point);
-    lastPointKeyRef.current = `${point.lat}-${point.lon}-${point.stationId}`;
     setCurrentReportId(reportId);
     setActiveFormId(formId);
     setSelectedTemplate(templateId);
