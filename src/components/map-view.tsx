@@ -567,7 +567,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
               <Layers className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-48 p-1 shadow-xl border-none bg-neutral-100/90 backdrop-blur-sm rounded-none" align="end" side="top">
+          <PopoverContent className="w-48 p-1 shadow-xl border-none bg-neutral-100/50 rounded-none" align="end" side="top">
             <div className="space-y-0.5">
               {[
                 { id: 'osm', label: 'Estándar (Callejero)' },
@@ -579,7 +579,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
                   onClick={() => onLayerChange?.(l.id as any)} 
                   className={cn(
                     "w-full flex items-center justify-between px-3 py-2 text-[11px] font-normal rounded-none text-black transition-colors", 
-                    activeLayer === l.id ? "bg-neutral-200/80" : "hover:bg-neutral-200/50"
+                    activeLayer === l.id ? "bg-neutral-200/50" : "hover:bg-neutral-200/50"
                   )}
                 >
                   <div className="flex items-center gap-2">{l.label}</div>
