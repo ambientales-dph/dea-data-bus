@@ -353,9 +353,9 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   useEffect(() => {
     if (!basinsLayerRef.current || !codesLayerRef.current) return;
     
-    // Configuración de colores
+    // Configuración de colores con opacidad al 10% según pedido
     const mainStrokeColor = activeLayer === 'satellite' ? '#2DEDAF' : 'rgba(13, 145, 102, 0.8)';
-    const highlightFillColor = activeLayer === 'satellite' ? 'rgba(45, 237, 175, 0.2)' : 'rgba(13, 145, 102, 0.2)';
+    const highlightFillColor = activeLayer === 'satellite' ? 'rgba(45, 237, 175, 0.1)' : 'rgba(13, 145, 102, 0.1)';
     
     // Estilo para la capa codigos_cuencas.json (Controla el Relleno del Resaltado - SIN ETIQUETAS)
     const codesStyleFunction = (feature: any, resolution: number) => {
@@ -364,7 +364,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       const fCode = feature.get('CODIGO') || '';
       const isHighlighted = highlightedBasinCode && fCode === highlightedBasinCode;
 
-      // Si está resaltado: Relleno 20% SIN BORDES
+      // Si está resaltado: Relleno 10% SIN BORDES
       if (isHighlighted) {
         return new Style({
           fill: new Fill({ color: highlightFillColor }),

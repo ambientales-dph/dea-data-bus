@@ -66,13 +66,37 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
     return allReports.filter((r: any) => r.surveyId === selectedSurveyId);
   }, [allReports, selectedSurveyId]);
 
+  // Extraer código de cuenca del levantamiento actual para filtrar la lista de reportes vinculables
+  const currentSurveyBasin = useMemo(() => {
+    if (!selectedSurveyData?.oid) return null;
+    // Captura las letras después de LV (opcional guion)
+    const match = selectedSurveyData.oid.match(/^LV-?([A-Za-z]{2,4})/);
+    return match ? match[1].toUpperCase() : null;
+  }, [selectedSurveyData?.oid]);
+
   const unlinkedReports = useMemo(() => {
     const q = reportSearch.toLowerCase();
-    return allReports.filter((r: any) => 
-      !r.surveyId && 
-      (r.oid.toLowerCase().includes(q) || (r.trelloCardName || '').toLowerCase().includes(q))
-    ).slice(0, 10);
-  }, [allReports, reportSearch]);
+    
+    return allReports.filter((r: any) => {
+      // 1. Debe estar libre (sin surveyId)
+      if (r.surveyId) return false;
+
+      // 2. Extraer cuenca del reporte
+      const reportOid = r.oid || '';
+      const match = reportOid.match(/^RM-?([A-Za-z]{2,4})/);
+      const reportBasin = match ? match[1].toUpperCase() : null;
+
+      // 3. Solo mostrar si coinciden las cuencas (Filtro mandatorio)
+      const isSameBasin = reportBasin === currentSurveyBasin;
+      if (!isSameBasin) return false;
+
+      // 4. Filtro de búsqueda por texto (OID o Trello)
+      const matchesSearch = reportOid.toLowerCase().includes(q) || 
+                           (r.trelloCardName || '').toLowerCase().includes(q);
+      
+      return matchesSearch;
+    }).slice(0, 20); // Limitamos a 20 para performance
+  }, [allReports, reportSearch, currentSurveyBasin]);
 
   useEffect(() => {
     if (selectedSurveyData && view === 'edit') {
@@ -100,7 +124,7 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
     if (!user) return;
     setIsSaving(true);
     
-    // Auto-generar OID si está vacío (estilo LV-MAI-0001)
+    // Auto-generar OID si está vacío (estilo LV-GEN-0000)
     let finalOid = oid;
     if (!finalOid) {
        const prefix = 'LV-GEN-';
@@ -297,7 +321,7 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
                 </div>
 
                 <div className="pt-2 space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-neutral-400">Vincular más reportes</Label>
+                  <Label className="text-[10px] font-black uppercase text-neutral-400">Vincular más reportes ({currentSurveyBasin || '—'})</Label>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-400" />
                     <Input 
@@ -318,8 +342,10 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
                         <Plus className="h-3 w-3 text-primary" />
                       </button>
                     ))}
-                    {unlinkedReports.length === 0 && reportSearch && (
-                      <p className="text-[9px] italic text-neutral-400 text-center py-2">No hay reportes libres que coincidan.</p>
+                    {unlinkedReports.length === 0 && (
+                      <p className="text-[9px] italic text-neutral-400 text-center py-2">
+                        {reportSearch ? 'Sin coincidencias.' : `No hay reportes libres para la cuenca ${currentSurveyBasin}.`}
+                      </p>
                     )}
                   </div>
                 </div>
