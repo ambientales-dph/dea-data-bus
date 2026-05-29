@@ -61,12 +61,14 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
   }, [loadPending]);
 
   const handleUpload = useCallback(async (photoId: string, file: Blob, fileName: string, capturedAt: number) => {
-    // Si no hay señal, avisamos y no mostramos spinner infinito
+    // Si no hay señal, marcamos como "Cosa Juzgada"
     if (!navigator.onLine) {
       toast({
-        title: "Esperando señal",
-        description: "La foto se sincronizará automáticamente cuando recuperes conexión.",
+        title: "Decisión registrada",
+        description: "La foto se sincronizará automáticamente apenas recuperes señal.",
       });
+      await offlineStorage.markForSync(photoId);
+      await loadPending(); // Refrescamos para ocultar los botones
       return;
     }
 
@@ -130,22 +132,23 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     } finally {
       setUploadingIds(prev => prev.filter(id => id !== photoId));
     }
-  }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, gallery.length, toast]);
+  }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, gallery.length, toast, loadPending]);
 
-  // Sincronización automática ÚNICAMENTE cuando detectamos paso de offline a online
+  // Sincronización automática de lo que fue marcado como "Cosa Juzgada"
   useEffect(() => {
-    const syncAll = () => {
+    const syncQueued = () => {
       if (navigator.onLine && user && pendingPhotos.length > 0) {
         pendingPhotos.forEach(photo => {
-          if (!uploadingIds.includes(photo.id)) {
+          // Solo subimos automáticamente las que el usuario marcó
+          if (photo.syncRequested && !uploadingIds.includes(photo.id)) {
             handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp);
           }
         });
       }
     };
 
-    window.addEventListener('online', syncAll);
-    return () => window.removeEventListener('online', syncAll);
+    window.addEventListener('online', syncQueued);
+    return () => window.removeEventListener('online', syncQueued);
   }, [pendingPhotos, user, handleUpload, uploadingIds]);
 
   const handleCaptureClick = () => {
@@ -163,7 +166,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       const compressed = await compressImage(file);
       const photoId = crypto.randomUUID();
       
-      // Guardamos en local. NO disparamos subida automática inmediata aunque haya señal.
       await offlineStorage.savePhoto({
         id: photoId,
         reportId,
@@ -172,7 +174,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
         medium,
         file: compressed,
         fileName: `${photoId}.jpg`,
-        timestamp: t1
+        timestamp: t1,
+        syncRequested: false // Por defecto no se sube sola
       });
 
       await loadPending();
@@ -368,25 +371,30 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                     </div>
 
                     <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/10">
-                       <button 
-                         onClick={() => handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp)} 
-                         className="p-2 bg-white rounded-full shadow-xl text-primary hover:bg-neutral-100 transition-all active:scale-90"
-                         disabled={uploadingIds.includes(photo.id)}
-                         title="Subir ahora"
-                       >
-                          {uploadingIds.includes(photo.id) ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Upload className="h-4 w-4" />
-                          )}
-                       </button>
-                       <button 
-                         onClick={() => handleDeletePending(photo.id)} 
-                         className="p-2 bg-white rounded-full shadow-xl text-destructive hover:bg-neutral-100 transition-all active:scale-90"
-                         title="Descartar"
-                       >
-                         <X className="h-4 w-4" />
-                       </button>
+                       {uploadingIds.includes(photo.id) ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-white" />
+                       ) : photo.syncRequested ? (
+                          <div className="bg-black/40 px-2 py-1 rounded">
+                            <span className="text-[7px] text-white font-normal uppercase tracking-widest">En cola...</span>
+                          </div>
+                       ) : (
+                          <>
+                            <button 
+                              onClick={() => handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp)} 
+                              className="p-2 bg-white rounded-full shadow-xl text-primary hover:bg-neutral-100 transition-all active:scale-90"
+                              title="Subir ahora"
+                            >
+                                <Upload className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeletePending(photo.id)} 
+                              className="p-2 bg-white rounded-full shadow-xl text-destructive hover:bg-neutral-100 transition-all active:scale-90"
+                              title="Descartar"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                       )}
                     </div>
                   </div>
                ))}

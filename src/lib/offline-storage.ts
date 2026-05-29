@@ -1,4 +1,3 @@
-
 'use client';
 
 import localforage from 'localforage';
@@ -21,11 +20,23 @@ export interface OfflinePhoto {
   file: Blob;
   fileName: string;
   timestamp: number;
+  syncRequested?: boolean; // Indica si el usuario ya ordenó la subida
 }
 
 export const offlineStorage = {
   async savePhoto(photo: OfflinePhoto) {
-    return await offlinePhotosStore.setItem(photo.id, photo);
+    return await offlinePhotosStore.setItem(photo.id, {
+      ...photo,
+      syncRequested: photo.syncRequested ?? false
+    });
+  },
+
+  async markForSync(id: string) {
+    const photo = await offlinePhotosStore.getItem(id) as OfflinePhoto;
+    if (photo) {
+      photo.syncRequested = true;
+      return await offlinePhotosStore.setItem(id, photo);
+    }
   },
 
   async getPendingPhotos(formId: string): Promise<OfflinePhoto[]> {
