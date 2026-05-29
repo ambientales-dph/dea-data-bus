@@ -515,7 +515,6 @@ export function DataEntryForm({
     const currentKey = `${selectedPoint.lat}-${selectedPoint.lon}-${selectedPoint.stationId}`;
 
     if (!isInitialLoadRef.current && lastPointKeyRef.current !== currentKey) {
-      // Si el punto viene con navegación profunda desde búsqueda global
       if (selectedPoint.formId && selectedPoint.reportId) {
         setCurrentReportId(selectedPoint.reportId);
         setActiveFormId(selectedPoint.formId);
@@ -1057,15 +1056,32 @@ export function DataEntryForm({
     setActiveView('report-entry');
   };
 
+  const handleDeepLinkReport = useCallback((stationId: string, reportId: string) => {
+    const station = stations?.find((s: any) => s.id === stationId);
+    if (station) {
+      handleExplorerSelectReport(station, reportId);
+    } else {
+      getDoc(doc(db, 'stations', stationId)).then(snap => {
+        if (snap.exists()) {
+          handleExplorerSelectReport({ id: snap.id, ...snap.data() }, reportId);
+        }
+      });
+    }
+  }, [stations, db]);
+
   if (activeView === 'surveys') {
-    return <SurveyManager onClose={() => setActiveView('summary')} onSurveySelected={(s) => {
-       if (s && s.oid && onBasinHighlight) {
-          const match = s.oid.match(/^LV-?([A-Za-z]{2,4})/);
-          if (match) onBasinHighlight(match[1]);
-       } else if (onBasinHighlight) {
-          onBasinHighlight(null);
-       }
-    }} />;
+    return <SurveyManager 
+      onClose={() => setActiveView('summary')} 
+      onSurveySelected={(s) => {
+        if (s && s.oid && onBasinHighlight) {
+           const match = s.oid.match(/^LV-?([A-Za-z]{2,4})/);
+           if (match) onBasinHighlight(match[1]);
+        } else if (onBasinHighlight) {
+           onBasinHighlight(null);
+        }
+      }} 
+      onReportClick={handleDeepLinkReport}
+    />;
   }
 
   if (!selectedPoint) {
