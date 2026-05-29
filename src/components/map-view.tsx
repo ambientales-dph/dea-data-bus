@@ -542,7 +542,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         
         {hasUploadedData && (
           <div className="flex flex-row items-center gap-1.5">
-            <Button variant="ghost" size="icon" onClick={handleClearUploadedData} className="h-8 w-8 rounded-none bg-destructive/10 hover:bg-destructive/20 text-destructive shadow-none">
+            <Button variant="ghost" size="icon" onClick={handleClearUploadedData} className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
               <Trash2 className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={() => { const v = !uploadedLayerRef.current?.getVisible(); uploadedLayerRef.current?.setVisible(v); setIsUploadedLayerVisible(v); }} className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
@@ -567,8 +567,8 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
               <Layers className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-48 p-2 shadow-2xl rounded-none" align="end" side="top">
-            <div className="space-y-1">
+          <PopoverContent className="w-48 p-1 shadow-xl border-none bg-neutral-100/90 backdrop-blur-sm rounded-none" align="end" side="top">
+            <div className="space-y-0.5">
               {[
                 { id: 'osm', label: 'Estándar (Callejero)' },
                 { id: 'grayscale', label: 'Estándar (B&N)' },
@@ -578,12 +578,12 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
                   key={l.id} 
                   onClick={() => onLayerChange?.(l.id as any)} 
                   className={cn(
-                    "w-full flex items-center justify-between p-2 text-[11px] font-medium rounded-none", 
-                    activeLayer === l.id ? "bg-primary text-white" : "hover:bg-muted"
+                    "w-full flex items-center justify-between px-3 py-2 text-[11px] font-normal rounded-none text-black transition-colors", 
+                    activeLayer === l.id ? "bg-neutral-200/80" : "hover:bg-neutral-200/50"
                   )}
                 >
                   <div className="flex items-center gap-2">{l.label}</div>
-                  {activeLayer === l.id && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  {activeLayer === l.id && <div className="h-1 w-1 rounded-full bg-black" />}
                 </button>
               ))}
             </div>
