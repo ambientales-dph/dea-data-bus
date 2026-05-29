@@ -61,17 +61,22 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
   }, [loadPending]);
 
   const handleUpload = useCallback(async (photoId: string, file: Blob, fileName: string, capturedAt: number) => {
-    // Si no hay señal, marcamos como "Cosa Juzgada"
+    // CASO OFFLINE: Marcar como "Cosa Juzgada" y ocultar botones
     if (!navigator.onLine) {
       toast({
-        title: "Decisión registrada",
-        description: "La foto se sincronizará automáticamente apenas recuperes señal.",
+        title: "Subida programada",
+        description: "Sin señal. La foto se subirá sola apenas recuperes conexión.",
       });
+      
+      // Actualizamos el storage local
       await offlineStorage.markForSync(photoId);
-      await loadPending(); // Refrescamos para ocultar los botones
+      
+      // Actualizamos el estado local de React INMEDIATAMENTE para que los botones desaparezcan
+      setPendingPhotos(prev => prev.map(p => p.id === photoId ? { ...p, syncRequested: true } : p));
       return;
     }
 
+    // CASO ONLINE: Proceder con la subida normal
     if (!user || !storage || !db) return;
     if (uploadingIds.includes(photoId)) return;
 
@@ -132,14 +137,14 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     } finally {
       setUploadingIds(prev => prev.filter(id => id !== photoId));
     }
-  }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, gallery.length, toast, loadPending]);
+  }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, gallery.length, toast]);
 
-  // Sincronización automática de lo que fue marcado como "Cosa Juzgada"
+  // VIGÍA DE CONEXIÓN: Sincronización automática de lo que ya fue "juzgado"
   useEffect(() => {
     const syncQueued = () => {
-      if (navigator.onLine && user && pendingPhotos.length > 0) {
+      if (navigator.onLine && user) {
+        // Buscamos todas las que tienen syncRequested: true
         pendingPhotos.forEach(photo => {
-          // Solo subimos automáticamente las que el usuario marcó
           if (photo.syncRequested && !uploadingIds.includes(photo.id)) {
             handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp);
           }
@@ -166,7 +171,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       const compressed = await compressImage(file);
       const photoId = crypto.randomUUID();
       
-      await offlineStorage.savePhoto({
+      const newPhoto: OfflinePhoto = {
         id: photoId,
         reportId,
         formId,
@@ -175,10 +180,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
         file: compressed,
         fileName: `${photoId}.jpg`,
         timestamp: t1,
-        syncRequested: false // Por defecto no se sube sola
-      });
+        syncRequested: false
+      };
 
-      await loadPending();
+      await offlineStorage.savePhoto(newPhoto);
+      setPendingPhotos(prev => [newPhoto, ...prev]);
       setIsProcessing(false);
       toast({ title: "Captura guardada localmente" });
       
@@ -374,8 +380,8 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                        {uploadingIds.includes(photo.id) ? (
                           <Loader2 className="h-4 w-4 animate-spin text-white" />
                        ) : photo.syncRequested ? (
-                          <div className="bg-black/40 px-2 py-1 rounded">
-                            <span className="text-[7px] text-white font-normal uppercase tracking-widest">En cola...</span>
+                          <div className="bg-black/60 px-2 py-1 rounded">
+                            <span className="text-[7px] text-white font-black uppercase tracking-widest">En cola...</span>
                           </div>
                        ) : (
                           <>
