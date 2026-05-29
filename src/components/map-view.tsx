@@ -72,6 +72,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
   const [isLocating, setIsLocating] = useState(false);
   const [hasUploadedData, setHasUploadedData] = useState(false);
   const [isUploadedLayerVisible, setIsUploadedLayerVisible] = useState(true);
+  const [isLayerPopoverOpen, setIsLayerPopoverOpen] = useState(false);
 
   useEffect(() => {
     onPointSelectRef.current = onPointSelect;
@@ -561,7 +562,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
           {isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Locate className="h-4 w-4" />}
         </Button>
 
-        <Popover>
+        <Popover open={isLayerPopoverOpen} onOpenChange={setIsLayerPopoverOpen}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none bg-gray-200/30 hover:bg-white/50 text-black shadow-none">
               <Layers className="h-4 w-4" />
@@ -576,7 +577,10 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
               ].map((l) => (
                 <button 
                   key={l.id} 
-                  onClick={() => onLayerChange?.(l.id as any)} 
+                  onClick={() => {
+                    onLayerChange?.(l.id as any);
+                    setIsLayerPopoverOpen(false);
+                  }} 
                   className={cn(
                     "w-full flex items-center justify-between px-3 py-2 text-[11px] font-normal rounded-none text-black transition-colors", 
                     activeLayer === l.id ? "bg-neutral-200/50" : "hover:bg-neutral-200/50"
