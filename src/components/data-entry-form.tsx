@@ -390,6 +390,12 @@ export function DataEntryForm({
     }
   }, [activeView, onActiveViewChange, onBasinHighlight]);
 
+  const stationsQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'stations'));
+  }, [db, user]);
+  const { data: stations } = useCollection(stationsQuery);
+
   const customTemplatesQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(collection(db, 'custom_templates'));
@@ -1026,7 +1032,7 @@ export function DataEntryForm({
     setActiveView('summary');
   };
 
-  const handleExplorerSelectReport = (station: any, reportId: string) => {
+  const handleExplorerSelectReport = useCallback((station: any, reportId: string) => {
     const point = {
       lat: station.latitude,
       lon: station.longitude,
@@ -1038,7 +1044,7 @@ export function DataEntryForm({
     lastPointKeyRef.current = `${point.lat}-${point.lon}-${point.stationId}`;
     setCurrentReportId(reportId);
     setActiveView('select-template');
-  };
+  }, [onPointUpdate]);
 
   const handleExplorerSelectPlanilla = (station: any, reportId: string, formId: string, templateId: string) => {
     const point = {
@@ -1067,7 +1073,7 @@ export function DataEntryForm({
         }
       });
     }
-  }, [stations, db]);
+  }, [stations, db, handleExplorerSelectReport]);
 
   if (activeView === 'surveys') {
     return <SurveyManager 
