@@ -6,7 +6,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, query, where, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useStorage, useUser } from '@/firebase';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera, Loader2, Upload, Trash2, CloudOff, Image as ImageIcon, Download, CheckSquare, Cloud } from 'lucide-react';
+import { Camera, Loader2, Upload, Trash2, CloudOff, Image as ImageIcon, Download, CheckSquare, Cloud, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { offlineStorage, OfflinePhoto } from '@/lib/offline-storage';
 import { cn } from '@/lib/utils';
@@ -35,7 +35,7 @@ interface PhotoRegistryProps {
 export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag = "Evidencia Visual" }: PhotoRegistryProps) {
   const db = useFirestore();
   const storage = useStorage();
-  const { user, loading: authLoading } = useUser();
+  const { user } = useUser();
   const { toast } = useToast();
   
   const [isProcessing, setIsProcessing] = useState(false);
@@ -62,6 +62,15 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
   }, [loadPending]);
 
   const handleUpload = useCallback(async (photoId: string, file: Blob, fileName: string, capturedAt: number) => {
+    // Si no hay señal, no intentamos subir para evitar el spinner infinito
+    if (!navigator.onLine) {
+      toast({
+        title: "Sin conexión",
+        description: "La foto se sincronizará automáticamente cuando recuperes señal.",
+      });
+      return;
+    }
+
     if (!user || !storage || !db) return;
     if (uploadingIds.includes(photoId)) return;
 
@@ -118,28 +127,29 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       
     } catch (error: any) {
       console.error('Fallo en sincronización:', error);
+      toast({ variant: "destructive", title: "Error de subida", description: "Reintentando más tarde..." });
     } finally {
       setUploadingIds(prev => prev.filter(id => id !== photoId));
     }
-  }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, gallery.length]);
+  }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, gallery.length, toast]);
 
+  // Sincronización automática al recuperar señal
   useEffect(() => {
-    if (navigator.onLine && pendingPhotos.length > 0 && user) {
-      pendingPhotos.forEach(photo => {
-        if (!uploadingIds.includes(photo.id)) {
-          handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp);
-        }
-      });
-    }
-
-    const handleOnline = () => {
-      pendingPhotos.forEach(photo => {
-        handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp);
-      });
+    const syncAll = () => {
+      if (navigator.onLine && user && pendingPhotos.length > 0) {
+        pendingPhotos.forEach(photo => {
+          if (!uploadingIds.includes(photo.id)) {
+            handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp);
+          }
+        });
+      }
     };
 
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
+    window.addEventListener('online', syncAll);
+    // También intentamos sincronizar al montar si estamos online
+    if (navigator.onLine) syncAll();
+    
+    return () => window.removeEventListener('online', syncAll);
   }, [pendingPhotos, user, handleUpload, uploadingIds]);
 
   const handleCaptureClick = () => {
@@ -154,10 +164,10 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     const t1 = Date.now();
 
     try {
-      // Usamos la utilidad estática para evitar errores de carga de chunks dinámicos
       const compressed = await compressImage(file);
       const photoId = crypto.randomUUID();
       
+      // Guardamos SIEMPRE en almacenamiento local primero
       await offlineStorage.savePhoto({
         id: photoId,
         reportId,
@@ -170,16 +180,23 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       });
 
       await loadPending();
+      setIsProcessing(false);
       
-      if (navigator.onLine) {
-        handleUpload(photoId, compressed, `${photoId}.jpg`, t1);
-      }
+      // No disparamos handleUpload de inmediato, permitimos que el técnico siga capturando
+      // El useEffect de sincronización automática se encargará o el botón manual.
+      
     } catch (error) {
       console.error('Error capturando:', error);
-    } finally {
       setIsProcessing(false);
+    } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleDeletePending = async (photoId: string) => {
+    await offlineStorage.removePhoto(photoId);
+    setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
+    toast({ title: "Captura eliminada" });
   };
 
   const fetchGallery = async () => {
@@ -322,7 +339,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
             {pendingPhotos.length > 0 && (
               <div className="flex items-center gap-1 px-1.5 py-0.5 bg-neutral-100 border border-neutral-300 text-black">
                 <CloudOff className="h-2.5 w-2.5 animate-pulse" />
-                <span className="text-[7px] font-normal uppercase">{pendingPhotos.length} Pendiente(s)</span>
+                <span className="text-[7px] font-normal uppercase">{pendingPhotos.length} Pendiente(s) local</span>
               </div>
             )}
           </div>
@@ -349,22 +366,34 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
           {pendingPhotos.length > 0 && (
             <div className="grid grid-cols-4 gap-2 pt-1 animate-in fade-in duration-300">
                {pendingPhotos.map(photo => (
-                  <div key={photo.id} className="relative aspect-square border border-black bg-neutral-200">
-                    <img src={URL.createObjectURL(photo.file)} alt="P" className="w-full h-full object-cover grayscale opacity-60" />
-                    <div className="absolute top-1 left-1 bg-black/60 p-0.5 rounded-sm">
+                  <div key={photo.id} className="relative aspect-square border border-black bg-neutral-200 overflow-hidden">
+                    <img src={URL.createObjectURL(photo.file)} alt="P" className="w-full h-full object-cover grayscale opacity-70" />
+                    
+                    {/* Icono de nube tachada siempre visible */}
+                    <div className="absolute top-1 left-1 bg-black/80 p-0.5 rounded-sm shadow-md">
                        <CloudOff className="h-3 w-3 text-white" />
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center">
+
+                    {/* Botones de acción manual siempre visibles */}
+                    <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/10">
                        <button 
                          onClick={() => handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp)} 
-                         className="p-1.5 bg-white/90 rounded-full shadow-lg text-primary hover:bg-white transition-all scale-90"
+                         className="p-2 bg-white rounded-full shadow-xl text-primary hover:bg-neutral-100 transition-all active:scale-90"
                          disabled={uploadingIds.includes(photo.id)}
+                         title="Subir ahora"
                        >
                           {uploadingIds.includes(photo.id) ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <Upload className="h-4 w-4" />
                           )}
+                       </button>
+                       <button 
+                         onClick={() => handleDeletePending(photo.id)} 
+                         className="p-2 bg-white rounded-full shadow-xl text-destructive hover:bg-neutral-100 transition-all active:scale-90"
+                         title="Descartar"
+                       >
+                         <X className="h-4 w-4" />
                        </button>
                     </div>
                   </div>
