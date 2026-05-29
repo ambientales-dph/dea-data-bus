@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Calendar, User, Check, Briefcase, FileText, X, ArrowLeft, Search, CheckCircle2, Trash2, FolderKanban } from 'lucide-react';
+import { Loader2, Plus, Calendar, User, Check, Briefcase, FileText, X, ArrowLeft, Search, CheckCircle2, Trash2, FolderKanban, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TechnicianLink } from './technician-link';
 import { isUserAdmin } from '@/app/lib/auth-config';
@@ -61,15 +61,38 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
   }, [db, user]);
   const { data: allReports } = useCollection(allReportsQuery);
 
+  const allSamplesQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'samples'));
+  }, [db, user]);
+  const { data: allSamples } = useCollection(allSamplesQuery);
+
+  // Metadatos de reportes: conteo de planillas únicas por reporte
+  const reportMetadata = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const seen = new Set<string>();
+    
+    allSamples.forEach((s: any) => {
+      if (!s.reportId) return;
+      const key = `${s.reportId}-${s.formId || 'legacy'}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        counts[s.reportId] = (counts[s.reportId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allSamples]);
+
   const linkedReports = useMemo(() => {
     if (!selectedSurveyId) return [];
-    return allReports.filter((r: any) => r.surveyId === selectedSurveyId);
+    return allReports
+      .filter((r: any) => r.surveyId === selectedSurveyId)
+      .sort((a: any, b: any) => (a.oid || "").localeCompare(b.oid || ""));
   }, [allReports, selectedSurveyId]);
 
   // Extraer código de cuenca del levantamiento actual para filtrar la lista de reportes vinculables
   const currentSurveyBasin = useMemo(() => {
     if (!selectedSurveyData?.oid) return null;
-    // Captura las letras después de LV (opcional guion)
     const match = selectedSurveyData.oid.match(/^LV-?([A-Za-z]{2,4})/);
     return match ? match[1].toUpperCase() : null;
   }, [selectedSurveyData?.oid]);
@@ -95,7 +118,9 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
                            (r.trelloCardName || '').toLowerCase().includes(q);
       
       return matchesSearch;
-    }).slice(0, 20); // Limitamos a 20 para performance
+    })
+    .sort((a: any, b: any) => (a.oid || "").localeCompare(b.oid || "")) // Orden alfabético por OID
+    .slice(0, 20); 
   }, [allReports, reportSearch, currentSurveyBasin]);
 
   useEffect(() => {
@@ -111,7 +136,6 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
     }
   }, [selectedSurveyData, view]);
 
-  // Notify parent of selection for map highlighting
   useEffect(() => {
     if (view === 'edit' && selectedSurveyData) {
       onSurveySelected?.(selectedSurveyData);
@@ -124,7 +148,6 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
     if (!user) return;
     setIsSaving(true);
     
-    // Auto-generar OID si está vacío (estilo LV-GEN-0000)
     let finalOid = oid;
     if (!finalOid) {
        const prefix = 'LV-GEN-';
@@ -161,7 +184,7 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
       await updateDoc(doc(db, 'levantamientos', selectedSurveyId), {
         description,
         trelloCardName: trelloProject,
-        status: 'open' // Por ahora siempre abierto
+        status: 'open'
       });
       toast({ title: "Actualizado", description: "Datos del levantamiento guardados." });
     } catch (e) {
@@ -175,7 +198,6 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
     if (!selectedSurveyId) return;
     setIsDeleting(true);
     try {
-      // Desvincular reportes
       for (const r of linkedReports) {
         await updateDoc(doc(db, 'reports', r.id), { surveyId: null });
       }
@@ -215,7 +237,7 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
         <Card className="border-t-4 border-t-primary rounded-none shadow-xl">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-               <CardTitle className="text-md font-black uppercase tracking-tight text-black">
+               <CardTitle className="text-md font-normal uppercase tracking-tight text-black">
                  {view === 'create' ? 'Nuevo Levantamiento' : `Levantamiento: ${oid}`}
                </CardTitle>
                {view === 'edit' && isAdmin && (
@@ -224,14 +246,14 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
                  </Button>
                )}
             </div>
-            <CardDescription className="text-[10px] font-bold uppercase">Agrupación técnica de reportes de campo</CardDescription>
+            <CardDescription className="text-[10px] font-normal uppercase text-black">Agrupación técnica de reportes de campo</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase border-b pb-4">
+              <div className="flex flex-wrap items-center gap-4 text-[10px] font-normal uppercase border-b pb-4 text-black">
                  <div className="flex items-center gap-1.5">
                    <User className="h-3 w-3 text-primary" />
-                   <TechnicianLink email={selectedSurveyData?.createdByEmail || user?.email || null} />
+                   <TechnicianLink email={selectedSurveyData?.createdByEmail || user?.email || null} className="font-normal text-black" />
                  </div>
                  <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(selectedSurveyData?.createdAt || new Date())}</span>
@@ -239,7 +261,7 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
                       onClick={() => view === 'create' && setIsDeferred(!isDeferred)}
                       disabled={view === 'edit'}
                       className={cn(
-                        "px-2 py-0.5 rounded-full border transition-all flex items-center gap-1",
+                        "px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 font-normal",
                         isDeferred ? "bg-red-50 border-red-200 text-red-600" : "bg-green-50 border-green-200 text-green-600",
                         view === 'edit' && "opacity-80"
                       )}
@@ -253,7 +275,7 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
                         value={manualDate} 
                         onChange={(e) => setManualDate(e.target.value)}
                         disabled={view === 'edit'}
-                        className="bg-transparent border-none p-0 text-[9px] font-black uppercase outline-none focus:ring-0 w-32"
+                        className="bg-transparent border-none p-0 text-[9px] font-normal uppercase outline-none focus:ring-0 w-32 text-black"
                       />
                     )}
                  </div>
@@ -261,39 +283,39 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
 
               {view === 'create' && (
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase">Identificador (OID)</Label>
+                  <Label className="text-[10px] font-normal uppercase text-black">Identificador (OID)</Label>
                   <Input 
                     value={oid} 
                     onChange={(e) => setOid(e.target.value.toUpperCase())} 
                     placeholder="LV-XXX-0000"
-                    className="h-9 text-xs rounded-none font-bold"
+                    className="h-9 text-xs rounded-none font-normal text-black"
                   />
                 </div>
               )}
 
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase">Descripción / Campaña</Label>
+                <Label className="text-[10px] font-normal uppercase text-black">Descripción / Campaña</Label>
                 <Textarea 
                   value={description} 
                   onChange={(e) => setDescription(e.target.value)} 
                   placeholder="Ej: Monitoreo estacional de cuenca alta..."
-                  className="min-h-[80px] text-xs rounded-none"
+                  className="min-h-[80px] text-xs rounded-none font-normal text-black"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase">Proyecto Asociado</Label>
+                <Label className="text-[10px] font-normal uppercase text-black">Proyecto Asociado</Label>
                 <Input 
                   value={trelloProject} 
                   onChange={(e) => setTrelloProject(e.target.value)} 
                   placeholder="Nombre del proyecto de Trello..."
-                  className="h-9 text-xs rounded-none"
+                  className="h-9 text-xs rounded-none font-normal text-black"
                 />
               </div>
 
               <Button 
                 onClick={view === 'create' ? handleCreate : handleUpdate} 
-                className="w-full bg-primary hover:bg-primary/90 text-[11px] font-black uppercase tracking-widest rounded-none h-11"
+                className="w-full bg-primary hover:bg-primary/90 text-[11px] font-normal uppercase tracking-widest rounded-none h-11 text-white"
                 disabled={isSaving}
               >
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : view === 'create' ? 'Crear Levantamiento' : 'Guardar Cambios'}
@@ -303,30 +325,37 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
             {view === 'edit' && (
               <div className="space-y-4 pt-4 border-t-2 border-neutral-100">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-black">Reportes Vinculados ({linkedReports.length})</h3>
+                  <h3 className="text-[10px] font-normal uppercase tracking-widest text-black">Reportes Vinculados ({linkedReports.length})</h3>
                 </div>
                 
                 <div className="space-y-2">
                    {linkedReports.map((r: any) => (
-                     <div key={r.id} className="flex items-center justify-between p-2 bg-neutral-50 border rounded-none">
-                       <div className="flex items-center gap-2">
-                         <FileText className="h-3 w-3 text-primary" />
-                         <span className="text-[11px] font-bold text-black uppercase">{r.oid}</span>
+                     <div key={r.id} className="flex items-center justify-between p-3 bg-neutral-50 border rounded-none">
+                       <div className="flex-1">
+                         <div className="flex items-center gap-2 mb-1">
+                           <FileText className="h-3 w-3 text-primary" />
+                           <span className="text-[11px] font-normal text-black uppercase">{r.oid}</span>
+                         </div>
+                         <div className="flex items-center gap-3 text-[9px] font-normal text-black uppercase tracking-tighter">
+                            <span className="flex items-center gap-1"><Calendar className="h-2.5 w-2.5" /> {formatDate(r.createdAt)}</span>
+                            <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> {r.createdByEmail?.split('@')[0]}</span>
+                            <span className="flex items-center gap-1"><ListTodo className="h-2.5 w-2.5" /> {reportMetadata[r.id] || 0}</span>
+                         </div>
                        </div>
-                       <Button variant="ghost" size="icon" onClick={() => unlinkReport(r.id)} className="h-6 w-6 text-neutral-400 hover:text-destructive">
-                         <X className="h-3.5 w-3.5" />
+                       <Button variant="ghost" size="icon" onClick={() => unlinkReport(r.id)} className="h-8 w-8 text-neutral-400 hover:text-destructive shrink-0">
+                         <X className="h-4 w-4" />
                        </Button>
                      </div>
                    ))}
                 </div>
 
                 <div className="pt-2 space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-neutral-400">Vincular más reportes ({currentSurveyBasin || '—'})</Label>
+                  <Label className="text-[10px] font-normal uppercase text-neutral-400">Vincular más reportes ({currentSurveyBasin || '—'})</Label>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-400" />
                     <Input 
                       placeholder="Buscar por OID..." 
-                      className="pl-8 h-8 text-[11px] rounded-none border-dashed"
+                      className="pl-8 h-8 text-[11px] rounded-none border-dashed font-normal text-black"
                       value={reportSearch}
                       onChange={(e) => setReportReportSearch(e.target.value)}
                     />
@@ -336,14 +365,25 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
                       <button 
                         key={r.id} 
                         onClick={() => linkReport(r.id)}
-                        className="w-full flex items-center justify-between p-2 text-left hover:bg-primary/5 transition-colors border-b border-neutral-100 last:border-0"
+                        className="w-full flex items-center justify-between p-3 text-left hover:bg-primary/5 transition-colors border-b border-neutral-100 last:border-0 group"
                       >
-                        <span className="text-[10px] font-bold text-black uppercase">{r.oid}</span>
-                        <Plus className="h-3 w-3 text-primary" />
+                        <div className="flex-1 overflow-hidden">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-[11px] font-normal text-black uppercase truncate">{r.oid}</span>
+                            <span className="text-[9px] font-normal text-black bg-neutral-100 px-1.5 py-0.5 rounded shrink-0">
+                              {reportMetadata[r.id] || 0} Planilla(s)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[9px] font-normal text-black uppercase tracking-tighter">
+                            <span className="flex items-center gap-1"><Calendar className="h-2.5 w-2.5" /> {formatDate(r.createdAt)}</span>
+                            <span className="flex items-center gap-1"><User className="h-2.5 w-2.5" /> {r.createdByEmail?.split('@')[0]}</span>
+                          </div>
+                        </div>
+                        <Plus className="h-4 w-4 text-primary ml-4 shrink-0 group-hover:scale-110 transition-transform" />
                       </button>
                     ))}
                     {unlinkedReports.length === 0 && (
-                      <p className="text-[9px] italic text-neutral-400 text-center py-2">
+                      <p className="text-[9px] italic text-neutral-400 text-center py-4">
                         {reportSearch ? 'Sin coincidencias.' : `No hay reportes libres para la cuenca ${currentSurveyBasin}.`}
                       </p>
                     )}
@@ -375,7 +415,7 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
           </Button>
           <h2 className="text-[10px] font-normal uppercase tracking-[0.2em] text-black">LEVANTAMIENTOS</h2>
         </div>
-        <Button size="sm" onClick={() => setView('create')} className="h-8 text-[9px] font-black uppercase rounded-none bg-black text-white hover:bg-neutral-800">
+        <Button size="sm" onClick={() => setView('create')} className="h-8 text-[9px] font-normal uppercase rounded-none bg-black text-white hover:bg-neutral-800">
           <Plus className="h-3 w-3 mr-1" /> Nuevo
         </Button>
       </div>
@@ -386,7 +426,7 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
         ) : surveys.length === 0 ? (
           <div className="text-center py-20 opacity-30">
             <FolderKanban className="h-10 w-10 mx-auto mb-3" />
-            <p className="text-[10px] uppercase font-bold">Sin levantamientos</p>
+            <p className="text-[10px] uppercase font-normal text-black">Sin levantamientos</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -397,21 +437,21 @@ export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps)
                 className="w-full text-left p-4 bg-white border border-neutral-200 hover:border-primary transition-all group"
               >
                 <div className="flex items-center justify-between mb-2">
-                   <span className="text-xs font-black uppercase text-black group-hover:text-primary transition-colors">{s.oid}</span>
+                   <span className="text-xs font-normal uppercase text-black group-hover:text-primary transition-colors">{s.oid}</span>
                    <span className={cn(
-                     "text-[8px] font-black px-1.5 py-0.5 rounded-full border",
+                     "text-[8px] font-normal px-1.5 py-0.5 rounded-full border",
                      s.isDeferred ? "bg-red-50 border-red-200 text-red-600" : "bg-green-50 border-green-200 text-green-600"
                    )}>
                      {s.isDeferred ? "DIFERIDO" : "REAL"}
                    </span>
                 </div>
-                <p className="text-[10px] text-neutral-600 line-clamp-2 mb-3 leading-tight">{s.description || 'Sin descripción'}</p>
-                <div className="flex items-center justify-between text-[9px] font-bold uppercase text-neutral-400">
-                   <div className="flex items-center gap-1.5">
+                <p className="text-[10px] text-neutral-600 line-clamp-2 mb-3 leading-tight font-normal">{s.description || 'Sin descripción'}</p>
+                <div className="flex items-center justify-between text-[9px] font-normal uppercase text-neutral-400">
+                   <div className="flex items-center gap-1.5 text-black/60">
                      <User className="h-2.5 w-2.5" />
                      {s.createdByEmail?.split('@')[0]}
                    </div>
-                   <div className="flex items-center gap-1.5">
+                   <div className="flex items-center gap-1.5 text-black/60">
                      <Calendar className="h-2.5 w-2.5" />
                      {formatDate(s.createdAt)}
                    </div>
