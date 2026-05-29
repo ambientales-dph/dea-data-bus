@@ -34,11 +34,12 @@ interface MapViewProps {
   onLayerChange?: (layer: 'osm' | 'grayscale' | 'satellite') => void;
   isMobile?: boolean;
   isDraggable?: boolean;
+  highlightedBasinCode?: string | null;
 }
 
 const PRESENCE_EXPIRATION_MS = 2 * 60 * 1000;
 
-export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChange, isMobile, isDraggable }: MapViewProps) {
+export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChange, isMobile, isDraggable, highlightedBasinCode }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<Map | null>(null);
@@ -354,12 +355,16 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
     
     // El color cambia a #2DEDAF si estamos en modo satelital
     const strokeColor = activeLayer === 'satellite' ? '#2DEDAF' : 'rgba(13, 145, 102, 0.7)';
+    const fillColor = activeLayer === 'satellite' ? 'rgba(45, 237, 175, 0.05)' : 'rgba(13, 145, 102, 0.05)';
     
     const vectorStyleFunction = (feature: any, resolution: number) => {
       const view = mapInstance.current?.getView();
       const zoom = view ? view.getZoomForResolution(resolution) : 0;
       const strokeWidth = (zoom && zoom >= 10) ? 3 : 1;
       let textStyle = undefined;
+
+      const fCode = feature.get('CODIGO') || feature.get('cod_letras') || '';
+      const isHighlighted = highlightedBasinCode && fCode === highlightedBasinCode;
       
       if (zoom && zoom >= 7) {
         const codLetras = feature.get('cod_letras') || feature.get('CODIGO') || '';
@@ -375,15 +380,19 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
         }
       }
       return new Style({
-        stroke: new Stroke({ color: strokeColor, width: strokeWidth }),
-        fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }), 
-        text: textStyle
+        stroke: new Stroke({ 
+          color: isHighlighted ? '#2DEDAF' : strokeColor, 
+          width: isHighlighted ? strokeWidth + 2 : strokeWidth 
+        }),
+        fill: new Fill({ color: isHighlighted ? fillColor : 'rgba(0, 0, 0, 0)' }), 
+        text: textStyle,
+        zIndex: isHighlighted ? 100 : 5
       });
     };
 
     basinsLayerRef.current.setStyle(vectorStyleFunction);
     codesLayerRef.current.setStyle(vectorStyleFunction);
-  }, [activeLayer]);
+  }, [activeLayer, highlightedBasinCode]);
 
   useEffect(() => {
     if (!stationsLayerRef.current || !selectionLayerRef.current) return;

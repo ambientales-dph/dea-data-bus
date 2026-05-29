@@ -68,6 +68,7 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [isDraggable, setIsDraggable] = useState(false);
+  const [highlightedBasinCode, setHighlightedBasinCode] = useState<string | null>(null);
   
   const auth = useAuth();
   const db = useFirestore();
@@ -579,6 +580,7 @@ export default function Home() {
                 onLayerChange={setActiveLayer}
                 isMobile={isMobile}
                 isDraggable={isDraggable}
+                highlightedBasinCode={highlightedBasinCode}
               />
             </div>
             {isResizing && <div className="absolute inset-0 z-50 md:cursor-col-resize cursor-row-resize" />}
@@ -620,6 +622,7 @@ export default function Home() {
                   onPointUpdate={handlePointUpdate} 
                   onDeselect={handleDeselect} 
                   onActiveViewChange={(view: FormView) => setIsDraggable(view === 'create-station' || view === 'edit-station')}
+                  onBasinHighlight={setHighlightedBasinCode}
                 />
               </div>
             </ScrollArea>

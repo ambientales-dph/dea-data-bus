@@ -18,10 +18,10 @@ import { AdminDeleteDialog } from './admin-delete-dialog';
 
 interface SurveyManagerProps {
   onClose: () => void;
-  onSelectSurvey?: (id: string) => void;
+  onSurveySelected?: (survey: any | null) => void;
 }
 
-export function SurveyManager({ onClose, onSelectSurvey }: SurveyManagerProps) {
+export function SurveyManager({ onClose, onSurveySelected }: SurveyManagerProps) {
   const { toast } = useToast();
   const db = useFirestore();
   const { user } = useUser();
@@ -86,6 +86,15 @@ export function SurveyManager({ onClose, onSelectSurvey }: SurveyManagerProps) {
       setTrelloProject(selectedSurveyData.trelloCardName || '');
     }
   }, [selectedSurveyData, view]);
+
+  // Notify parent of selection for map highlighting
+  useEffect(() => {
+    if (view === 'edit' && selectedSurveyData) {
+      onSurveySelected?.(selectedSurveyData);
+    } else if (view === 'list') {
+      onSurveySelected?.(null);
+    }
+  }, [view, selectedSurveyData, onSurveySelected]);
 
   const handleCreate = async () => {
     if (!user) return;

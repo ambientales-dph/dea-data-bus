@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -346,13 +345,15 @@ export function DataEntryForm({
   onStationCreated,
   onPointUpdate,
   onDeselect,
-  onActiveViewChange
+  onActiveViewChange,
+  onBasinHighlight
 }: { 
   selectedPoint: SelectedPoint | null;
   onStationCreated: (id: string, name: string) => void;
   onPointUpdate: (point: SelectedPoint) => void;
   onDeselect: () => void;
   onActiveViewChange?: (view: FormView) => void;
+  onBasinHighlight?: (code: string | null) => void;
 }) {
   const { toast } = useToast();
   const db = useFirestore();
@@ -384,7 +385,10 @@ export function DataEntryForm({
 
   useEffect(() => {
     onActiveViewChange?.(activeView);
-  }, [activeView, onActiveViewChange]);
+    if (activeView !== 'surveys' && onBasinHighlight) {
+       onBasinHighlight(null);
+    }
+  }, [activeView, onActiveViewChange, onBasinHighlight]);
 
   const customTemplatesQuery = useMemo(() => {
     if (!db || !user) return null;
@@ -1054,7 +1058,14 @@ export function DataEntryForm({
   };
 
   if (activeView === 'surveys') {
-    return <SurveyManager onClose={() => setActiveView('summary')} />;
+    return <SurveyManager onClose={() => setActiveView('summary')} onSurveySelected={(s) => {
+       if (s && s.oid && onBasinHighlight) {
+          const match = s.oid.match(/^LV-([A-Za-z]{2,4})-\d{4}$/);
+          if (match) onBasinHighlight(match[1]);
+       } else if (onBasinHighlight) {
+          onBasinHighlight(null);
+       }
+    }} />;
   }
 
   if (!selectedPoint) {
