@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -62,11 +61,11 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
   }, [loadPending]);
 
   const handleUpload = useCallback(async (photoId: string, file: Blob, fileName: string, capturedAt: number) => {
-    // Si no hay señal, no intentamos subir para evitar el spinner infinito
+    // Si no hay señal, avisamos y no mostramos spinner infinito
     if (!navigator.onLine) {
       toast({
-        title: "Sin conexión",
-        description: "La foto se sincronizará automáticamente cuando recuperes señal.",
+        title: "Esperando señal",
+        description: "La foto se sincronizará automáticamente cuando recuperes conexión.",
       });
       return;
     }
@@ -86,7 +85,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
           navigator.geolocation.getCurrentPosition(
             (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
             () => resolve({ lat: null, lon: null }),
-            { timeout: 3000 }
+            { timeout: 5000 }
           );
         });
       };
@@ -127,13 +126,13 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       
     } catch (error: any) {
       console.error('Fallo en sincronización:', error);
-      toast({ variant: "destructive", title: "Error de subida", description: "Reintentando más tarde..." });
+      toast({ variant: "destructive", title: "Error de subida", description: "Reintentá en unos minutos." });
     } finally {
       setUploadingIds(prev => prev.filter(id => id !== photoId));
     }
   }, [user, storage, db, reportId, formId, stationId, medium, analyteTag, uploadingIds, gallery.length, toast]);
 
-  // Sincronización automática al recuperar señal
+  // Sincronización automática ÚNICAMENTE cuando detectamos paso de offline a online
   useEffect(() => {
     const syncAll = () => {
       if (navigator.onLine && user && pendingPhotos.length > 0) {
@@ -146,9 +145,6 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
     };
 
     window.addEventListener('online', syncAll);
-    // También intentamos sincronizar al montar si estamos online
-    if (navigator.onLine) syncAll();
-    
     return () => window.removeEventListener('online', syncAll);
   }, [pendingPhotos, user, handleUpload, uploadingIds]);
 
@@ -167,7 +163,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       const compressed = await compressImage(file);
       const photoId = crypto.randomUUID();
       
-      // Guardamos SIEMPRE en almacenamiento local primero
+      // Guardamos en local. NO disparamos subida automática inmediata aunque haya señal.
       await offlineStorage.savePhoto({
         id: photoId,
         reportId,
@@ -181,9 +177,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
 
       await loadPending();
       setIsProcessing(false);
-      
-      // No disparamos handleUpload de inmediato, permitimos que el técnico siga capturando
-      // El useEffect de sincronización automática se encargará o el botón manual.
+      toast({ title: "Captura guardada localmente" });
       
     } catch (error) {
       console.error('Error capturando:', error);
@@ -196,7 +190,7 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
   const handleDeletePending = async (photoId: string) => {
     await offlineStorage.removePhoto(photoId);
     setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
-    toast({ title: "Captura eliminada" });
+    toast({ title: "Captura descartada" });
   };
 
   const fetchGallery = async () => {
@@ -369,12 +363,10 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
                   <div key={photo.id} className="relative aspect-square border border-black bg-neutral-200 overflow-hidden">
                     <img src={URL.createObjectURL(photo.file)} alt="P" className="w-full h-full object-cover grayscale opacity-70" />
                     
-                    {/* Icono de nube tachada siempre visible */}
                     <div className="absolute top-1 left-1 bg-black/80 p-0.5 rounded-sm shadow-md">
                        <CloudOff className="h-3 w-3 text-white" />
                     </div>
 
-                    {/* Botones de acción manual siempre visibles */}
                     <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/10">
                        <button 
                          onClick={() => handleUpload(photo.id, photo.file, photo.fileName, photo.timestamp)} 
