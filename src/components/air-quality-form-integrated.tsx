@@ -99,50 +99,52 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
     }
   };
 
-  const saveIndividualParam = async (name: string, category: string) => {
+  const saveIndividualParam = (name: string, category: string) => {
     if (!user || !db) return;
     const entry = formData[name];
     if (!entry || entry.value === null || entry.value === undefined || entry.value === "") return;
 
-    setSavingFields(prev => ({ ...prev, [name]: true }));
-    
-    const location = await getCurrentGPSLocation();
-    const t1 = entry.capturedAt || Date.now();
-    const t2 = Date.now();
-    const deltaMs = t2 - t1;
-
-    // Deterministic ID for offline stability
-    const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
-    const docId = `${reportId}_${formId}_${safeAnalyte}`;
-    const sampleRef = doc(db, 'samples', docId);
-
-    const payload = {
-      medium: 'aire',
-      parameterType: category,
-      analyte: name,
-      reportId,
-      formId,
-      stationId,
-      value: `${entry.value}`,
-      latitude: location?.latitude ?? null,
-      longitude: location?.longitude ?? null,
-      retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-      fechaServidor: serverTimestamp(),
-      timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-      isDeferred,
-      userId: user.uid,
-      userEmail: user.email
-    };
-
-    // Deterministic save - works offline instantly
-    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
-
-    // Update report
-    updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
-    
+    // FEEDBACK INSTANTÁNEO (Escritura Optimista)
     setSavedFields(prev => ({ ...prev, [name]: true }));
     setSavingFields(prev => ({ ...prev, [name]: false }));
-    toast({ title: "Guardado localmente", description: location ? "Sincronizado con GPS." : "Guardado." });
+    
+    // Segundo plano
+    (async () => {
+      try {
+        const location = await getCurrentGPSLocation();
+        const t1 = entry.capturedAt || Date.now();
+        const deltaMs = Date.now() - t1;
+
+        const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
+        const docId = `${reportId}_${formId}_${safeAnalyte}`;
+        const sampleRef = doc(db, 'samples', docId);
+
+        const payload = {
+          medium: 'aire',
+          parameterType: category,
+          analyte: name,
+          reportId,
+          formId,
+          stationId,
+          value: `${entry.value}`,
+          latitude: location?.latitude ?? null,
+          longitude: location?.longitude ?? null,
+          retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+          fechaServidor: serverTimestamp(),
+          timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+          isDeferred,
+          userId: user.uid,
+          userEmail: user.email
+        };
+
+        setDoc(sampleRef, payload, { merge: true }).catch(console.error);
+        updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+      } catch (err) {
+        console.error("Error en guardado de segundo plano:", err);
+      }
+    })();
+    
+    toast({ title: "Sincronizando localmente", description: "Dato capturado." });
   };
 
   const formatTimestamp = (ts: any) => {

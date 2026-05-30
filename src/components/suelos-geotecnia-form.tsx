@@ -223,57 +223,59 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     fetchExistingData();
   }, [db, reportId, formId, user?.email]);
 
-  const saveParam = async (name: string, category: string, valueOverride?: any) => {
+  const saveParam = (name: string, category: string, valueOverride?: any) => {
     if (!user || !db) return;
     const entry = formData[name];
     const value = valueOverride !== undefined ? valueOverride : entry?.value;
     if (value === null || value === undefined || value === "") return;
 
-    setSavingFields(prev => ({ ...prev, [name]: true }));
-    
-    const location = await getCurrentGPSLocation();
-    const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
-    const t2 = Date.now();
-    const deltaMs = t2 - t1;
-
-    // Determinstic ID for offline
-    const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
-    const docId = `${reportId}_${formId}_${safeAnalyte}`;
-    const sampleRef = doc(db, 'samples', docId);
-
-    const payload = {
-      medium: 'suelo',
-      parameterType: category,
-      analyte: name,
-      reportId,
-      formId,
-      stationId,
-      value: `${value}`,
-      latitude: location?.latitude || null,
-      longitude: location?.longitude || null,
-      retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-      fechaServidor: serverTimestamp(),
-      timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-      isDeferred,
-      userId: user.uid,
-      userEmail: user.email
-    };
-
-    // Optimistic blind write
-    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
-
-    // Update report
-    updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
-    
+    // FEEDBACK INSTANTÁNEO
     setSavedFields(prev => ({ ...prev, [name]: true }));
     setSavingFields(prev => ({ ...prev, [name]: false }));
-    toast({ title: "Guardado localmente", description: location ? "Sincronizado con GPS." : "Sincronizado." });
+    
+    // Segundo plano
+    (async () => {
+      try {
+        const location = await getCurrentGPSLocation();
+        const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
+        const deltaMs = Date.now() - t1;
+
+        const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
+        const docId = `${reportId}_${formId}_${safeAnalyte}`;
+        const sampleRef = doc(db, 'samples', docId);
+
+        const payload = {
+          medium: 'suelo',
+          parameterType: category,
+          analyte: name,
+          reportId,
+          formId,
+          stationId,
+          value: `${value}`,
+          latitude: location?.latitude || null,
+          longitude: location?.longitude || null,
+          retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+          fechaServidor: serverTimestamp(),
+          timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+          isDeferred,
+          userId: user.uid,
+          userEmail: user.email
+        };
+
+        setDoc(sampleRef, payload, { merge: true }).catch(console.error);
+        updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+      } catch (err) {
+        console.error("Error en guardado de segundo plano:", err);
+      }
+    })();
+    
+    toast({ title: "Sincronizando localmente", description: "Dato capturado." });
   };
 
   const handleCerrarPlanilla = async () => {
     if (!user || !db) return;
     const fechaCierre = new Date().toLocaleString('es-AR');
-    await saveParam("Fecha Cierre de Sondeo", "Control", fechaCierre);
+    saveParam("Fecha Cierre de Sondeo", "Control", fechaCierre);
     onClose?.();
   };
 
@@ -302,76 +304,61 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     }
   };
 
-  const saveLayerField = async (layerId: string, field: keyof CapaSuelo, value: any) => {
+  const saveLayerField = (layerId: string, field: keyof CapaSuelo, value: any) => {
     if (!user || !db) return;
     const analyteName = `L${layerId}: ${field}`;
     
-    setSavingFields(prev => ({ ...prev, [analyteName]: true }));
-    const location = await getCurrentGPSLocation();
-
-    const layer = capas.find(c => c.id === layerId);
-    const t1 = layer?.capturedAt[field as string] || Date.now();
-    const t2 = Date.now();
-    const deltaMs = t2 - t1;
-
-    // Deterministic ID for layer fields
-    const safeAnalyte = analyteName.replace(/[^a-zA-Z0-9]/g, '_');
-    const docId = `${reportId}_${formId}_${safeAnalyte}`;
-    const sampleRef = doc(db, 'samples', docId);
-
-    const payload = {
-      medium: 'suelo',
-      parameterType: 'Estratigrafía',
-      analyte: analyteName,
-      reportId,
-      formId,
-      stationId,
-      value: `${value}`,
-      latitude: location?.latitude || null,
-      longitude: location?.longitude || null,
-      retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-      fechaServidor: serverTimestamp(),
-      timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-      isDeferred,
-      userId: user.uid,
-      userEmail: user.email
-    };
-
-    // Instant local commit
-    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
-
+    // FEEDBACK INSTANTÁNEO
     setSavedFields(prev => ({ ...prev, [analyteName]: true }));
     setSavingFields(prev => ({ ...prev, [analyteName]: false }));
+
+    // Segundo plano
+    (async () => {
+      try {
+        const location = await getCurrentGPSLocation();
+        const layer = capas.find(c => c.id === layerId);
+        const t1 = layer?.capturedAt[field as string] || Date.now();
+        const deltaMs = Date.now() - t1;
+
+        const safeAnalyte = analyteName.replace(/[^a-zA-Z0-9]/g, '_');
+        const docId = `${reportId}_${formId}_${safeAnalyte}`;
+        const sampleRef = doc(db, 'samples', docId);
+
+        const payload = {
+          medium: 'suelo',
+          parameterType: 'Estratigrafía',
+          analyte: analyteName,
+          reportId,
+          formId,
+          stationId,
+          value: `${value}`,
+          latitude: location?.latitude || null,
+          longitude: location?.longitude || null,
+          retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+          fechaServidor: serverTimestamp(),
+          timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+          isDeferred,
+          userId: user.uid,
+          userEmail: user.email
+        };
+
+        setDoc(sampleRef, payload, { merge: true }).catch(console.error);
+      } catch (err) {
+        console.error("Error en guardado de estrato:", err);
+      }
+    })();
   };
 
-  const handleCapaChange = (id: string, field: keyof CapaSuelo, value: string | boolean) => {
-    setCapas((prev) =>
-      prev.map((capa) => (capa.id === id ? { 
-        ...capa, 
-        [field]: value,
-        capturedAt: { ...capa.capturedAt, [field as string]: Date.now() }
-      } : capa))
-    );
-    const analyteName = `L${id}: ${field}`;
-    if (savedFields[analyteName]) {
-      setSavedFields(prev => {
-        const next = { ...prev };
-        delete next[analyteName];
-        return next;
-      });
-    }
-  };
-
-  const saveWholeLayer = async (capa: CapaSuelo) => {
+  const saveWholeLayer = (capa: CapaSuelo) => {
     const fieldsToSave: (keyof CapaSuelo)[] = [
       "profundidadInicio", "profundidadFin", "nivelFreatico", "colorColumna", 
       "patron", "descripcion", "golpesSPT", "limiteLL", "limiteIP", "humedad", "clasificacionUSCS"
     ];
     
-    for (const field of fieldsToSave) {
-      await saveLayerField(capa.id, field, capa[field]);
-    }
-    toast({ title: "Estrato sincronizado localmente", description: "Todos los campos fueron capturados." });
+    fieldsToSave.forEach(field => {
+      saveLayerField(capa.id, field, capa[field]);
+    });
+    toast({ title: "Sincronizando localmente", description: "Estrato capturado." });
   };
 
   const isLayerSaved = (id: string) => {
@@ -472,7 +459,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                 )}
               >
                 <CheckCircle2 className="h-2.5 w-2.5" />
-                <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+                <span className="text-[7px] font-normal">{isDeferred ? "DIFERIDA" : "REAL"}</span>
               </button>
 
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>

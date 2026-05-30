@@ -113,51 +113,53 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
     fetchExistingData();
   }, [db, reportId, formId, user?.email]);
 
-  const saveParam = async (name: string, category: string, valueOverride?: any) => {
+  const saveParam = (name: string, category: string, valueOverride?: any) => {
     if (!user || !db) return;
     const entry = formData[name];
     const value = valueOverride !== undefined ? valueOverride : entry?.value;
     if (value === null || value === undefined || value === "") return;
 
-    setSavingFields(prev => ({ ...prev, [name]: true }));
-    
-    const location = await getCurrentGPSLocation();
-    const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
-    const t2 = Date.now();
-    const deltaMs = t2 - t1;
-
-    // Deterministic ID for offline stability
-    const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
-    const docId = `${reportId}_${formId}_${safeAnalyte}`;
-    const sampleRef = doc(db, 'samples', docId);
-
-    const payload = {
-      medium: 'sedimentos',
-      parameterType: category,
-      analyte: name,
-      reportId,
-      formId,
-      stationId,
-      value: `${value}`,
-      latitude: location?.latitude || null,
-      longitude: location?.longitude || null,
-      retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-      fechaServidor: serverTimestamp(),
-      timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-      isDeferred,
-      userId: user.uid,
-      userEmail: user.email
-    };
-
-    // Deterministic save - works offline
-    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
-
-    // Update report metadata
-    updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
-    
+    // FEEDBACK INSTANTÁNEO
     setSavedFields(prev => ({ ...prev, [name]: true }));
     setSavingFields(prev => ({ ...prev, [name]: false }));
-    toast({ title: "Guardado localmente", description: location ? "Con coordenadas GPS." : "Dato guardado." });
+    
+    // Segundo plano
+    (async () => {
+      try {
+        const location = await getCurrentGPSLocation();
+        const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
+        const deltaMs = Date.now() - t1;
+
+        const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
+        const docId = `${reportId}_${formId}_${safeAnalyte}`;
+        const sampleRef = doc(db, 'samples', docId);
+
+        const payload = {
+          medium: 'sedimentos',
+          parameterType: category,
+          analyte: name,
+          reportId,
+          formId,
+          stationId,
+          value: `${value}`,
+          latitude: location?.latitude || null,
+          longitude: location?.longitude || null,
+          retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+          fechaServidor: serverTimestamp(),
+          timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+          isDeferred,
+          userId: user.uid,
+          userEmail: user.email
+        };
+
+        setDoc(sampleRef, payload, { merge: true }).catch(console.error);
+        updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+      } catch (err) {
+        console.error("Error en guardado de PGAyS:", err);
+      }
+    })();
+    
+    toast({ title: "Sincronizando localmente", description: "Capturado." });
   };
 
   const handleInputChange = (name: string, value: any) => {
@@ -310,7 +312,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
                 )}
               >
                 <CheckCircle2 className="h-2.5 w-2.5" />
-                <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+                <span className="text-[7px] font-normal">{isDeferred ? "DIFERIDA" : "REAL"}</span>
               </button>
 
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>

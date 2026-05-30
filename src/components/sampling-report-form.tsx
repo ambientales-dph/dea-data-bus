@@ -54,11 +54,11 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
 
   const { data: currentReportData } = useDoc(reportRef);
 
-  const surveyRef = useMemo(() => {
+  const campaignRef = useMemo(() => {
     if (!db || !currentReportData?.surveyId) return null;
     return doc(db, 'levantamientos', currentReportData.surveyId);
   }, [db, currentReportData?.surveyId]);
-  const { data: surveyData } = useDoc(surveyRef);
+  const { data: campaignData } = useDoc(campaignRef);
 
   const samplesQuery = useMemo(() => {
     if (!db || !user || !reportId || !formId) return null;
@@ -103,61 +103,60 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
 
   const handleValueChange = (name: string, value: string) => { setPlanillaValues(prev => ({ ...prev, [name]: { value, capturedAt: Date.now() } })); };
 
-  const handleSavePlanilla = async () => {
+  const handleSavePlanilla = () => {
     if (!user || !template || !db) return;
     setIsSavingPlanilla(true);
     const activeParams = template.parametros || template.parameters || [];
     
-    try {
-      const location = await getCurrentGPSLocation();
-      
-      // Realizar grabaciones determinísticas para evitar pérdida de datos offline
-      for (const param of activeParams) {
-        const entry = planillaValues[param.nombre];
-        if (entry && entry.value !== undefined && entry.value !== null && entry.value.trim() !== '') {
-          const medium = template.medium || param.mediumKey || 'agua_superficial';
-          const t1 = entry.capturedAt || Date.now();
-          const deltaMs = Date.now() - t1;
-          
-          // ID determinístico basado en la ruta jerárquica del dato
-          const safeAnalyte = param.nombre.replace(/[^a-zA-Z0-9]/g, '_');
-          const docId = `${reportId}_${formId}_${safeAnalyte}`;
-          const sampleRef = doc(db, 'samples', docId);
+    // FEEDBACK INSTANTÁNEO AL USUARIO
+    toast({ title: "Sincronizando localmente", description: "Cerrando planilla mientras se guardan los datos..." });
+    onClose();
 
-          const payload = { 
-            medium,
-            parameterType: param.categoria,
-            analyte: param.nombre,
-            reportId,
-            formId,
-            stationId,
-            value: entry.value, 
-            latitude: location?.latitude ?? null, 
-            longitude: location?.longitude ?? null, 
-            retrasoSincronizacionMs: isDeferred ? 0 : deltaMs, 
-            fechaServidor: serverTimestamp(), 
-            timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(), 
-            isDeferred, 
-            userId: user.uid, 
-            userEmail: user.email 
-          };
-          
-          // Escritura optimista instantánea
-          setDoc(sampleRef, payload, { merge: true }).catch(console.error);
+    // Proceso asíncrono real en segundo plano
+    (async () => {
+      try {
+        const location = await getCurrentGPSLocation();
+        
+        for (const param of activeParams) {
+          const entry = planillaValues[param.nombre];
+          if (entry && entry.value !== undefined && entry.value !== null && entry.value.trim() !== '') {
+            const medium = template.medium || param.mediumKey || 'agua_superficial';
+            const t1 = entry.capturedAt || Date.now();
+            const deltaMs = Date.now() - t1;
+            
+            const safeAnalyte = param.nombre.replace(/[^a-zA-Z0-9]/g, '_');
+            const docId = `${reportId}_${formId}_${safeAnalyte}`;
+            const sampleRef = doc(db, 'samples', docId);
+
+            const payload = { 
+              medium,
+              parameterType: param.categoria,
+              analyte: param.nombre,
+              reportId,
+              formId,
+              stationId,
+              value: entry.value, 
+              latitude: location?.latitude ?? null, 
+              longitude: location?.longitude ?? null, 
+              retrasoSincronizacionMs: isDeferred ? 0 : deltaMs, 
+              fechaServidor: serverTimestamp(), 
+              timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(), 
+              isDeferred, 
+              userId: user.uid, 
+              userEmail: user.email 
+            };
+            
+            setDoc(sampleRef, payload, { merge: true }).catch(console.error);
+          }
         }
+        
+        if (user.email && reportRef) {
+          updateDoc(reportRef, { editors: arrayUnion(user.email) }).catch(console.error);
+        }
+      } catch (e) {
+        console.error("Falla en guardado masivo:", e);
       }
-      
-      if (user.email && reportRef) {
-        updateDoc(reportRef, { editors: arrayUnion(user.email) }).catch(console.error);
-      }
-      
-      toast({ title: "Planilla sincronizada localmente" });
-      onClose();
-    } catch (e) { 
-      toast({ variant: "destructive", title: "Error en guardado" }); 
-    } finally { 
-      setIsSavingPlanilla(false); 
-    }
+    })();
   };
 
   const formatTimestamp = (ts: any) => {
@@ -183,25 +182,25 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
         <CardHeader className="p-4 pb-2 bg-neutral-50">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <CardTitle className="text-sm font-black uppercase tracking-tight text-foreground">{template?.nombre || template?.name || 'Carga de Analitos'}</CardTitle>
+              <CardTitle className="text-sm font-normal uppercase tracking-tight text-foreground">{template?.nombre || template?.name || 'Carga de Analitos'}</CardTitle>
               <div className="flex flex-col gap-0.5">
                 <CardDescription className="text-[10px] font-normal text-black uppercase">
-                  {surveyData ? (
+                  {campaignData ? (
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="opacity-60">Campaña:</span>
-                      <span className="text-primary font-normal">{surveyData.oid}</span>
+                      <span className="text-primary font-normal">{campaignData.oid}</span>
                     </div>
                   ) : <span className="opacity-40 italic mt-0.5 block">Sin vinculación a campaña</span>}
                 </CardDescription>
-                <div className="flex flex-wrap items-center gap-3 text-[9px] text-muted-foreground font-black uppercase tracking-tight mt-1">
+                <div className="flex flex-wrap items-center gap-3 text-[9px] text-muted-foreground font-normal uppercase tracking-tight mt-1">
                   {isDeferred ? (
                     <div className="flex items-center gap-1.5 bg-white border border-black px-2 py-0.5 rounded-sm">
                       <Calendar className="h-3 w-3 text-red-600" />
-                      <input type="datetime-local" value={manualDate} onChange={(e) => setManualDate(e.target.value)} disabled={isDeferredLocked} className="bg-transparent border-none p-0 text-[9px] font-black uppercase outline-none focus:ring-0 w-32" />
+                      <input type="datetime-local" value={manualDate} onChange={(e) => setManualDate(e.target.value)} disabled={isDeferredLocked} className="bg-transparent border-none p-0 text-[9px] font-normal uppercase outline-none focus:ring-0 w-32" />
                     </div>
                   ) : <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>}
                   <button onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)} disabled={isDeferredLocked} className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all", isDeferred ? "bg-red-50 border-red-200 text-red-600" : "bg-green-50 border-green-200 text-green-600", isDeferredLocked ? "opacity-100 cursor-default" : "cursor-pointer hover:scale-105 active:scale-95")}>
-                    <CheckCircle2 className="h-2.5 w-2.5" /><span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+                    <CheckCircle2 className="h-2.5 w-2.5" /><span className="text-[7px] font-normal">{isDeferred ? "DIFERIDA" : "REAL"}</span>
                   </button>
                   <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
                 </div>
@@ -215,17 +214,17 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
               <div className="divide-y divide-neutral-200">
                 {(template.parametros || template.parameters || []).map((param: any) => (
                   <div key={param.nombre} className="flex items-center gap-2 p-3 hover:bg-neutral-50 transition-all">
-                    <div className="flex-1 min-w-0"><Label className="text-[11px] font-black text-foreground block leading-tight uppercase">{param.nombre}</Label><span className="text-[9px] text-muted-foreground uppercase font-bold">{param.categoria} • {param.unidades}</span></div>
-                    <input placeholder="---" className="h-8 w-24 text-[12px] font-code py-0 px-2 bg-neutral-100 border-none text-right font-bold text-foreground focus:ring-0 outline-none" value={planillaValues[param.nombre]?.value || ''} onChange={(e) => handleValueChange(param.nombre, e.target.value)} />
+                    <div className="flex-1 min-w-0"><Label className="text-[11px] font-normal text-foreground block leading-tight uppercase">{param.nombre}</Label><span className="text-[9px] text-muted-foreground uppercase font-normal">{param.categoria} • {param.unidades}</span></div>
+                    <input placeholder="---" className="h-8 w-24 text-[12px] font-code py-0 px-2 bg-neutral-100 border-none text-right font-normal text-foreground focus:ring-0 outline-none" value={planillaValues[param.nombre]?.value || ''} onChange={(e) => handleValueChange(param.nombre, e.target.value)} />
                   </div>
                 ))}
               </div>
-              <div className="p-4 bg-white"><Button onClick={handleSavePlanilla} className="w-full h-12 bg-primary hover:bg-primary/90 text-[11px] font-black uppercase tracking-widest text-white shadow-md rounded-none" disabled={isSavingPlanilla}>{isSavingPlanilla ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} Guardar y Sincronizar (GPS)</Button></div>
+              <div className="p-4 bg-white"><Button onClick={handleSavePlanilla} className="w-full h-12 bg-primary hover:bg-primary/90 text-[11px] font-normal uppercase tracking-widest text-white shadow-md rounded-none" disabled={isSavingPlanilla}>{isSavingPlanilla ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} Guardar y Sincronizar (GPS)</Button></div>
             </div>
-          ) : <div className="py-20 flex flex-col items-center justify-center text-muted-foreground"><Loader2 className="h-8 w-8 animate-spin mb-2" /><p className="text-[10px] font-black uppercase tracking-widest">Cargando protocolo...</p></div>}
+          ) : <div className="py-20 flex flex-col items-center justify-center text-muted-foreground"><Loader2 className="h-8 w-8 animate-spin mb-2" /><p className="text-[10px] font-normal uppercase tracking-widest">Cargando protocolo...</p></div>}
         </CardContent>
       </Card>
-      <div className="flex justify-end"><Button onClick={onClose} variant="outline" className="text-[10px] font-black uppercase tracking-widest border-black text-black hover:bg-black/5 rounded-none h-10">Cerrar Planilla</Button></div>
+      <div className="flex justify-end"><Button onClick={onClose} variant="outline" className="text-[10px] font-normal uppercase tracking-widest border-black text-black hover:bg-black/5 rounded-none h-10">Cerrar Planilla</Button></div>
     </div>
   );
 }

@@ -133,53 +133,52 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
     }
   };
 
-  const saveIndividualParam = async (name: string, category: string) => {
+  const saveIndividualParam = (name: string, category: string) => {
     if (!user || !db) return;
     const entry = formData[name];
     if (!entry || entry.value === null || entry.value === undefined || entry.value === "") return;
 
-    setSavingFields(prev => ({ ...prev, [name]: true }));
-    
-    const location = await getCurrentGPSLocation();
-    const t1 = entry.capturedAt || Date.now();
-    const t2 = Date.now();
-    const deltaMs = t2 - t1;
-
-    // Deterministic ID for offline stability
-    const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
-    const docId = `${reportId}_${formId}_${safeAnalyte}`;
-    const sampleRef = doc(db, 'samples', docId);
-
-    const payload = {
-      medium: 'agua_superficial',
-      parameterType: category,
-      analyte: name,
-      reportId,
-      formId,
-      stationId,
-      value: `${entry.value}`,
-      latitude: location?.latitude ?? null,
-      longitude: location?.longitude ?? null,
-      retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-      fechaServidor: serverTimestamp(),
-      timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-      isDeferred,
-      userId: user.uid,
-      userEmail: user.email
-    };
-
-    // Optimistic setDoc - instant local commit
-    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
-
-    // Update report (optimistic)
-    updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
-    
+    // FEEDBACK INSTANTÁNEO (Escritura Optimista)
     setSavedFields(prev => ({ ...prev, [name]: true }));
     setSavingFields(prev => ({ ...prev, [name]: false }));
-    toast({ 
-      title: "Guardado localmente", 
-      description: location ? "Sincronizado con GPS." : "Sincronizado." 
-    });
+    
+    // Proceso en segundo plano
+    (async () => {
+      try {
+        const location = await getCurrentGPSLocation();
+        const t1 = entry.capturedAt || Date.now();
+        const deltaMs = Date.now() - t1;
+
+        const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
+        const docId = `${reportId}_${formId}_${safeAnalyte}`;
+        const sampleRef = doc(db, 'samples', docId);
+
+        const payload = {
+          medium: 'agua_superficial',
+          parameterType: category,
+          analyte: name,
+          reportId,
+          formId,
+          stationId,
+          value: `${entry.value}`,
+          latitude: location?.latitude ?? null,
+          longitude: location?.longitude ?? null,
+          retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+          fechaServidor: serverTimestamp(),
+          timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+          isDeferred,
+          userId: user.uid,
+          userEmail: user.email
+        };
+
+        setDoc(sampleRef, payload, { merge: true }).catch(console.error);
+        updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+      } catch (err) {
+        console.error("Error en guardado de segundo plano:", err);
+      }
+    })();
+    
+    toast({ title: "Sincronizando localmente", description: "Dato capturado correctamente." });
   };
 
   const formatTimestamp = (ts: any) => {
@@ -189,13 +188,13 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   };
 
   if (isLoadingExisting) {
-    return <div className="p-8 text-center text-xs animate-pulse font-bold uppercase text-black">Cargando datos de planilla...</div>;
+    return <div className="p-8 text-center text-xs animate-pulse font-normal uppercase text-black">Cargando datos de planilla...</div>;
   }
 
   const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-4";
-  const labelClass = "text-[11px] font-black text-black tracking-tight font-headline leading-none uppercase";
-  const subLabelClass = "text-[9px] text-neutral-600 font-medium leading-tight mt-1";
-  const inputClass = "h-7 w-28 border-none bg-neutral-50 px-2 text-[12px] font-code text-black font-bold text-right rounded-none focus:ring-0 outline-none";
+  const labelClass = "text-[11px] font-normal text-black tracking-tight font-headline leading-none uppercase";
+  const subLabelClass = "text-[9px] text-neutral-600 font-normal leading-tight mt-1";
+  const inputClass = "h-7 w-28 border-none bg-neutral-50 px-2 text-[12px] font-code text-black font-normal text-right rounded-none focus:ring-0 outline-none";
   const sectionHeaderClass = "flex items-center bg-neutral-100 px-4 py-2 border-y border-neutral-400 mt-2 first:mt-0";
 
   const isDeferredLocked = Object.keys(savedFields).length > 0;
@@ -204,10 +203,10 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
     <div className="mx-auto w-full border border-neutral-400 bg-white font-body shadow-sm rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
       <div className="border-b border-neutral-400 bg-neutral-100 px-4 py-3 flex justify-between items-center">
         <div>
-          <h1 className="text-sm font-black uppercase tracking-tight text-black font-headline">Agua Superficial • AS-001</h1>
+          <h1 className="text-sm font-normal uppercase tracking-tight text-black font-headline">Agua Superficial • AS-001</h1>
           <div className="flex flex-col gap-0.5 mt-1">
-            <p className="text-[10px] text-neutral-600 font-bold uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
-            <div className="flex flex-wrap items-center gap-3 text-[9px] text-black font-black uppercase tracking-tighter mt-1">
+            <p className="text-[10px] text-neutral-600 font-normal uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
+            <div className="flex flex-wrap items-center gap-3 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
               {isDeferred ? (
                 <div className="flex items-center gap-1.5 bg-white border border-black px-2 py-0.5 rounded-sm">
                   <Calendar className="h-3 w-3 text-red-600" />
@@ -216,7 +215,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                     value={manualDate} 
                     onChange={(e) => setManualDate(e.target.value)}
                     disabled={isDeferredLocked}
-                    className="bg-transparent border-none p-0 text-[9px] font-black uppercase outline-none focus:ring-0 w-32"
+                    className="bg-transparent border-none p-0 text-[9px] font-normal uppercase outline-none focus:ring-0 w-32"
                   />
                 </div>
               ) : (
@@ -235,7 +234,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                 )}
               >
                 <CheckCircle2 className="h-2.5 w-2.5" />
-                <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+                <span className="text-[7px] font-normal">{isDeferred ? "DIFERIDA" : "REAL"}</span>
               </button>
 
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
@@ -248,7 +247,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         {sections.map((section, sIdx) => (
           <div key={sIdx}>
             <div className={sectionHeaderClass}>
-              <span className="text-[10px] font-black uppercase tracking-wider text-black">{section.title}</span>
+              <span className="text-[10px] font-normal uppercase tracking-wider text-black">{section.title}</span>
             </div>
             <div className="p-0">
               {section.params.map((param, pIdx) => (
@@ -295,7 +294,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
       </div>
 
       <div className="bg-white p-4 border-t border-neutral-400">
-        <button onClick={onClose} className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-md">Finalizar y Cerrar Planilla</button>
+        <button onClick={onClose} className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] font-normal uppercase tracking-widest text-white shadow-md">Finalizar y Cerrar Planilla</button>
       </div>
     </div>
   );
