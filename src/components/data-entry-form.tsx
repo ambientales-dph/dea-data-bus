@@ -366,6 +366,7 @@ export function DataEntryForm({
   const [activeView, setActiveView] = useState<FormView>('summary');
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [activeFormId, setActiveFormId] = useState<string | null>(null);
+  const [preSelectedSurveyId, setPreSelectedSurveyId] = useState<string | null>(null);
   
   const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
@@ -521,19 +522,18 @@ export function DataEntryForm({
     const currentKey = `${selectedPoint.lat.toFixed(6)}-${selectedPoint.lon.toFixed(6)}-${selectedPoint.stationId}`;
 
     if (!isInitialLoadRef.current && lastPointKeyRef.current !== currentKey) {
+      const protectedViews: FormView[] = ['select-template', 'report-entry', 'consult', 'surveys'];
+      if (protectedViews.includes(activeView)) {
+        lastPointKeyRef.current = currentKey;
+        return;
+      }
+
       if (selectedPoint.formId && selectedPoint.reportId) {
         setCurrentReportId(selectedPoint.reportId);
         setActiveFormId(selectedPoint.formId);
         setSelectedTemplate(selectedPoint.templateId || 'manual');
         setActiveView('report-entry');
-      } else if (
-        activeView !== 'create-station' && 
-        activeView !== 'edit-station' && 
-        activeView !== 'select-template' && 
-        activeView !== 'report-entry' && 
-        activeView !== 'consult' &&
-        activeView !== 'surveys'
-      ) {
+      } else {
         if (selectedPoint.stationId) {
           setActiveView('summary');
         } else {
@@ -546,9 +546,6 @@ export function DataEntryForm({
         setSelectedProject('');
         setProjectSearch('');
         setSelectedTemplate('manual');
-      } else {
-        setEditLat(selectedPoint.lat.toString());
-        setEditLon(selectedPoint.lon.toString());
       }
       
       lastPointKeyRef.current = currentKey;
@@ -992,7 +989,6 @@ export function DataEntryForm({
       basinCode: station.basinCode
     };
     
-    // Actualizamos el ref ANTES de disparar el update en Home para evitar el reseteo del useEffect
     lastPointKeyRef.current = `${point.lat.toFixed(6)}-${point.lon.toFixed(6)}-${point.stationId}`;
     
     onPointUpdate(point);
@@ -1087,7 +1083,10 @@ export function DataEntryForm({
 
   if (activeView === 'surveys') {
     return <SurveyManager 
-      onClose={() => setActiveView('summary')} 
+      onClose={() => {
+        setPreSelectedSurveyId(null);
+        setActiveView('summary');
+      }} 
       onSurveySelected={(s) => {
         if (s && s.oid && onBasinHighlight) {
            const match = s.oid.match(/^LV-?([A-Za-z]{2,4})/);
@@ -1097,6 +1096,7 @@ export function DataEntryForm({
         }
       }} 
       onReportClick={handleDeepLinkReport}
+      initialSurveyId={preSelectedSurveyId}
     />;
   }
 
@@ -1215,6 +1215,8 @@ export function DataEntryForm({
   }
 
   if (activeView === 'select-template' && selectedPoint.stationId) {
+    const associatedSurvey = levantamientos?.find((l: any) => l.id === currentReportData?.surveyId);
+
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
         <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2 text-black font-normal">
@@ -1226,8 +1228,23 @@ export function DataEntryForm({
               <LayoutList className="h-5 w-5 text-black" />
               {currentReportId ? `Reporte: ${currentReportData?.oid || 'Cargando...'}` : '2. Elegir Planilla de Carga'}
             </CardTitle>
-            <CardDescription className="text-xs text-neutral-600">
-              {currentReportId ? 'Gestión de planillas y edición de datos del reporte.' : 'Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.'}
+            <CardDescription className="text-[11px] text-black font-normal uppercase">
+              {currentReportId ? (
+                associatedSurvey ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="opacity-60">Levantamiento:</span>
+                    <button 
+                      onClick={() => {
+                        setPreSelectedSurveyId(associatedSurvey.id);
+                        setActiveView('surveys');
+                      }}
+                      className="text-primary hover:underline transition-all"
+                    >
+                      {associatedSurvey.oid}
+                    </button>
+                  </div>
+                ) : <span className="opacity-40 mt-1 block italic">Sin vinculación a levantamiento</span>
+              ) : 'Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

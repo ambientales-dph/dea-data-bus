@@ -21,16 +21,17 @@ interface SurveyManagerProps {
   onClose: () => void;
   onSurveySelected?: (survey: any | null) => void;
   onReportClick?: (stationId: string, reportId: string) => void;
+  initialSurveyId?: string | null;
 }
 
-export function SurveyManager({ onClose, onSurveySelected, onReportClick }: SurveyManagerProps) {
+export function SurveyManager({ onClose, onSurveySelected, onReportClick, initialSurveyId }: SurveyManagerProps) {
   const { toast } = useToast();
   const db = useFirestore();
   const { user } = useUser();
   const isAdmin = useMemo(() => isUserAdmin(user?.email || null), [user?.email]);
 
-  const [view, setView] = useState<'list' | 'create' | 'edit'>('list');
-  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
+  const [view, setView] = useState<'list' | 'create' | 'edit'>(initialSurveyId ? 'edit' : 'list');
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(initialSurveyId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
