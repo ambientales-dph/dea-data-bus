@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, Info, Check, Send, ArrowLeft, Clock, User, Calendar } from 'lucide-react';
@@ -174,49 +174,38 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
     const t2 = Date.now();
     const deltaMs = t2 - t1;
 
-    try {
-      const q = query(
-        collection(db, 'samples'),
-        where('reportId', '==', reportId),
-        where('formId', '==', formId),
-        where('analyte', '==', label)
-      );
-      const snapshot = await getDocs(q);
+    // Deterministic ID for offline stability
+    const safeAnalyte = label.replace(/[^a-zA-Z0-9]/g, '_');
+    const docId = `${reportId}_${formId}_${safeAnalyte}`;
+    const sampleRef = doc(db, 'samples', docId);
 
-      const payload = {
-        value: `${entry.value}`,
-        latitude: location?.latitude ?? null,
-        longitude: location?.longitude ?? null,
-        retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-        fechaServidor: serverTimestamp(),
-        timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(), 
-        isDeferred,
-        userId: user.uid,
-        userEmail: user.email
-      };
+    const payload = {
+      medium: 'agua_subterranea',
+      parameterType: type,
+      analyte: label,
+      reportId,
+      formId,
+      stationId,
+      value: `${entry.value}`,
+      latitude: location?.latitude ?? null,
+      longitude: location?.longitude ?? null,
+      retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+      fechaServidor: serverTimestamp(),
+      timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(), 
+      isDeferred,
+      userId: user.uid,
+      userEmail: user.email
+    };
 
-      if (!snapshot.empty) {
-        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
-      } else {
-        await addDoc(collection(db, 'samples'), {
-          ...payload,
-          medium: 'agua_subterranea',
-          parameterType: type,
-          analyte: label,
-          reportId,
-          formId,
-          stationId,
-        });
-      }
+    // Non-blocking optimistic write
+    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
 
-      await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
-      setSavedFields(prev => ({ ...prev, [key]: true }));
-      toast({ title: "Guardado", description: location ? "Sincronizado con GPS." : "Sincronizado (Sin GPS)." });
-    } catch (error: any) {
-      console.error(error);
-    } finally {
-      setSavingFields(prev => ({ ...prev, [key]: false }));
-    }
+    // Update report metadata (optimistic)
+    updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+    
+    setSavedFields(prev => ({ ...prev, [key]: true }));
+    setSavingFields(prev => ({ ...prev, [key]: false }));
+    toast({ title: "Guardado localmente", description: location ? "Sincronizado con GPS." : "Sincronizado." });
   };
 
   const formatTimestamp = (ts: any) => {

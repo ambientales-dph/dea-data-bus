@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Check, Clock, User, Wind, CheckCircle2, Calendar } from 'lucide-react';
@@ -111,49 +111,38 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
     const t2 = Date.now();
     const deltaMs = t2 - t1;
 
-    try {
-      const q = query(
-        collection(db, 'samples'),
-        where('reportId', '==', reportId),
-        where('formId', '==', formId),
-        where('analyte', '==', name)
-      );
-      const snapshot = await getDocs(q);
+    // Deterministic ID for offline stability
+    const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
+    const docId = `${reportId}_${formId}_${safeAnalyte}`;
+    const sampleRef = doc(db, 'samples', docId);
 
-      const payload = {
-        value: `${entry.value}`,
-        latitude: location?.latitude ?? null,
-        longitude: location?.longitude ?? null,
-        retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-        fechaServidor: serverTimestamp(),
-        timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-        isDeferred,
-        userId: user.uid,
-        userEmail: user.email
-      };
+    const payload = {
+      medium: 'aire',
+      parameterType: category,
+      analyte: name,
+      reportId,
+      formId,
+      stationId,
+      value: `${entry.value}`,
+      latitude: location?.latitude ?? null,
+      longitude: location?.longitude ?? null,
+      retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+      fechaServidor: serverTimestamp(),
+      timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+      isDeferred,
+      userId: user.uid,
+      userEmail: user.email
+    };
 
-      if (!snapshot.empty) {
-        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
-      } else {
-        await addDoc(collection(db, 'samples'), {
-          ...payload,
-          medium: 'aire',
-          parameterType: category,
-          analyte: name,
-          reportId,
-          formId,
-          stationId,
-        });
-      }
+    // Deterministic save - works offline instantly
+    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
 
-      await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
-      setSavedFields(prev => ({ ...prev, [name]: true }));
-      toast({ title: "Guardado", description: location ? "Sincronizado con GPS." : "Guardado (Sin señal GPS)." });
-    } catch (error: any) {
-      console.error(error);
-    } finally {
-      setSavingFields(prev => ({ ...prev, [name]: false }));
-    }
+    // Update report
+    updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+    
+    setSavedFields(prev => ({ ...prev, [name]: true }));
+    setSavingFields(prev => ({ ...prev, [name]: false }));
+    toast({ title: "Guardado localmente", description: location ? "Sincronizado con GPS." : "Guardado." });
   };
 
   const formatTimestamp = (ts: any) => {

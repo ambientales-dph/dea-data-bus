@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, serverTimestamp, updateDoc, arrayUnion, getDocs, Timestamp } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -120,49 +120,38 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     const t2 = Date.now();
     const deltaMs = t2 - t1;
 
-    try {
-      const q = query(
-        collection(db, 'samples'),
-        where('reportId', '==', reportId),
-        where('formId', '==', formId),
-        where('analyte', '==', name)
-      );
-      const snapshot = await getDocs(q);
+    // Generar un ID determinístico para permitir guardado offline instantáneo sin esperar a getDocs
+    const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
+    const docId = `${reportId}_${formId}_${safeAnalyte}`;
+    const sampleRef = doc(db, 'samples', docId);
 
-      const payload = {
-        value: `${value}`,
-        latitude: location?.latitude || null,
-        longitude: location?.longitude || null,
-        retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-        fechaServidor: serverTimestamp(),
-        timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-        isDeferred,
-        userId: user.uid,
-        userEmail: user.email
-      };
+    const payload = {
+      medium: 'suelo',
+      parameterType: category,
+      analyte: name,
+      reportId,
+      formId,
+      stationId,
+      value: `${value}`,
+      latitude: location?.latitude || null,
+      longitude: location?.longitude || null,
+      retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+      fechaServidor: serverTimestamp(),
+      timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+      isDeferred,
+      userId: user.uid,
+      userEmail: user.email
+    };
 
-      if (!snapshot.empty) {
-        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
-      } else {
-        addDoc(collection(db, 'samples'), {
-          ...payload,
-          medium: 'suelo',
-          parameterType: category,
-          analyte: name,
-          reportId,
-          formId,
-          stationId,
-        });
-      }
+    // Guardado optimista: no usamos await aquí para no bloquear la UI offline
+    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
 
-      updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
-      setSavedFields(prev => ({ ...prev, [name]: true }));
-      toast({ title: "Sincronizado", description: location ? "Dato con GPS." : "Dato guardado." });
-    } catch (error: any) {
-      console.error(error);
-    } finally {
-      setSavingFields(prev => ({ ...prev, [name]: false }));
-    }
+    // Actualizar el reporte para registrar al editor (también optimista)
+    updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+    
+    setSavedFields(prev => ({ ...prev, [name]: true }));
+    setSavingFields(prev => ({ ...prev, [name]: false }));
+    toast({ title: "Sincronizado localmente", description: location ? "Dato con GPS capturado." : "Dato guardado." });
   };
 
   const handleInputChange = (name: string, value: any) => {

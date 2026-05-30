@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, Timestamp } from 'firebase/firestore'
+import { collection, query, where, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, Timestamp } from 'firebase/firestore'
 import { useFirestore, useUser, useDoc } from '@/firebase'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -236,49 +236,38 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     const t2 = Date.now();
     const deltaMs = t2 - t1;
 
-    try {
-      const q = query(
-        collection(db, 'samples'),
-        where('reportId', '==', reportId),
-        where('formId', '==', formId),
-        where('analyte', '==', name)
-      );
-      const snapshot = await getDocs(q);
+    // Determinstic ID for offline
+    const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
+    const docId = `${reportId}_${formId}_${safeAnalyte}`;
+    const sampleRef = doc(db, 'samples', docId);
 
-      const payload = {
-        value: `${value}`,
-        latitude: location?.latitude || null,
-        longitude: location?.longitude || null,
-        retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-        fechaServidor: serverTimestamp(),
-        timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-        isDeferred,
-        userId: user.uid,
-        userEmail: user.email
-      };
+    const payload = {
+      medium: 'suelo',
+      parameterType: category,
+      analyte: name,
+      reportId,
+      formId,
+      stationId,
+      value: `${value}`,
+      latitude: location?.latitude || null,
+      longitude: location?.longitude || null,
+      retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+      fechaServidor: serverTimestamp(),
+      timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+      isDeferred,
+      userId: user.uid,
+      userEmail: user.email
+    };
 
-      if (!snapshot.empty) {
-        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
-      } else {
-        addDoc(collection(db, 'samples'), {
-          ...payload,
-          medium: 'suelo',
-          parameterType: category,
-          analyte: name,
-          reportId,
-          formId,
-          stationId,
-        });
-      }
+    // Optimistic blind write
+    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
 
-      await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
-      setSavedFields(prev => ({ ...prev, [name]: true }));
-      toast({ title: "Guardado", description: location ? "Sincronizado con GPS." : "Sincronizado." });
-    } catch (error: any) {
-      console.error(error);
-    } finally {
-      setSavingFields(prev => ({ ...prev, [name]: false }));
-    }
+    // Update report
+    updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+    
+    setSavedFields(prev => ({ ...prev, [name]: true }));
+    setSavingFields(prev => ({ ...prev, [name]: false }));
+    toast({ title: "Guardado localmente", description: location ? "Sincronizado con GPS." : "Sincronizado." });
   };
 
   const handleCerrarPlanilla = async () => {
@@ -325,47 +314,34 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     const t2 = Date.now();
     const deltaMs = t2 - t1;
 
-    try {
-      const q = query(
-        collection(db, 'samples'),
-        where('reportId', '==', reportId),
-        where('formId', '==', formId),
-        where('analyte', '==', analyteName)
-      );
-      const snapshot = await getDocs(q);
+    // Deterministic ID for layer fields
+    const safeAnalyte = analyteName.replace(/[^a-zA-Z0-9]/g, '_');
+    const docId = `${reportId}_${formId}_${safeAnalyte}`;
+    const sampleRef = doc(db, 'samples', docId);
 
-      const payload = {
-        value: `${value}`,
-        latitude: location?.latitude || null,
-        longitude: location?.longitude || null,
-        retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-        fechaServidor: serverTimestamp(),
-        timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-        isDeferred,
-        userId: user.uid,
-        userEmail: user.email
-      };
+    const payload = {
+      medium: 'suelo',
+      parameterType: 'Estratigrafía',
+      analyte: analyteName,
+      reportId,
+      formId,
+      stationId,
+      value: `${value}`,
+      latitude: location?.latitude || null,
+      longitude: location?.longitude || null,
+      retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+      fechaServidor: serverTimestamp(),
+      timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+      isDeferred,
+      userId: user.uid,
+      userEmail: user.email
+    };
 
-      if (!snapshot.empty) {
-        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
-      } else {
-        addDoc(collection(db, 'samples'), {
-          ...payload,
-          medium: 'suelo',
-          parameterType: 'Estratigrafía',
-          analyte: analyteName,
-          reportId,
-          formId,
-          stationId,
-        });
-      }
+    // Instant local commit
+    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
 
-      setSavedFields(prev => ({ ...prev, [analyteName]: true }));
-    } catch (error: any) {
-      console.error(error);
-    } finally {
-      setSavingFields(prev => ({ ...prev, [analyteName]: false }));
-    }
+    setSavedFields(prev => ({ ...prev, [analyteName]: true }));
+    setSavingFields(prev => ({ ...prev, [analyteName]: false }));
   };
 
   const handleCapaChange = (id: string, field: keyof CapaSuelo, value: string | boolean) => {
@@ -395,7 +371,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     for (const field of fieldsToSave) {
       await saveLayerField(capa.id, field, capa[field]);
     }
-    toast({ title: "Capa sincronizada", description: "Todos los datos del estrato fueron guardados con GPS." });
+    toast({ title: "Estrato sincronizado localmente", description: "Todos los campos fueron capturados." });
   };
 
   const isLayerSaved = (id: string) => {
@@ -626,7 +602,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                     <button 
                       onClick={() => saveWholeLayer(capa)} 
                       className={cn("p-1 transition-colors", isLayerSaved(capa.id) ? "text-green-600" : "text-black hover:text-primary")}
-                      title="Sincronizar Estrato con GPS"
+                      title="Sincronizar Estrato localmente"
                     >
                       {isLayerSaving(capa.id) ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
