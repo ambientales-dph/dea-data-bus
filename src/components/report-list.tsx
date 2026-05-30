@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -102,43 +103,43 @@ export function ReportList({ stationId, onOpenReport }: ReportListProps) {
 
   const handleDeleteReport = async () => {
     if (!deletingReport || !db) return;
+    
+    const targetReportId = deletingReport.id;
     setIsDeleting(true);
-    try {
-      const q = query(collection(db, 'samples'), where('reportId', '==', deletingReport.id));
-      const samplesSnap = await getDocs(q);
-      
-      for (const sDoc of samplesSnap.docs) {
-        await deleteDoc(doc(db, 'samples', sDoc.id));
-      }
 
-      if (storage) {
-        const reportStorageRef = ref(storage, `reports/${deletingReport.id}`);
-        try {
-          const listRes = await listAll(reportStorageRef);
-          for (const folder of listRes.prefixes) {
-            const innerList = await listAll(folder);
-            for (const item of innerList.items) {
-              await deleteObject(item);
-            }
-          }
-          for (const item of listRes.items) {
-            await deleteObject(item);
-          }
-        } catch (storageErr) {
-          console.warn("Storage cleanup skipped or failed:", storageErr);
+    // BORRADO OPTIMISTA UI
+    setDeletingReport(null);
+    toast({ title: "Reporte eliminado", description: "Se limpiará la base de datos localmente." });
+
+    // Proceso en segundo plano
+    (async () => {
+      try {
+        const q = query(collection(db, 'samples'), where('reportId', '==', targetReportId));
+        const samplesSnap = await getDocs(q);
+        
+        samplesSnap.docs.forEach(sDoc => {
+          deleteDoc(doc(db, 'samples', sDoc.id)).catch(console.error);
+        });
+
+        if (storage) {
+          const reportStorageRef = ref(storage, `reports/${targetReportId}`);
+          listAll(reportStorageRef).then(res => {
+            res.prefixes.forEach(folder => {
+              listAll(folder).then(inner => {
+                inner.items.forEach(item => deleteObject(item).catch(() => {}));
+              }).catch(() => {});
+            });
+            res.items.forEach(item => deleteObject(item).catch(() => {}));
+          }).catch(() => {});
         }
-      }
 
-      await deleteDoc(doc(db, 'reports', deletingReport.id));
-      
-      toast({ title: "Reporte eliminado", description: "Se limpió la base de datos y el storage asociado." });
-    } catch (e) {
-      console.error(e);
-      toast({ variant: "destructive", title: "Error", description: "Falla crítica al borrar reporte." });
-    } finally {
-      setIsDeleting(false);
-      setDeletingReport(null);
-    }
+        deleteDoc(doc(db, 'reports', targetReportId)).catch(console.error);
+      } catch (e) {
+        console.error("Error en borrado de fondo:", e);
+      } finally {
+        setIsDeleting(false);
+      }
+    })();
   };
 
   if (reportsLoading) {

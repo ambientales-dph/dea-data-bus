@@ -696,6 +696,7 @@ export function DataEntryForm({
     setIsDeletingStation(true);
     const stationRef = doc(db, 'stations', selectedPoint.stationId);
     
+    // BORRADO OPTIMISTA
     deleteDoc(stationRef).catch(async (error) => { 
        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: stationRef.path, operation: 'delete' })); 
     });
@@ -807,20 +808,35 @@ export function DataEntryForm({
 
   const handleDeletePlanilla = async () => {
     if (!deletingPlanilla || !db || !currentReportId) return;
+    
+    const targetFid = deletingPlanilla.fid;
     setIsDeletingPlanilla(true);
-    try {
-      const q = query(collection(db, 'samples'), where('reportId', '==', currentReportId), where('formId', '==', deletingPlanilla.fid));
-      const snap = await getDocs(q);
-      for (const sDoc of snap.docs) {
-        deleteDoc(doc(db, 'samples', sDoc.id));
+
+    // BORRADO OPTIMISTA UI
+    setDeletingPlanilla(null);
+    toast({ title: "Eliminando planilla", description: "Los datos se están limpiando localmente." });
+
+    // Proceso en segundo plano sin bloquear
+    (async () => {
+      try {
+        const q = query(collection(db, 'samples'), where('reportId', '==', currentReportId), where('formId', '==', targetFid));
+        const snap = await getDocs(q);
+        snap.docs.forEach(sDoc => {
+          deleteDoc(doc(db, 'samples', sDoc.id)).catch(console.error);
+        });
+        
+        if (storage) {
+          const planillaStorageRef = ref(storage, `reports/${currentReportId}/${targetFid}`);
+          listAll(planillaStorageRef).then(res => {
+            res.items.forEach(item => deleteObject(item).catch(() => {}));
+          }).catch(() => {});
+        }
+      } catch (e) {
+        console.error("Falla en borrado de fondo:", e);
+      } finally {
+        setIsDeletingPlanilla(false);
       }
-      if (storage) {
-        const planillaStorageRef = ref(storage, `reports/${currentReportId}/${deletingPlanilla.fid}`);
-        try { const listRes = await listAll(planillaStorageRef); for (const item of listRes.items) await deleteObject(item); } catch (storageErr) {}
-      }
-      toast({ title: "Planilla borrada" });
-    } catch (e) { toast({ variant: "destructive", title: "Error" }); }
-    finally { setIsDeletingPlanilla(false); setDeletingPlanilla(null); }
+    })();
   };
 
   const handleExplorerSelectStation = (point: SelectedPoint) => { lastPointKeyRef.current = `${point.lat.toFixed(6)}-${point.lon.toFixed(6)}-${point.stationId}`; onPointUpdate(point); setActiveView('summary'); };

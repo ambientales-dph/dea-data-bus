@@ -75,37 +75,40 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
 
   const handleDeletePlanilla = async () => {
     if (!deletingPlanilla || !db) return;
+    
+    const targetFid = deletingPlanilla.fid;
     setIsDeleting(true);
-    try {
-      const q = query(
-        collection(db, 'samples'), 
-        where('reportId', '==', reportId),
-        where('formId', '==', deletingPlanilla.fid)
-      );
-      const snap = await getDocs(q);
 
-      for (const sDoc of snap.docs) {
-        await deleteDoc(doc(db, 'samples', sDoc.id));
+    // BORRADO OPTIMISTA UI
+    setDeletingPlanilla(null);
+    toast({ title: "Eliminando planilla", description: "Se limpiarán los registros en segundo plano." });
+
+    // Proceso asíncrono
+    (async () => {
+      try {
+        const q = query(
+          collection(db, 'samples'), 
+          where('reportId', '==', reportId),
+          where('formId', '==', targetFid)
+        );
+        const snap = await getDocs(q);
+
+        snap.docs.forEach(sDoc => {
+          deleteDoc(doc(db, 'samples', sDoc.id)).catch(console.error);
+        });
+
+        if (storage) {
+          const planillaStorageRef = ref(storage, `reports/${reportId}/${targetFid}`);
+          listAll(planillaStorageRef).then(res => {
+            res.items.forEach(item => deleteObject(item).catch(() => {}));
+          }).catch(() => {});
+        }
+      } catch (e) {
+        console.error("Falla en borrado de fondo:", e);
+      } finally {
+        setIsDeleting(false);
       }
-
-      if (storage) {
-        const planillaStorageRef = ref(storage, `reports/${reportId}/${deletingPlanilla.fid}`);
-        try {
-          const listRes = await listAll(planillaStorageRef);
-          for (const item of listRes.items) {
-            await deleteObject(item);
-          }
-        } catch (storageErr) {}
-      }
-
-      toast({ title: "Planilla borrada", description: "Se eliminaron los datos y las evidencias visuales." });
-    } catch (e) {
-      console.error(e);
-      toast({ variant: "destructive", title: "Error", description: "No se pudo borrar la planilla." });
-    } finally {
-      setIsDeleting(false);
-      setDeletingPlanilla(null);
-    }
+    })();
   };
 
   const protocolLabel = (protocol: string | undefined, medium: string) => {

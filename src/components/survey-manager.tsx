@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, Timestamp, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, Timestamp, deleteDoc, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useDoc } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -105,7 +105,6 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
 
   const currentSurveyBasin = useMemo(() => {
     if (!selectedSurveyData?.oid) return null;
-    // Regex flexible para LV-RPM o LVRPM
     const match = selectedSurveyData.oid.match(/LV-?([A-Za-z]{2,4})/i);
     return match ? match[1].toUpperCase() : null;
   }, [selectedSurveyData?.oid]);
@@ -113,21 +112,15 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
   const unlinkedReports = useMemo(() => {
     const q = reportSearch.toLowerCase();
     return allReports.filter((r: any) => {
-      // Si ya tiene un surveyId asignado (aunque sea "" o null explícito), lo filtramos si no coincide
       if (r.surveyId && r.surveyId !== "") return false;
-      
       const reportOid = r.oid || '';
-      // Regex flexible para RM-RPM o RMRPM
       const match = reportOid.match(/RM-?([A-Za-z]{2,4})/i);
       const reportBasin = match ? match[1].toUpperCase() : null;
-      
-      // Si la campaña tiene una cuenca definida, solo mostramos reportes de esa cuenca
       if (currentSurveyBasin && reportBasin !== currentSurveyBasin) return false;
-      
       return reportOid.toLowerCase().includes(q) || (r.trelloCardName || '').toLowerCase().includes(q);
     })
     .sort((a: any, b: any) => (a.oid || "").localeCompare(b.oid || ""))
-    .slice(0, 50); // Aumentamos límite para evitar que desaparezcan offline
+    .slice(0, 50);
   }, [allReports, reportSearch, currentSurveyBasin]);
 
   useEffect(() => {
@@ -177,7 +170,6 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
       setSelectedSurveyId(docRef.id);
       setView('edit');
     } catch (e) {
-      // Fallback offline
       const tempRef = doc(collection(db, 'levantamientos'));
       setDoc(tempRef, surveyData);
       setSelectedSurveyId(tempRef.id);
@@ -209,20 +201,29 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
 
   const handleDelete = async () => {
     if (!selectedSurveyId) return;
+    
+    const targetSurveyId = selectedSurveyId;
     setIsDeleting(true);
-    try {
-      for (const r of linkedReports) {
-        updateDoc(doc(db, 'reports', r.id), { surveyId: null });
+
+    // BORRADO OPTIMISTA UI
+    setShowDeleteDialog(false);
+    setView('list');
+    toast({ title: "Campaña eliminada", description: "Se limpiarán los vínculos en segundo plano." });
+
+    // Proceso asíncrono
+    (async () => {
+      try {
+        const reportsToUnlink = allReports.filter((r: any) => r.surveyId === targetSurveyId);
+        reportsToUnlink.forEach(r => {
+          updateDoc(doc(db, 'reports', r.id), { surveyId: null }).catch(console.error);
+        });
+        deleteDoc(doc(db, 'levantamientos', targetSurveyId)).catch(console.error);
+      } catch (e) {
+        console.error("Error en borrado de fondo:", e);
+      } finally {
+        setIsDeleting(false);
       }
-      deleteDoc(doc(db, 'levantamientos', selectedSurveyId));
-      toast({ title: "Campaña eliminada" });
-      setView('list');
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteDialog(false);
-    }
+    })();
   };
 
   const linkReport = async (reportId: string) => {
