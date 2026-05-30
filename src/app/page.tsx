@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, GripHorizontal, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin, ListTodo, Clock, FolderKanban } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, GripHorizontal, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin, ListTodo, Clock, FolderKanban, ChevronUp, ChevronDown } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,7 @@ export interface SelectedPoint {
   reportId?: string;
   formId?: string;
   templateId?: string;
-  surveyId?: string; // Para navegación a campañas desde el buscador
+  surveyId?: string; 
 }
 
 interface SearchResult {
@@ -66,7 +66,7 @@ const normalizeText = (text: string) => {
 export default function Home() {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(420);
-  const [mapHeight, setMapHeight] = useState(40);
+  const [mapHeight, setMapHeight] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -324,7 +324,7 @@ export default function Home() {
       }
     });
 
-    // 4. Campañas (Levantamientos)
+    // 4. Campañas
     const campañaResults: SearchResult[] = (campañas || [])
       .filter(l => {
         const oid = normalizeText(String(l.oid || ''));
@@ -588,14 +588,42 @@ export default function Home() {
               isResizing && "bg-primary/30"
             )}
           >
+            {/* Barra divisora Desktop */}
             <div className="hidden md:block w-[1px] h-full bg-border group-hover:bg-primary/50" />
             <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-border rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
               <GripVertical className="h-3 w-3 text-muted-foreground" />
             </div>
+
+            {/* Barra divisora y Mando Mobile */}
             <div className="md:hidden w-12 h-1 bg-border group-hover:bg-primary/50 rounded-full" />
-            <div className="md:hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-border rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-              <GripHorizontal className="h-3 w-3 text-muted-foreground" />
-            </div>
+            {isMobile && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center bg-white border border-neutral-300 rounded-full shadow-xl h-8 px-1 gap-1 z-50">
+                <button 
+                  onPointerDown={(e) => e.stopPropagation()} 
+                  onClick={(e) => { e.stopPropagation(); setMapHeight(20); }} 
+                  className="p-1.5 hover:bg-neutral-100 rounded-full text-black transition-colors"
+                  title="Colapsar Mapa"
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </button>
+                <button 
+                  onPointerDown={(e) => e.stopPropagation()} 
+                  onClick={(e) => { e.stopPropagation(); setMapHeight(50); }} 
+                  className="px-2 h-full flex items-center hover:bg-neutral-100 transition-colors"
+                  title="Vista 50/50"
+                >
+                  <div className="w-4 h-1 bg-black rounded-full" />
+                </button>
+                <button 
+                  onPointerDown={(e) => e.stopPropagation()} 
+                  onClick={(e) => { e.stopPropagation(); setMapHeight(80); }} 
+                  className="p-1.5 hover:bg-neutral-100 rounded-full text-black transition-colors"
+                  title="Expandir Mapa"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
 
           <div 
