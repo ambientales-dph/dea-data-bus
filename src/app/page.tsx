@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useUser, useFirestore, useCollection } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query } from 'firebase/firestore';
-import { LogOut, Leaf, GripVertical, GripHorizontal, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin, ListTodo, Clock } from 'lucide-react';
+import { LogOut, Leaf, GripVertical, GripHorizontal, Search, Loader2, Database, X, FileText, Settings, User, Cloud, CloudOff, MapPin, ListTodo, Clock, FolderKanban } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -36,10 +37,11 @@ export interface SelectedPoint {
   reportId?: string;
   formId?: string;
   templateId?: string;
+  surveyId?: string; // Para navegación a campañas desde el buscador
 }
 
 interface SearchResult {
-  type: 'station' | 'place' | 'report' | 'planilla';
+  type: 'station' | 'place' | 'report' | 'planilla' | 'campaña';
   display_name: string;
   lat: string;
   lon: string;
@@ -47,13 +49,15 @@ interface SearchResult {
   reportId?: string;
   formId?: string;
   templateId?: string;
+  surveyId?: string;
   trelloCode?: string;
   date?: any;
   author?: string;
+  description?: string;
 }
 
 const MIN_SIDEBAR_WIDTH = 320;
-const HEADER_HEIGHT = 64; // h-16 en píxeles
+const HEADER_HEIGHT = 64;
 
 const normalizeText = (text: string) => {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -62,7 +66,7 @@ const normalizeText = (text: string) => {
 export default function Home() {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(420);
-  const [mapHeight, setMapHeight] = useState(40); // 40% de altura inicial en móvil
+  const [mapHeight, setMapHeight] = useState(40);
   const [isResizing, setIsResizing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -100,14 +104,18 @@ export default function Home() {
   }, [db, user]);
   const { data: samples } = useCollection(samplesQuery);
 
+  const campañasQuery = useMemo(() => {
+    if (!db || !user) return null;
+    return query(collection(db, 'levantamientos'));
+  }, [db, user]);
+  const { data: campañas } = useCollection(campañasQuery);
+
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-    
     setIsOnline(navigator.onLine);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -122,7 +130,6 @@ export default function Home() {
         setSidebarWidth(window.innerWidth / 2);
       }
     };
-    
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -170,10 +177,6 @@ export default function Home() {
   };
 
   const startResizing = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    // Evitar que el touch scroll del navegador interfiera
-    if ('touches' in e) {
-      // No hacemos preventDefault aquí para no bloquear el inicio del gesto si el navegador es estricto
-    }
     setIsResizing(true);
   }, []);
 
@@ -183,29 +186,18 @@ export default function Home() {
 
   const resize = useCallback((event: MouseEvent | TouchEvent) => {
     if (!isResizing) return;
-
-    // Obtener coordenadas de mouse o touch
     const clientX = 'touches' in event ? event.touches[0].clientX : (event as MouseEvent).clientX;
     const clientY = 'touches' in event ? event.touches[0].clientY : (event as MouseEvent).clientY;
 
     if (isMobile) {
-      // Lógica de redimensionamiento vertical para móvil
       const availableHeight = window.innerHeight - HEADER_HEIGHT;
       const relativeY = clientY - HEADER_HEIGHT;
       const newHeightPct = (relativeY / availableHeight) * 100;
-      
-      // Limitar entre 20% y 80% del mapa
-      if (newHeightPct >= 20 && newHeightPct <= 80) {
-        setMapHeight(newHeightPct);
-      }
+      if (newHeightPct >= 20 && newHeightPct <= 80) setMapHeight(newHeightPct);
     } else {
-      // Lógica de redimensionamiento horizontal para desktop
       const newWidth = window.innerWidth - clientX;
       const maxWidth = window.innerWidth * 0.95;
-      
-      if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= maxWidth) {
-        setSidebarWidth(newWidth);
-      }
+      if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= maxWidth) setSidebarWidth(newWidth);
     }
   }, [isResizing, isMobile]);
 
@@ -214,7 +206,6 @@ export default function Home() {
     window.addEventListener("mouseup", stopResizing);
     window.addEventListener("touchmove", resize, { passive: false });
     window.addEventListener("touchend", stopResizing);
-    
     return () => {
       window.removeEventListener("mousemove", resize);
       window.removeEventListener("mouseup", stopResizing);
@@ -248,13 +239,11 @@ export default function Home() {
   useEffect(() => {
     const rawQuery = searchQuery.trim();
     const q = normalizeText(rawQuery);
-    
     if (q.length < 2) {
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
-
     const currentSearchId = ++searchIdRef.current;
     
     // 1. Estaciones
@@ -301,19 +290,15 @@ export default function Home() {
     // 3. Planillas
     const planillaResults: SearchResult[] = [];
     const seenPlanillas = new Set<string>();
-
     (samples || []).forEach(s => {
       const fid = s.formId;
       if (!fid || seenPlanillas.has(fid)) return;
-      
       const fidNormalized = normalizeText(fid);
       if (fidNormalized.includes(q)) {
         seenPlanillas.add(fid);
         const report = (reports || []).find(r => r.id === s.reportId);
         const station = (stations || []).find(st => st.id === s.stationId);
-        
         if (report && station) {
-          // Detectar protocolo
           let detectedTemplate = 'manual';
           if (s.medium === 'agua_superficial') detectedTemplate = 'agua_superficial';
           else if (s.medium === 'agua_subterranea') detectedTemplate = 'agua_subterranea';
@@ -322,7 +307,6 @@ export default function Home() {
             if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') detectedTemplate = 'suelo_geotecnia';
             else detectedTemplate = 'suelo_edafologico';
           }
-
           planillaResults.push({
             type: 'planilla',
             display_name: fid,
@@ -340,14 +324,31 @@ export default function Home() {
       }
     });
 
-    const localResults = [...stationResults, ...reportResults, ...planillaResults];
+    // 4. Campañas (Levantamientos)
+    const campañaResults: SearchResult[] = (campañas || [])
+      .filter(l => {
+        const oid = normalizeText(String(l.oid || ''));
+        const desc = normalizeText(String(l.description || ''));
+        return oid.includes(q) || desc.includes(q);
+      })
+      .map(l => ({
+        type: 'campaña',
+        display_name: String(l.oid),
+        lat: '0',
+        lon: '0',
+        surveyId: l.id,
+        date: l.createdAt,
+        author: l.createdByEmail,
+        description: l.description
+      }));
+
+    const localResults = [...stationResults, ...reportResults, ...planillaResults, ...campañaResults];
     setSearchResults(localResults);
 
     if (q.length < 3 || !isOnline) {
       setIsSearching(false);
       return;
     }
-
     setIsSearching(true);
     setShowResults(true);
 
@@ -357,7 +358,6 @@ export default function Home() {
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(rawQuery)}&limit=15&countrycodes=ar`,
           { headers: { 'Accept-Language': 'es' } }
         );
-        
         if (response.ok && currentSearchId === searchIdRef.current) {
           const osmData = await response.json();
           const placeResults: SearchResult[] = osmData.map((place: any) => ({
@@ -366,7 +366,6 @@ export default function Home() {
             lat: place.lat,
             lon: place.lon
           }));
-
           setSearchResults(prev => {
             const locals = prev.filter(r => r.type !== 'place');
             return [...locals, ...placeResults];
@@ -375,36 +374,39 @@ export default function Home() {
       } catch (error) {
         console.error("OSM Search failed", error);
       } finally {
-        if (currentSearchId === searchIdRef.current) {
-          setIsSearching(false);
-        }
+        if (currentSearchId === searchIdRef.current) setIsSearching(false);
       }
     }, 400);
-    
     return () => clearTimeout(timer);
-  }, [searchQuery, stations, reports, samples, isOnline]);
+  }, [searchQuery, stations, reports, samples, campañas, isOnline]);
 
   const handleSelectResult = (result: SearchResult) => {
-    handlePointSelect({
-      lat: parseFloat(result.lat),
-      lon: parseFloat(result.lon),
-      stationId: result.stationId,
-      name: result.type === 'station' ? result.display_name : 
-            result.type === 'report' ? (stations?.find(s => s.id === result.stationId)?.name || 'Estación') : 
-            result.type === 'planilla' ? (stations?.find(s => s.id === result.stationId)?.name || 'Estación') : undefined,
-      reportId: result.reportId,
-      formId: result.formId,
-      templateId: result.templateId
-    });
+    if (result.type === 'campaña') {
+      handlePointSelect({
+        lat: 0,
+        lon: 0,
+        surveyId: result.surveyId
+      });
+    } else {
+      handlePointSelect({
+        lat: parseFloat(result.lat),
+        lon: parseFloat(result.lon),
+        stationId: result.stationId,
+        name: result.type === 'station' ? result.display_name : 
+              result.type === 'report' ? (stations?.find(s => s.id === result.stationId)?.name || 'Estación') : 
+              result.type === 'planilla' ? (stations?.find(s => s.id === result.stationId)?.name || 'Estación') : undefined,
+        reportId: result.reportId,
+        formId: result.formId,
+        templateId: result.templateId
+      });
+    }
     setSearchQuery('');
     setSearchResults([]);
     setShowResults(false);
   };
 
   const handleOpenSettings = () => {
-    setTimeout(() => {
-      setIsSettingsOpen(true);
-    }, 100);
+    setTimeout(() => setIsSettingsOpen(true), 100);
   };
 
   return (
@@ -433,7 +435,7 @@ export default function Home() {
                   {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-foreground" /> : <Search className="h-4 w-4" />}
                 </div>
                 <Input 
-                  placeholder={isMobile ? "Buscar..." : isOnline ? "Buscar estación, reporte, planilla, cuenca o lugar..." : "Buscar local (Offline)..."} 
+                  placeholder={isMobile ? "Buscar..." : isOnline ? "Buscar estación, campaña, reporte, planilla o lugar..." : "Buscar local (Offline)..."} 
                   className="border-0 focus-visible:ring-0 h-full text-xs bg-transparent placeholder:text-[10px] md:placeholder:text-xs text-foreground font-medium"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -467,11 +469,13 @@ export default function Home() {
                               result.type === 'station' ? "bg-primary/10 text-foreground" : 
                               result.type === 'report' ? "bg-accent/10 text-accent" :
                               result.type === 'planilla' ? "bg-neutral-800 text-white" :
+                              result.type === 'campaña' ? "bg-emerald-600 text-white" :
                               "bg-muted text-muted-foreground"
                             )}>
                               {result.type === 'station' ? <Database className="h-4 w-4" /> : 
                                result.type === 'report' ? <FileText className="h-4 w-4" /> :
                                result.type === 'planilla' ? <ListTodo className="h-4 w-4" /> :
+                               result.type === 'campaña' ? <FolderKanban className="h-4 w-4" /> :
                                <MapPin className="h-4 w-4" />}
                             </div>
                             <div className="flex-1 overflow-hidden">
@@ -490,6 +494,7 @@ export default function Home() {
                                     {result.type === 'station' ? 'Estación de Monitoreo' : 
                                      result.type === 'report' ? `Reporte • ${result.trelloCode}` : 
                                      result.type === 'planilla' ? `Planilla • ${result.trelloCode}` : 
+                                     result.type === 'campaña' ? `Campaña • ${result.description?.substring(0, 20)}` :
                                      'Lugar / Ubicación'}
                                   </p>
                                   {result.author && (
@@ -521,12 +526,10 @@ export default function Home() {
                {isOnline ? (
                  <Cloud className="h-4 w-4 text-primary" title="Conectado y Sincronizado" />
                ) : (
-                 <CloudOff className="h-4 w-4 text-destructive" title="Modo Offline - Datos guardados localmente" />
+                 <CloudOff className="h-4 w-4 text-destructive" title="Modo Offline" />
                )}
             </div>
-
             <Separator orientation="vertical" className="h-6 hidden sm:block" />
-
             <div className="flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -544,20 +547,13 @@ export default function Home() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64 shadow-2xl border-primary/10">
-                  <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-2 py-1.5 border-b">
-                    Mi Cuenta
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem 
-                    onSelect={handleOpenSettings} 
-                    className="text-xs font-medium cursor-pointer py-2.5"
-                  >
-                    <Settings className="mr-2 h-4 w-4 text-foreground" />
-                    Configuración de Sesión
+                  <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-2 py-1.5 border-b">Mi Cuenta</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={handleOpenSettings} className="text-xs font-medium cursor-pointer py-2.5">
+                    <Settings className="mr-2 h-4 w-4 text-foreground" /> Configuración de Sesión
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleLogout} className="text-xs font-medium cursor-pointer py-2.5 text-destructive focus:text-destructive focus:bg-destructive/5">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Cerrar Sesión
+                    <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -567,9 +563,7 @@ export default function Home() {
 
         <div className="flex flex-1 flex-col md:flex-row overflow-hidden relative">
           <div 
-            style={{ 
-              height: isMobile ? `${mapHeight}vh` : 'auto' 
-            }}
+            style={{ height: isMobile ? `${mapHeight}vh` : 'auto' }}
             className="w-full md:h-auto md:flex-1 relative overflow-hidden bg-muted/20"
           >
             <div className="absolute inset-0">
@@ -594,13 +588,10 @@ export default function Home() {
               isResizing && "bg-primary/30"
             )}
           >
-            {/* Tirador para Desktop (Vertical) */}
             <div className="hidden md:block w-[1px] h-full bg-border group-hover:bg-primary/50" />
             <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-border rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
               <GripVertical className="h-3 w-3 text-muted-foreground" />
             </div>
-
-            {/* Tirador para Móvil (Horizontal - Tipo Pill) */}
             <div className="md:hidden w-12 h-1 bg-border group-hover:bg-primary/50 rounded-full" />
             <div className="md:hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border border-border rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
               <GripHorizontal className="h-3 w-3 text-muted-foreground" />

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -165,7 +166,7 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
     };
     try {
       const docRef = await addDoc(collection(db, 'levantamientos'), surveyData);
-      toast({ title: "Levantamiento creado", description: `ID: ${finalOid}` });
+      toast({ title: "Campaña creada", description: `ID: ${finalOid}` });
       setSelectedSurveyId(docRef.id);
       setView('edit');
     } catch (e) {
@@ -186,7 +187,7 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
         manualDate: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : null,
         status: 'open'
       });
-      toast({ title: "Actualizado", description: "Datos del levantamiento guardados." });
+      toast({ title: "Campaña actualizada" });
     } catch (e) {
       console.error(e);
     } finally {
@@ -202,7 +203,7 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
         await updateDoc(doc(db, 'reports', r.id), { surveyId: null });
       }
       await deleteDoc(doc(db, 'levantamientos', selectedSurveyId));
-      toast({ title: "Eliminado", description: "El levantamiento y sus vínculos fueron removidos." });
+      toast({ title: "Campaña eliminada" });
       setView('list');
     } catch (e) {
       console.error(e);
@@ -244,7 +245,7 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
                <CardTitle className="text-sm font-normal uppercase tracking-tight text-black">
-                 {view === 'create' ? 'Nuevo Levantamiento' : oid}
+                 {view === 'create' ? 'Nueva Campaña' : oid}
                </CardTitle>
                {view === 'edit' && isAdmin && (
                  <Button variant="ghost" size="icon" onClick={() => setShowDeleteDialog(true)} className="h-6 w-6 text-neutral-400 hover:text-destructive">
@@ -299,7 +300,7 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
                 <Textarea 
                   value={description} 
                   onChange={(e) => setDescription(e.target.value)} 
-                  placeholder="Detalles del levantamiento..."
+                  placeholder="Detalles de la campaña..."
                   className="min-h-[60px] text-xs rounded-none font-normal text-black border-neutral-200"
                 />
               </div>
@@ -408,8 +409,8 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
           open={showDeleteDialog}
           onOpenChange={setShowDeleteDialog}
           onConfirm={handleDelete}
-          title={`Eliminar Levantamiento ${oid}`}
-          description="Se borrará el contenedor. Los reportes asociados seguirán existiendo pero ya no estarán vinculados."
+          title={`Eliminar Campaña ${oid}`}
+          description="Se borrará el contenedor. Los reportes asociados seguirán existiendo."
           isLoading={isDeleting}
         />
       </div>
@@ -423,10 +424,10 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-black hover:bg-neutral-100">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h2 className="text-[10px] font-normal uppercase tracking-[0.2em] text-black">LEVANTAMIENTOS</h2>
+          <h2 className="text-[10px] font-normal uppercase tracking-[0.2em] text-black">CAMPAÑAS</h2>
         </div>
         <Button size="sm" onClick={() => setView('create')} className="h-8 text-[9px] font-normal uppercase rounded-none bg-black text-white hover:bg-neutral-800">
-          <Plus className="h-3 w-3 mr-1" /> Nuevo
+          <Plus className="h-3 w-3 mr-1" /> Nueva
         </Button>
       </div>
 
@@ -436,7 +437,7 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
         ) : surveys.length === 0 ? (
           <div className="text-center py-20 opacity-30">
             <FolderKanban className="h-10 w-10 mx-auto mb-3" />
-            <p className="text-[10px] uppercase font-normal text-black">Sin levantamientos</p>
+            <p className="text-[10px] uppercase font-normal text-black">Sin campañas</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -459,7 +460,7 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
                 <div className="flex items-center justify-between text-[9px] font-normal uppercase text-neutral-400">
                    <div className="flex items-center gap-1.5 text-black/60">
                      <FileText className="h-2.5 w-2.5" />
-                     {linkedReports.filter(r => r.surveyId === s.id).length} RM
+                     {allReports.filter(r => r.surveyId === s.id).length} RM
                    </div>
                    <div className="flex items-center gap-1.5 text-black/60">
                      <Calendar className="h-2.5 w-2.5" />

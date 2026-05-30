@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -49,18 +50,18 @@ const stationSchema = z.object({
 
 type StationValues = z.infer<typeof stationSchema>;
 
-export type FormView = 'summary' | 'create-station' | 'edit-station' | 'report-entry' | 'consult' | 'select-project' | 'select-template' | 'surveys';
+export type FormView = 'summary' | 'create-station' | 'edit-station' | 'report-entry' | 'consult' | 'select-project' | 'select-template' | 'campañas';
 
 function DataExplorer({ 
   onSelectStation,
   onSelectReport,
   onSelectPlanilla,
-  onSurveysClick
+  onCampañasClick
 }: { 
   onSelectStation: (point: SelectedPoint) => void,
   onSelectReport: (station: any, reportId: string) => void,
   onSelectPlanilla: (station: any, reportId: string, formId: string, templateId: string) => void,
-  onSurveysClick: () => void
+  onCampañasClick: () => void
 }) {
   const db = useFirestore();
   const { user } = useUser();
@@ -113,7 +114,6 @@ function DataExplorer({
     stations.forEach(s => {
       let bCode = getBasinCodeFromStationName(s.name || '');
       if (!bCode) bCode = s.basinCode || 'S/C';
-      
       if (!groups[bCode]) groups[bCode] = [];
       groups[bCode].push(s);
     });
@@ -140,11 +140,9 @@ function DataExplorer({
   const getPlanillasByReport = (reportId: string) => {
     const rSamples = samples.filter((s: any) => s.reportId === reportId);
     const planillasMap = new Map<string, { medium: string, timestamp: any, count: number, templateId: string }>();
-    
     rSamples.forEach((s: any) => {
       const fId = s.formId || 'legacy';
       const existing = planillasMap.get(fId);
-      
       let detectedTemplate = 'manual';
       if (s.medium === 'agua_superficial') detectedTemplate = 'agua_superficial';
       else if (s.medium === 'agua_subterranea') detectedTemplate = 'agua_subterranea';
@@ -153,7 +151,6 @@ function DataExplorer({
         if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') detectedTemplate = 'suelo_geotecnia';
         else detectedTemplate = 'suelo_edafologico';
       }
-
       if (!existing) {
         planillasMap.set(fId, { 
           medium: s.medium || 'otro', 
@@ -169,7 +166,6 @@ function DataExplorer({
         if (detectedTemplate !== 'manual') existing.templateId = detectedTemplate;
       }
     });
-
     return Array.from(planillasMap.entries()).map(([formId, data]) => ({ 
       formId, 
       medium: data.medium,
@@ -201,11 +197,10 @@ function DataExplorer({
           <h2 className="text-[10px] font-normal uppercase tracking-[0.2em] text-black flex items-center gap-2">
             EXPLORADOR DE DATOS
           </h2>
-          <Button variant="outline" size="sm" onClick={onSurveysClick} className="h-8 text-[9px] font-black uppercase rounded-none border-black hover:bg-black hover:text-white transition-all">
-            <FolderKanban className="h-3 w-3 mr-1.5" /> Levantamientos
+          <Button variant="outline" size="sm" onClick={onCampañasClick} className="h-8 text-[9px] font-normal uppercase rounded-none border-black hover:bg-black hover:text-white transition-all">
+            <FolderKanban className="h-3 w-3 mr-1.5" /> Campañas
           </Button>
         </div>
-        
         <div className="flex items-start gap-12 px-1">
           <div className="flex flex-col">
             <span className="text-3xl font-normal text-black leading-none">{stations.length}</span>
@@ -220,7 +215,6 @@ function DataExplorer({
             <span className="text-[8px] font-normal uppercase tracking-wider text-black mt-1.5">Registros</span>
           </div>
         </div>
-        
         <Separator className="bg-neutral-200 h-[1px]" />
       </div>
 
@@ -270,7 +264,6 @@ function DataExplorer({
                                 </span>
                               </div>
                             </AccordionTrigger>
-
                             <AccordionContent className="pb-0 pl-4 border-l border-neutral-100 ml-2.5">
                               {stationReports.length === 0 ? (
                                 <p className="text-[8px] uppercase text-neutral-300 italic py-1">Sin reportes</p>
@@ -296,7 +289,6 @@ function DataExplorer({
                                             </span>
                                           </div>
                                         </AccordionTrigger>
-                                        
                                         <AccordionContent className="pb-1 pl-4 border-l border-neutral-100 ml-3">
                                           {planillas.length > 0 ? (
                                             <div className="space-y-0.5">
@@ -386,7 +378,7 @@ export function DataEntryForm({
 
   useEffect(() => {
     onActiveViewChange?.(activeView);
-    if (activeView !== 'surveys' && onBasinHighlight) {
+    if (activeView !== 'campañas' && onBasinHighlight) {
        onBasinHighlight(null);
     }
   }, [activeView, onActiveViewChange, onBasinHighlight]);
@@ -403,11 +395,11 @@ export function DataEntryForm({
   }, [db, user]);
   const { data: customTemplates } = useCollection(customTemplatesQuery);
 
-  const levantamientosQuery = useMemo(() => {
+  const campañasQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(collection(db, 'levantamientos'));
   }, [db, user]);
-  const { data: levantamientos } = useCollection(levantamientosQuery);
+  const { data: campañas } = useCollection(campañasQuery);
 
   const currentReportSamplesQuery = useMemo(() => {
     if (!db || !user || !currentReportId) return null;
@@ -440,39 +432,23 @@ export function DataEntryForm({
     currentReportSamples.forEach((s: any) => {
       const fId = s.formId || 'legacy';
       const medium = s.medium || 'otro';
-      
       const existing = planillasMap.get(fId);
-      
       let detectedProtocol = undefined;
-      if (medium === 'sedimentos') {
-        detectedProtocol = 'pgays_inspeccion';
-      } else if (medium === 'suelo') {
+      if (medium === 'sedimentos') detectedProtocol = 'pgays_inspeccion';
+      else if (medium === 'suelo') {
         if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') detectedProtocol = 'suelo_geotecnia';
         else if (s.analyte === 'Material_Originario' || s.analyte === 'Paisaje') detectedProtocol = 'suelo_edafologico';
-      } else if (medium === 'agua_superficial') {
-        detectedProtocol = 'agua_superficial';
-      } else if (medium === 'agua_subterranea') {
-        detectedProtocol = 'agua_subterranea';
-      }
-
+      } else if (medium === 'agua_superficial') detectedProtocol = 'agua_superficial';
+      else if (medium === 'agua_subterranea') detectedProtocol = 'agua_subterranea';
       if (!existing) {
-        planillasMap.set(fId, { 
-          formId: fId, 
-          medium: medium, 
-          userEmail: s.userEmail, 
-          timestamp: s.timestamp,
-          count: 1,
-          protocol: detectedProtocol
-        });
+        planillasMap.set(fId, { formId: fId, medium: medium, userEmail: s.userEmail, timestamp: s.timestamp, count: 1, protocol: detectedProtocol });
       } else {
         existing.count += 1;
         if (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis())) {
           existing.timestamp = s.timestamp;
           existing.userEmail = s.userEmail;
         }
-        if (detectedProtocol && !existing.protocol) {
-          existing.protocol = detectedProtocol;
-        }
+        if (detectedProtocol && !existing.protocol) existing.protocol = detectedProtocol;
       }
     });
     return Array.from(planillasMap.values());
@@ -480,9 +456,14 @@ export function DataEntryForm({
 
   useEffect(() => {
     if (selectedPoint && isInitialLoadRef.current) {
+      if (selectedPoint.surveyId) {
+        setPreSelectedSurveyId(selectedPoint.surveyId);
+        setActiveView('campañas');
+        isInitialLoadRef.current = false;
+        return;
+      }
       const savedState = localStorage.getItem('dea_form_state');
       const savedPointStr = localStorage.getItem('dea_selected_point');
-      
       if (savedState && savedPointStr) {
         try {
           const savedPoint = JSON.parse(savedPointStr);
@@ -502,12 +483,10 @@ export function DataEntryForm({
       } else {
         setActiveView(selectedPoint.stationId ? 'summary' : 'create-station');
       }
-      
       if (!selectedPoint.stationId) {
         setEditLat(selectedPoint.lat.toString());
         setEditLon(selectedPoint.lon.toString());
       }
-      
       lastPointKeyRef.current = `${selectedPoint.lat.toFixed(6)}-${selectedPoint.lon.toFixed(6)}-${selectedPoint.stationId}`;
       isInitialLoadRef.current = false;
     }
@@ -518,25 +497,26 @@ export function DataEntryForm({
       lastPointKeyRef.current = null;
       return;
     }
-
+    if (selectedPoint.surveyId) {
+      setPreSelectedSurveyId(selectedPoint.surveyId);
+      setActiveView('campañas');
+      return;
+    }
     const currentKey = `${selectedPoint.lat.toFixed(6)}-${selectedPoint.lon.toFixed(6)}-${selectedPoint.stationId}`;
-
     if (!isInitialLoadRef.current && lastPointKeyRef.current !== currentKey) {
-      const protectedViews: FormView[] = ['select-template', 'report-entry', 'consult', 'surveys'];
+      const protectedViews: FormView[] = ['select-template', 'report-entry', 'consult', 'campañas'];
       if (protectedViews.includes(activeView)) {
         lastPointKeyRef.current = currentKey;
         return;
       }
-
       if (selectedPoint.formId && selectedPoint.reportId) {
         setCurrentReportId(selectedPoint.reportId);
         setActiveFormId(selectedPoint.formId);
         setSelectedTemplate(selectedPoint.templateId || 'manual');
         setActiveView('report-entry');
       } else {
-        if (selectedPoint.stationId) {
-          setActiveView('summary');
-        } else {
+        if (selectedPoint.stationId) setActiveView('summary');
+        else {
           setActiveView('create-station');
           setEditLat(selectedPoint.lat.toString());
           setEditLon(selectedPoint.lon.toString());
@@ -547,10 +527,9 @@ export function DataEntryForm({
         setProjectSearch('');
         setSelectedTemplate('manual');
       }
-      
       lastPointKeyRef.current = currentKey;
     }
-  }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.stationId, selectedPoint?.formId, activeView]);
+  }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.stationId, selectedPoint?.formId, selectedPoint?.surveyId, activeView]);
 
   useEffect(() => {
     if (selectedPoint) {
@@ -575,16 +554,11 @@ export function DataEntryForm({
       const display = match ? `${match[0]} ${p.replace(match[0], '').trim()}` : p;
       return { original: p, display };
     });
-
     let filtered = transformed;
     if (projectSearch) {
       const searchLower = projectSearch.toLowerCase();
-      filtered = transformed.filter(item => 
-        item.display.toLowerCase().includes(searchLower) ||
-        item.original.toLowerCase().includes(searchLower)
-      );
+      filtered = transformed.filter(item => item.display.toLowerCase().includes(searchLower) || item.original.toLowerCase().includes(searchLower));
     }
-
     return filtered.sort((a, b) => a.display.localeCompare(b.display));
   }, [trelloProjects, projectSearch]);
 
@@ -592,20 +566,13 @@ export function DataEntryForm({
     if (!db || !selectedPoint?.stationId) return null;
     return doc(db, 'stations', selectedPoint.stationId);
   }, [db, selectedPoint?.stationId]);
-
   const { data: stationDetails } = useDoc(stationRef);
 
-  const stationForm = useForm<StationValues>({
-    resolver: zodResolver(stationSchema),
-    defaultValues: { name: '', description: '' },
-  });
+  const stationForm = useForm<StationValues>({ resolver: zodResolver(stationSchema), defaultValues: { name: '', description: '' } });
 
   useEffect(() => {
     if (stationDetails) {
-      stationForm.reset({
-        name: (stationDetails as any).name || '',
-        description: (stationDetails as any).description || '',
-      });
+      stationForm.reset({ name: (stationDetails as any).name || '', description: (stationDetails as any).description || '' });
       setEditLat((stationDetails as any).latitude.toString());
       setEditLon((stationDetails as any).longitude.toString());
     }
@@ -614,13 +581,7 @@ export function DataEntryForm({
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '---';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   useEffect(() => {
@@ -628,39 +589,25 @@ export function DataEntryForm({
       const generateNextName = async () => {
         setIsGeneratingName(true);
         const prefix = `EM${selectedPoint.basinCode}`;
-        
         try {
           const stationsCol = collection(db, 'stations');
-          const q = query(
-            stationsCol,
-            where('name', '>=', prefix),
-            where('name', '<=', prefix + '\uf8ff'),
-            orderBy('name', 'desc'),
-            limit(1)
-          );
-          
+          const q = query(stationsCol, where('name', '>=', prefix), where('name', '<=', prefix + '\uf8ff'), orderBy('name', 'desc'), limit(1));
           const querySnapshot = await getDocs(q);
           let nextNumber = 1;
-
           if (!querySnapshot.empty) {
             const lastStation = querySnapshot.docs[0].data();
             const lastName = lastStation.name as string;
             const numberPart = lastName.substring(prefix.length);
             const parsed = parseInt(numberPart, 10);
-            if (!isNaN(parsed)) {
-              nextNumber = parsed + 1;
-            }
+            if (!isNaN(parsed)) nextNumber = parsed + 1;
           }
-
-          const formattedName = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
-          stationForm.setValue('name', formattedName);
+          stationForm.setValue('name', `${prefix}${nextNumber.toString().padStart(4, '0')}`);
         } catch (error) {
           stationForm.setValue('name', `${prefix}0001`);
         } finally {
           setIsGeneratingName(false);
         }
       };
-
       generateNextName();
     }
   }, [selectedPoint?.lat, selectedPoint?.lon, selectedPoint?.basinCode, db, stationForm]);
@@ -669,328 +616,118 @@ export function DataEntryForm({
     if (type === 'lat') {
       setEditLat(val);
       const lat = parseFloat(val);
-      if (!isNaN(lat) && selectedPoint) {
-        onPointUpdate({ ...selectedPoint, lat });
-      }
+      if (!isNaN(lat) && selectedPoint) onPointUpdate({ ...selectedPoint, lat });
     } else {
       setEditLon(val);
       const lon = parseFloat(val);
-      if (!isNaN(lon) && selectedPoint) {
-        onPointUpdate({ ...selectedPoint, lon });
-      }
+      if (!isNaN(lon) && selectedPoint) onPointUpdate({ ...selectedPoint, lon });
     }
   };
 
   const handleCaptureGPS = async () => {
     if (!navigator.geolocation) {
-      toast({
-        variant: "destructive",
-        title: "GPS no disponible",
-        description: "Tu navegador no soporta geolocalización.",
-      });
+      toast({ variant: "destructive", title: "GPS no disponible", description: "Tu navegador no soporta geolocalización." });
       return;
     }
-
     toast({ title: "Obteniendo ubicación...", description: "Por favor, esperá un momento." });
-    
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
         setEditLat(latitude.toString());
         setEditLon(longitude.toString());
-        
         let detectedBasin = '';
         const features = BASIN_CODES_DATA.features;
         for (const feature of features) {
           const geometry = feature.geometry;
-          if (geometry.type === 'Polygon') {
-            if (isPointInPoly([longitude, latitude], geometry.coordinates as any)) {
-              detectedBasin = feature.properties.CODIGO || '';
-              break;
-            }
-          } else if (geometry.type === 'MultiPolygon') {
-            for (const poly of geometry.coordinates) {
-              if (isPointInPoly([longitude, latitude], poly as any)) {
-                detectedBasin = feature.properties.CODIGO || '';
-                break;
-              }
-            }
-          }
+          if (geometry.type === 'Polygon') { if (isPointInPoly([longitude, latitude], geometry.coordinates as any)) { detectedBasin = feature.properties.CODIGO || ''; break; } }
+          else if (geometry.type === 'MultiPolygon') { for (const poly of geometry.coordinates) { if (isPointInPoly([longitude, latitude], poly as any)) { detectedBasin = feature.properties.CODIGO || ''; break; } } }
         }
-
-        if (selectedPoint) {
-          onPointUpdate({ 
-            ...selectedPoint, 
-            lat: latitude, 
-            lon: longitude,
-            basinCode: detectedBasin
-          });
-        }
-        
-        toast({ 
-          title: "Ubicación capturada", 
-          description: `Cuenca detectada: ${detectedBasin || 'Desconocida'}. Coordenadas: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` 
-        });
+        if (selectedPoint) onPointUpdate({ ...selectedPoint, lat: latitude, lon: longitude, basinCode: detectedBasin });
+        toast({ title: "Ubicación capturada", description: `Cuenca: ${detectedBasin || 'N/D'}. ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` });
       },
-      (error) => {
-        console.error("GPS Error", error);
-        toast({
-          variant: "destructive",
-          title: "Error de GPS",
-          description: "No se pudo obtener la ubicación. Verificá los permisos de tu navegador.",
-        });
-      },
+      (error) => { toast({ variant: "destructive", title: "Error de GPS", description: "No se pudo obtener la ubicación." }); },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 
   const handleCreateStation = (data: StationValues) => {
     if (!selectedPoint) return;
-    
     const finalLat = parseFloat(editLat);
     const finalLon = parseFloat(editLon);
-
-    if (isNaN(finalLat) || isNaN(finalLon)) {
-      toast({
-        variant: "destructive",
-        title: "Error de coordenadas",
-        description: "Por favor ingresá valores numéricos válidos para latitud y longitud.",
-      });
-      return;
-    }
-
+    if (isNaN(finalLat) || isNaN(finalLon)) { toast({ variant: "destructive", title: "Error", description: "Coordenadas inválidas." }); return; }
     const newStationRef = doc(collection(db, 'stations'));
-    const stationData = {
-      name: data.name,
-      latitude: finalLat,
-      longitude: finalLon,
-      description: data.description || '',
-      basinCode: selectedPoint.basinCode || '',
-      userId: user?.uid,
-      userEmail: user?.email,
-      createdAt: serverTimestamp(),
-    };
-
-    setDoc(newStationRef, stationData)
-      .then(() => {
-        onStationCreated(newStationRef.id, data.name);
-        setActiveView('summary');
-        toast({
-          title: "Estación registrada",
-          description: `Se guardó el punto: ${data.name}`,
-        });
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: newStationRef.path,
-          operation: 'create',
-          requestResourceData: stationData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+    const stationData = { name: data.name, latitude: finalLat, longitude: finalLon, description: data.description || '', basinCode: selectedPoint.basinCode || '', userId: user?.uid, userEmail: user?.email, createdAt: serverTimestamp() };
+    setDoc(newStationRef, stationData).then(() => { onStationCreated(newStationRef.id, data.name); setActiveView('summary'); toast({ title: "Estación registrada", description: data.name }); }).catch(async (error) => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: newStationRef.path, operation: 'create', requestResourceData: stationData })); });
   };
 
   const handleUpdateStation = (data: StationValues) => {
     if (!selectedPoint?.stationId) return;
-    
     const finalLat = parseFloat(editLat);
     const finalLon = parseFloat(editLon);
-
-    if (isNaN(finalLat) || isNaN(finalLon)) {
-      toast({
-        variant: "destructive",
-        title: "Error de coordenadas",
-        description: "Por favor ingresá valores numéricos válidos para latitud y longitud.",
-      });
-      return;
-    }
-
+    if (isNaN(finalLat) || isNaN(finalLon)) { toast({ variant: "destructive", title: "Error", description: "Coordenadas inválidas." }); return; }
     const currentStationRef = doc(db, 'stations', selectedPoint.stationId);
-    const updateData = {
-      name: data.name,
-      latitude: finalLat,
-      longitude: finalLon,
-      description: data.description || '',
-    };
-
-    updateDoc(currentStationRef, updateData)
-      .then(() => {
-        onPointUpdate({
-          ...selectedPoint,
-          lat: finalLat,
-          lon: finalLon,
-          name: data.name,
-        });
-        setActiveView('summary');
-        toast({
-          title: "Estación actualizada",
-          description: `Se guardaron los cambios de: ${data.name}`,
-        });
-      })
-      .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
-          path: currentStationRef.path,
-          operation: 'update',
-          requestResourceData: updateData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+    const updateData = { name: data.name, latitude: finalLat, longitude: finalLon, description: data.description || '' };
+    updateDoc(currentStationRef, updateData).then(() => { onPointUpdate({ ...selectedPoint, lat: finalLat, lon: finalLon, name: data.name }); setActiveView('summary'); toast({ title: "Estación actualizada", description: data.name }); }).catch(async (error) => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: currentStationRef.path, operation: 'update', requestResourceData: updateData })); });
   };
 
   const handleDeleteStation = async () => {
     if (!selectedPoint?.stationId || !db) return;
     setIsDeletingStation(true);
-    try {
-      await deleteDoc(doc(db, 'stations', selectedPoint.stationId));
-      onDeselect();
-      setActiveView('summary');
-      toast({ title: "Estación eliminada", description: "El punto ha sido removido del sistema." });
-    } catch (e) {
-      console.error(e);
-      toast({ variant: "destructive", title: "Error", description: "No se pudo eliminar la estación." });
-    } finally {
-      setIsDeletingStation(false);
-      setShowDeleteDialog(false);
-    }
+    try { await deleteDoc(doc(db, 'stations', selectedPoint.stationId)); onDeselect(); setActiveView('summary'); toast({ title: "Estación eliminada" }); }
+    catch (e) { toast({ variant: "destructive", title: "Error", description: "No se pudo eliminar la estación." }); }
+    finally { setIsDeletingStation(false); setShowDeleteDialog(false); }
   };
 
   const handleConfirmTemplate = async () => {
     if (!selectedPoint) return;
     setIsStartingReport(true);
-    
     try {
       const basinCode = (stationDetails as any)?.basinCode || selectedPoint.basinCode || 'XXX';
       const prefix = `PL${basinCode}`;
       let nextNumber = 1;
-
       const samplesCol = collection(db, 'samples');
-      const q = query(
-        samplesCol,
-        where('formId', '>=', prefix),
-        where('formId', '<=', prefix + '\uf8ff'),
-        orderBy('formId', 'desc'),
-        limit(1)
-      );
-      
+      const q = query(samplesCol, where('formId', '>=', prefix), where('formId', '<=', prefix + '\uf8ff'), orderBy('formId', 'desc'), limit(1));
       const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        const lastFormId = snapshot.docs[0].data().formId as string;
-        const numPart = lastFormId.substring(prefix.length);
-        const lastNum = parseInt(numPart, 10);
-        if (!isNaN(lastNum)) {
-          nextNumber = lastNum + 1;
-        }
-      }
-
+      if (!snapshot.empty) { const lastFormId = snapshot.docs[0].data().formId as string; const numPart = lastFormId.substring(prefix.length); const lastNum = parseInt(numPart, 10); if (!isNaN(lastNum)) nextNumber = lastNum + 1; }
       const newFormId = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
-      
       setActiveFormId(newFormId);
-      if (currentReportId) {
-        setActiveView('report-entry');
-      } else {
-        await handleStartReport(newFormId);
-      }
-    } catch (e) {
-      console.error("Error generating Planilla OID", e);
-      const fallbackId = `PL-ERR-${crypto.randomUUID().substring(0,8)}`;
-      setActiveFormId(fallbackId);
-      if (currentReportId) {
-        setActiveView('report-entry');
-      } else {
-        await handleStartReport(fallbackId);
-      }
-    } finally {
-      setIsStartingReport(false);
-    }
+      if (currentReportId) setActiveView('report-entry');
+      else await handleStartReport(newFormId);
+    } catch (e) { const fallbackId = `PL-ERR-${crypto.randomUUID().substring(0,8)}`; setActiveFormId(fallbackId); if (currentReportId) setActiveView('report-entry'); else await handleStartReport(fallbackId); }
+    finally { setIsStartingReport(false); }
   };
 
   const handleStartReport = async (formId: string) => {
     if (!selectedPoint?.stationId || !user) return;
-
     setIsStartingReport(true);
-
     const basinCode = (stationDetails as any)?.basinCode || selectedPoint.basinCode || 'XXX';
     const prefix = `RM${basinCode}`;
     let nextNumber = 1;
-
     try {
       const reportsCol = collection(db, 'reports');
-      const q = query(
-        reportsCol,
-        where('oid', '>=', prefix),
-        where('oid', '<=', prefix + '\uf8ff'),
-        orderBy('oid', 'desc'),
-        limit(1)
-      );
-      
+      const q = query(reportsCol, where('oid', '>=', prefix), where('oid', '<=', prefix + '\uf8ff'), orderBy('oid', 'desc'), limit(1));
       const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        const lastOid = snapshot.docs[0].data().oid as string;
-        const numPart = lastOid.substring(prefix.length);
-        const lastNum = parseInt(numPart, 10);
-        if (!isNaN(lastNum)) {
-          nextNumber = lastNum + 1;
-        }
-      }
-
+      if (!snapshot.empty) { const lastOid = snapshot.docs[0].data().oid as string; const numPart = lastOid.substring(prefix.length); const lastNum = parseInt(numPart, 10); if (!isNaN(lastNum)) nextNumber = lastNum + 1; }
       const oid = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
-
-      const reportData = {
-        oid,
-        stationId: selectedPoint.stationId,
-        trelloCardName: selectedProject || '',
-        description: reportEditDesc || '',
-        createdAt: serverTimestamp(),
-        createdByEmail: user.email,
-        status: 'open',
-        editors: [user.email],
-        surveyId: null
-      };
-
-      const docRef = await addDoc(reportsCol, reportData);
+      const docRef = await addDoc(reportsCol, { oid, stationId: selectedPoint.stationId, trelloCardName: selectedProject || '', description: reportEditDesc || '', createdAt: serverTimestamp(), createdByEmail: user.email, status: 'open', editors: [user.email], surveyId: null });
       setCurrentReportId(docRef.id);
       setActiveView('report-entry');
-      toast({
-        title: "Reporte iniciado",
-        description: `Se generó el OID: ${oid}`,
-      });
-    } catch (e) {
-      console.error("Error creating report OID", e);
-    } finally {
-      setIsStartingReport(false);
-    }
+      toast({ title: "Reporte iniciado", description: oid });
+    } catch (e) {} finally { setIsStartingReport(false); }
   };
 
   const handleSaveReportEdits = async () => {
     if (!reportRef) return;
-    const updateData = {
-      trelloCardName: selectedProject || '',
-      description: reportEditDesc || '',
-      surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId
-    };
-    updateDoc(reportRef, updateData)
-      .then(() => {
-        toast({ title: "Reporte actualizado", description: "Cambios guardados con éxito." });
-      })
+    updateDoc(reportRef, { trelloCardName: selectedProject || '', description: reportEditDesc || '', surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId })
+      .then(() => { toast({ title: "Reporte actualizado" }); })
       .catch(console.error);
   };
 
-  const handleOpenExistingReport = (reportId: string) => {
-    setCurrentReportId(reportId);
-    setActiveView('select-template'); 
-  };
+  const handleOpenExistingReport = (reportId: string) => { setCurrentReportId(reportId); setActiveView('select-template'); };
 
   const handleExplorerSelectReport = useCallback((station: any, reportId: string) => {
-    const point = {
-      lat: station.latitude,
-      lon: station.longitude,
-      stationId: station.id,
-      name: station.name,
-      basinCode: station.basinCode
-    };
-    
+    const point = { lat: station.latitude, lon: station.longitude, stationId: station.id, name: station.name, basinCode: station.basinCode };
     lastPointKeyRef.current = `${point.lat.toFixed(6)}-${point.lon.toFixed(6)}-${point.stationId}`;
-    
     onPointUpdate(point);
     setCurrentReportId(reportId);
     setActiveView('select-template');
@@ -999,14 +736,8 @@ export function DataEntryForm({
   const handleReopenPlanilla = (planilla: { formId: string, medium: string, protocol?: string }) => {
     setActiveFormId(planilla.formId);
     let templateId = 'manual';
-    
-    if (planilla.protocol) {
-      templateId = planilla.protocol;
-    } else {
-      const foundTemplate = MONITORING_TEMPLATES.find(t => t.medium === planilla.medium);
-      if (foundTemplate) templateId = foundTemplate.id;
-    }
-    
+    if (planilla.protocol) templateId = planilla.protocol;
+    else { const foundTemplate = MONITORING_TEMPLATES.find(t => t.medium === planilla.medium); if (foundTemplate) templateId = foundTemplate.id; }
     setSelectedTemplate(templateId);
     setActiveView('report-entry');
   };
@@ -1015,51 +746,22 @@ export function DataEntryForm({
     if (!deletingPlanilla || !db || !currentReportId) return;
     setIsDeletingPlanilla(true);
     try {
-      const q = query(
-        collection(db, 'samples'), 
-        where('reportId', '==', currentReportId),
-        where('formId', '==', deletingPlanilla.fid)
-      );
+      const q = query(collection(db, 'samples'), where('reportId', '==', currentReportId), where('formId', '==', deletingPlanilla.fid));
       const snap = await getDocs(q);
-
-      for (const sDoc of snap.docs) {
-        await deleteDoc(doc(db, 'samples', sDoc.id));
-      }
-
+      for (const sDoc of snap.docs) await deleteDoc(doc(db, 'samples', sDoc.id));
       if (storage) {
         const planillaStorageRef = ref(storage, `reports/${currentReportId}/${deletingPlanilla.fid}`);
-        try {
-          const listRes = await listAll(planillaStorageRef);
-          for (const item of listRes.items) {
-            await deleteObject(item);
-          }
-        } catch (storageErr) {}
+        try { const listRes = await listAll(planillaStorageRef); for (const item of listRes.items) await deleteObject(item); } catch (storageErr) {}
       }
-
-      toast({ title: "Planilla borrada", description: "Se eliminaron los datos y las evidencias visuales." });
-    } catch (e) {
-      console.error(e);
-      toast({ variant: "destructive", title: "Error", description: "No se pudo borrar la planilla." });
-    } finally {
-      setIsDeletingPlanilla(false);
-      setDeletingPlanilla(null);
-    }
+      toast({ title: "Planilla borrada" });
+    } catch (e) { toast({ variant: "destructive", title: "Error" }); }
+    finally { setIsDeletingPlanilla(false); setDeletingPlanilla(null); }
   };
 
-  const handleExplorerSelectStation = (point: SelectedPoint) => {
-    lastPointKeyRef.current = `${point.lat.toFixed(6)}-${point.lon.toFixed(6)}-${point.stationId}`;
-    onPointUpdate(point);
-    setActiveView('summary');
-  };
+  const handleExplorerSelectStation = (point: SelectedPoint) => { lastPointKeyRef.current = `${point.lat.toFixed(6)}-${point.lon.toFixed(6)}-${point.stationId}`; onPointUpdate(point); setActiveView('summary'); };
 
   const handleExplorerSelectPlanilla = (station: any, reportId: string, formId: string, templateId: string) => {
-    const point = {
-      lat: station.latitude,
-      lon: station.longitude,
-      stationId: station.id,
-      name: station.name,
-      basinCode: station.basinCode
-    };
+    const point = { lat: station.latitude, lon: station.longitude, stationId: station.id, name: station.name, basinCode: station.basinCode };
     lastPointKeyRef.current = `${point.lat.toFixed(6)}-${point.lon.toFixed(6)}-${point.stationId}`;
     onPointUpdate(point);
     setCurrentReportId(reportId);
@@ -1070,45 +772,21 @@ export function DataEntryForm({
 
   const handleDeepLinkReport = useCallback((stationId: string, reportId: string) => {
     const station = stations?.find((s: any) => s.id === stationId);
-    if (station) {
-      handleExplorerSelectReport(station, reportId);
-    } else {
-      getDoc(doc(db, 'stations', stationId)).then(snap => {
-        if (snap.exists()) {
-          handleExplorerSelectReport({ id: snap.id, ...snap.data() }, reportId);
-        }
-      });
-    }
+    if (station) handleExplorerSelectReport(station, reportId);
+    else getDoc(doc(db, 'stations', stationId)).then(snap => { if (snap.exists()) handleExplorerSelectReport({ id: snap.id, ...snap.data() }, reportId); });
   }, [stations, db, handleExplorerSelectReport]);
 
-  if (activeView === 'surveys') {
+  if (activeView === 'campañas') {
     return <SurveyManager 
-      onClose={() => {
-        setPreSelectedSurveyId(null);
-        setActiveView('summary');
-      }} 
-      onSurveySelected={(s) => {
-        if (s && s.oid && onBasinHighlight) {
-           const match = s.oid.match(/^LV-?([A-Za-z]{2,4})/);
-           if (match) onBasinHighlight(match[1]);
-        } else if (onBasinHighlight) {
-           onBasinHighlight(null);
-        }
-      }} 
+      onClose={() => { setPreSelectedSurveyId(null); setActiveView('summary'); }} 
+      onSurveySelected={(s) => { if (s && s.oid && onBasinHighlight) { const match = s.oid.match(/^LV-?([A-Za-z]{2,4})/); if (match) onBasinHighlight(match[1]); } else if (onBasinHighlight) onBasinHighlight(null); }} 
       onReportClick={handleDeepLinkReport}
       initialSurveyId={preSelectedSurveyId}
     />;
   }
 
   if (!selectedPoint) {
-    return (
-      <DataExplorer 
-        onSelectStation={handleExplorerSelectStation} 
-        onSelectReport={handleExplorerSelectReport}
-        onSelectPlanilla={handleExplorerSelectPlanilla}
-        onSurveysClick={() => setActiveView('surveys')}
-      />
-    );
+    return <DataExplorer onSelectStation={handleExplorerSelectStation} onSelectReport={handleExplorerSelectReport} onSelectPlanilla={handleExplorerSelectPlanilla} onCampañasClick={() => setActiveView('campañas')} />;
   }
 
   const getProtocolLabel = (protocolId: string | undefined, medium: string) => {
@@ -1123,16 +801,8 @@ export function DataEntryForm({
   if (activeView === 'report-entry' && currentReportId && activeFormId) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('select-template')} className="mb-2 text-black font-normal">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver a planillas
-        </Button>
-        <SamplingReportForm 
-          reportId={currentReportId} 
-          formId={activeFormId}
-          stationId={selectedPoint.stationId!} 
-          onClose={() => setActiveView('summary')} 
-          templateId={selectedTemplate}
-        />
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('select-template')} className="mb-2 text-black font-normal"><ArrowLeft className="mr-2 h-4 w-4" /> Volver a planillas</Button>
+        <SamplingReportForm reportId={currentReportId} formId={activeFormId} stationId={selectedPoint.stationId!} onClose={() => setActiveView('summary')} templateId={selectedTemplate} />
       </div>
     );
   }
@@ -1140,9 +810,7 @@ export function DataEntryForm({
   if (activeView === 'consult' && selectedPoint.stationId) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-black font-normal">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen
-        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-black font-normal"><ArrowLeft className="mr-2 h-4 w-4" /> Volver al resumen</Button>
         <ReportList stationId={selectedPoint.stationId} onOpenReport={handleOpenExistingReport} />
       </div>
     );
@@ -1151,63 +819,16 @@ export function DataEntryForm({
   if (activeView === 'select-project' && selectedPoint.stationId) {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-black font-normal">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Cancelar
-        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setActiveView('summary')} className="mb-2 text-black font-normal"><ArrowLeft className="mr-2 h-4 w-4" /> Cancelar</Button>
         <Card className="border-t-4 border-t-primary shadow-lg overflow-hidden rounded-none">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight">
-              <Briefcase className="h-5 w-5 text-black" />
-              1. Seleccionar Proyecto (Opcional)
-            </CardTitle>
-            <CardDescription className="text-xs text-neutral-600">Asociá este nuevo reporte a un proyecto activo de Trello o continuá sin proyecto.</CardDescription>
-          </CardHeader>
+          <CardHeader className="pb-4"><CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight"><Briefcase className="h-5 w-5 text-black" />1. Seleccionar Proyecto (Opcional)</CardTitle><CardDescription className="text-xs text-neutral-600">Asociá este nuevo reporte a un proyecto activo de Trello.</CardDescription></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
               <Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Proyecto de Trello</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-black" />
-                <Input 
-                  placeholder="Buscá el proyecto o código..." 
-                  className="pl-9 h-11 text-xs font-normal border-input focus-visible:ring-primary/50 text-black rounded-none"
-                  value={projectSearch}
-                  onChange={(e) => setProjectSearch(e.target.value)}
-                />
-              </div>
-              
-              <ScrollArea className="h-[200px] border rounded-none p-1 bg-white">
-                <div className="space-y-1">
-                  {filteredTrelloProjects.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-neutral-600 italic">No se encontraron proyectos.</div>
-                  ) : (
-                    filteredTrelloProjects.map((item) => (
-                      <button
-                        key={item.original}
-                        onClick={() => {
-                          setSelectedProject(item.original);
-                          setProjectSearch(item.display);
-                        }}
-                        className={cn(
-                          "w-full text-left px-3 py-2.5 rounded-none text-[11px] font-normal transition-colors flex items-start justify-between gap-2",
-                          selectedProject === item.original 
-                            ? "bg-primary text-white" 
-                            : "hover:bg-primary/5 text-black border border-transparent"
-                        )}
-                      >
-                        <span className="flex-1 break-words">{item.display}</span>
-                        {selectedProject === item.original && <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
+              <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-black" /><Input placeholder="Buscá el proyecto o código..." className="pl-9 h-11 text-xs font-normal border-input focus-visible:ring-primary/50 text-black rounded-none" value={projectSearch} onChange={(e) => setProjectSearch(e.target.value)} /></div>
+              <ScrollArea className="h-[200px] border rounded-none p-1 bg-white"><div className="space-y-1">{filteredTrelloProjects.length === 0 ? <div className="p-4 text-center text-xs text-neutral-600 italic">No se encontraron proyectos.</div> : filteredTrelloProjects.map((item) => <button key={item.original} onClick={() => { setSelectedProject(item.original); setProjectSearch(item.display); }} className={cn("w-full text-left px-3 py-2.5 rounded-none text-[11px] font-normal transition-colors flex items-start justify-between gap-2", selectedProject === item.original ? "bg-primary text-white" : "hover:bg-primary/5 text-black border border-transparent")}><span className="flex-1 break-words">{item.display}</span>{selectedProject === item.original && <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />}</button>)}</div></ScrollArea>
             </div>
-            <Button 
-              className="w-full h-12 text-sm font-normal uppercase tracking-widest bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" 
-              onClick={() => setActiveView('select-template')}
-            >
-              Siguiente: Elegir Planilla <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
-            </Button>
+            <Button className="w-full h-12 text-sm font-normal uppercase tracking-widest bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" onClick={() => setActiveView('select-template')}>Siguiente: Elegir Planilla <ArrowLeft className="ml-2 h-4 w-4 rotate-180" /></Button>
           </CardContent>
         </Card>
       </div>
@@ -1215,200 +836,30 @@ export function DataEntryForm({
   }
 
   if (activeView === 'select-template' && selectedPoint.stationId) {
-    const associatedSurvey = levantamientos?.find((l: any) => l.id === currentReportData?.surveyId);
-
+    const associatedSurvey = campañas?.find((l: any) => l.id === currentReportData?.surveyId);
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-        <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2 text-black font-normal">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Volver atrás
-        </Button>
+        <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2 text-black font-normal"><ArrowLeft className="mr-2 h-4 w-4" /> Volver atrás</Button>
         <Card className="border-t-4 border-t-accent shadow-lg overflow-hidden rounded-none">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight">
-              <LayoutList className="h-5 w-5 text-black" />
-              {currentReportId ? `Reporte: ${currentReportData?.oid || 'Cargando...'}` : '2. Elegir Planilla de Carga'}
-            </CardTitle>
-            <CardDescription className="text-[11px] text-black font-normal uppercase">
-              {currentReportId ? (
-                associatedSurvey ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="opacity-60">Levantamiento:</span>
-                    <button 
-                      onClick={() => {
-                        setPreSelectedSurveyId(associatedSurvey.id);
-                        setActiveView('surveys');
-                      }}
-                      className="text-primary hover:underline transition-all"
-                    >
-                      {associatedSurvey.oid}
-                    </button>
-                  </div>
-                ) : <span className="opacity-40 mt-1 block italic">Sin vinculación a levantamiento</span>
-              ) : 'Seleccioná el protocolo de monitoreo para pre-cargar los parámetros.'}
-            </CardDescription>
-          </CardHeader>
+          <CardHeader className="pb-4"><CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight"><LayoutList className="h-5 w-5 text-black" />{currentReportId ? `Reporte: ${currentReportData?.oid || 'Cargando...'}` : '2. Elegir Planilla de Carga'}</CardTitle><CardDescription className="text-[11px] text-black font-normal uppercase">{currentReportId ? (associatedSurvey ? <div className="flex items-center gap-1.5 mt-1"><span className="opacity-60">Campaña:</span><button onClick={() => { setPreSelectedSurveyId(associatedSurvey.id); setActiveView('campañas'); }} className="text-primary hover:underline transition-all">{associatedSurvey.oid}</button></div> : <span className="opacity-40 mt-1 block italic">Sin vinculación a campaña</span>) : 'Seleccioná el protocolo de monitoreo.'}</CardDescription></CardHeader>
           <CardContent className="space-y-6">
             {currentReportId && (
               <Accordion type="single" collapsible className="w-full border rounded-none overflow-hidden">
-                <AccordionItem value="edit-report" className="border-none">
-                  <AccordionTrigger className="px-4 py-2 hover:bg-neutral-50 hover:no-underline text-xs font-normal uppercase text-black">
-                    <div className="flex items-center gap-2"><Settings className="h-4 w-4" /> Ajustes del Reporte</div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 py-3 bg-neutral-50 border-t space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase font-normal text-black">Levantamiento (Agrupador)</Label>
-                      <Select value={reportSurveyId} onValueChange={setReportSurveyId}>
-                        <SelectTrigger className="h-10 text-xs rounded-none bg-white">
-                          <SelectValue placeholder="Sin vinculación" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sin-vinculo" className="text-xs">Sin vinculación</SelectItem>
-                          {levantamientos?.map((l: any) => (
-                            <SelectItem key={l.id} value={l.id} className="text-xs">{l.oid}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase font-normal text-black">Proyecto Asociado</Label>
-                      <Select 
-                        value={selectedProject} 
-                        onValueChange={(val) => {
-                          setSelectedProject(val);
-                          setProjectSearch(val);
-                        }}
-                      >
-                        <SelectTrigger className="h-10 text-xs rounded-none bg-white">
-                          <SelectValue placeholder="Sin proyecto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sin-proyecto" className="text-xs">Sin Proyecto</SelectItem>
-                          {trelloProjects.map((p) => (
-                            <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase font-normal text-black">Descripción / Notas</Label>
-                      <Textarea 
-                        placeholder="Notas sobre el monitoreo..."
-                        className="text-xs rounded-none min-h-[80px] bg-white"
-                        value={reportEditDesc}
-                        onChange={(e) => setReportEditDesc(e.target.value)}
-                      />
-                    </div>
-                    <Button 
-                      className="w-full h-10 bg-black text-white rounded-none text-[10px] font-normal uppercase tracking-widest"
-                      onClick={handleSaveReportEdits}
-                    >
-                      Guardar Ajustes
-                    </Button>
-                  </AccordionContent>
-                </AccordionItem>
+                <AccordionItem value="edit-report" className="border-none"><AccordionTrigger className="px-4 py-2 hover:bg-neutral-50 hover:no-underline text-xs font-normal uppercase text-black"><div className="flex items-center gap-2"><Settings className="h-4 w-4" /> Ajustes del Reporte</div></AccordionTrigger><AccordionContent className="px-4 py-3 bg-neutral-50 border-t space-y-4">
+                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Campaña (Agrupador)</Label><Select value={reportSurveyId} onValueChange={setReportSurveyId}><SelectTrigger className="h-10 text-xs rounded-none bg-white"><SelectValue placeholder="Sin vinculación" /></SelectTrigger><SelectContent><SelectItem value="sin-vinculo" className="text-xs">Sin vinculación</SelectItem>{campañas?.map((l: any) => (<SelectItem key={l.id} value={l.id} className="text-xs">{l.oid}</SelectItem>))}</SelectContent></Select></div>
+                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Proyecto Asociado</Label><Select value={selectedProject} onValueChange={(val) => { setSelectedProject(val); setProjectSearch(val); }}><SelectTrigger className="h-10 text-xs rounded-none bg-white"><SelectValue placeholder="Sin proyecto" /></SelectTrigger><SelectContent><SelectItem value="sin-proyecto" className="text-xs">Sin Proyecto</SelectItem>{trelloProjects.map((p) => (<SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>))}</SelectContent></Select></div>
+                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Descripción / Notas</Label><Textarea placeholder="Notas sobre el monitoreo..." className="text-xs rounded-none min-h-[80px] bg-white" value={reportEditDesc} onChange={(e) => setReportEditDesc(e.target.value)} /></div>
+                    <Button className="w-full h-10 bg-black text-white rounded-none text-[10px] font-normal uppercase tracking-widest" onClick={handleSaveReportEdits}>Guardar Ajustes</Button>
+                </AccordionContent></AccordionItem>
               </Accordion>
             )}
-
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Nueva Planilla</Label>
-              <div className="flex gap-2">
-                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                  <SelectTrigger className="h-11 flex-1 text-xs font-normal border-accent/20 bg-accent/5 text-black rounded-none">
-                    <SelectValue placeholder="Elegí un protocolo..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual" className="text-xs font-normal">Carga Manual (uno por uno)</SelectItem>
-                    <SelectItem value="personalizada" className="text-xs font-normal text-black flex items-center gap-1">
-                      <Star className="h-3 w-3 inline mr-1 fill-accent" /> Crear Planilla Personalizada
-                    </SelectItem>
-                    {customTemplates && customTemplates.length > 0 && (
-                      <>
-                        <Separator className="my-1" />
-                        <div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Tus Planillas</div>
-                        {customTemplates.map((ct: any) => (
-                          <SelectItem key={ct.id} value={`custom_${ct.id}`} className="text-xs">
-                            {ct.name}
-                          </SelectItem>
-                        ))}
-                      </>
-                    )}
-                    <Separator className="my-1" />
-                    <div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Plantillas del Sistema</div>
-                    {MONITORING_TEMPLATES.map((t) => (
-                      <SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button 
-                  className="h-11 px-4 bg-primary hover:bg-primary/90 font-normal uppercase tracking-widest text-white rounded-none" 
-                  disabled={isStartingReport} 
-                  onClick={handleConfirmTemplate}
-                >
-                  {isStartingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : "INICIAR CARGA"}
-                </Button>
-              </div>
-            </div>
-
+            <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Nueva Planilla</Label><div className="flex gap-2"><Select value={selectedTemplate} onValueChange={setSelectedTemplate}><SelectTrigger className="h-11 flex-1 text-xs font-normal border-accent/20 bg-accent/5 text-black rounded-none"><SelectValue placeholder="Elegí un protocolo..." /></SelectTrigger><SelectContent><SelectItem value="manual" className="text-xs font-normal">Carga Manual</SelectItem><SelectItem value="personalizada" className="text-xs font-normal text-black flex items-center gap-1"><Star className="h-3 w-3 inline mr-1 fill-accent" /> Crear Planilla Personalizada</SelectItem>{customTemplates && customTemplates.length > 0 && (<><Separator className="my-1" /><div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Tus Planillas</div>{customTemplates.map((ct: any) => (<SelectItem key={ct.id} value={`custom_${ct.id}`} className="text-xs">{ct.name}</SelectItem>))}</>)}<Separator className="my-1" /><div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Plantillas del Sistema</div>{MONITORING_TEMPLATES.map((t) => (<SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>))}</SelectContent></Select><Button className="h-11 px-4 bg-primary hover:bg-primary/90 font-normal uppercase tracking-widest text-white rounded-none" disabled={isStartingReport} onClick={handleConfirmTemplate}>{isStartingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : "INICIAR CARGA"}</Button></div></div>
             {currentReportId && existingPlanillas.length > 0 && (
-              <div className="space-y-3 pt-2">
-                <Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Planillas en este reporte (Editar)</Label>
-                <div className="grid grid-cols-1 gap-2">
-                  {existingPlanillas.map((p) => {
-                    const protocolLabel = getProtocolLabel(p.protocol, p.medium);
-                    return (
-                      <div key={p.formId} className="group relative">
-                        <button
-                          onClick={() => handleReopenPlanilla(p)}
-                          className="w-full flex items-center justify-between p-3 rounded-none bg-neutral-100 border border-neutral-300 hover:bg-primary/5 hover:border-primary/30 transition-all"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="p-1.5 rounded-none bg-white shadow-sm border">
-                              <FileText className="h-3.5 w-3.5 text-black" />
-                            </div>
-                            <div className="text-left">
-                              <p className="text-xs text-black uppercase tracking-tight font-normal">{p.formId}</p>
-                              <div className="flex flex-col mt-0.5">
-                                <p className="text-[9px] text-black uppercase font-normal">
-                                    {protocolLabel} <span className="opacity-60 font-normal ml-1">({p.count})</span>
-                                </p>
-                                <div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
-                                  <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span>
-                                  <span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-black group-hover:translate-x-1 transition-all" />
-                        </button>
-                        {isAdmin && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeletingPlanilla({ fid: p.formId, label: protocolLabel }); }}
-                            className="absolute -top-2 -right-2 h-6 w-6 bg-neutral-600 text-white rounded-full flex items-center justify-center shadow-md z-10"
-                            title="BORRAR PLANILLA"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <div className="space-y-3 pt-2"><Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Planillas en este reporte (Editar)</Label><div className="grid grid-cols-1 gap-2">{existingPlanillas.map((p) => { const protocolLabel = getProtocolLabel(p.protocol, p.medium); return (<div key={p.formId} className="group relative"><button onClick={() => handleReopenPlanilla(p)} className="w-full flex items-center justify-between p-3 rounded-none bg-neutral-100 border border-neutral-300 hover:bg-primary/5 hover:border-primary/30 transition-all"><div className="flex items-center gap-3"><div className="p-1.5 rounded-none bg-white shadow-sm border"><FileText className="h-3.5 w-3.5 text-black" /></div><div className="text-left"><p className="text-xs text-black uppercase tracking-tight font-normal">{p.formId}</p><div className="flex flex-col mt-0.5"><p className="text-[9px] text-black uppercase font-normal">{protocolLabel} <span className="opacity-60 font-normal ml-1">({p.count})</span></p><div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter mt-1"><span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span><span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span></div></div></div></div><ChevronRight className="h-4 w-4 text-black group-hover:translate-x-1 transition-all" /></button>{isAdmin && (<button onClick={(e) => { e.stopPropagation(); setDeletingPlanilla({ fid: p.formId, label: protocolLabel }); }} className="absolute -top-2 -right-2 h-6 w-6 bg-neutral-600 text-white rounded-full flex items-center justify-center shadow-md z-10" title="BORRAR PLANILLA"><Trash2 className="h-3 w-3" /></button>)}</div>); })}</div></div>
             )}
           </CardContent>
         </Card>
-
-        {deletingPlanilla && (
-          <AdminDeleteDialog 
-            open={!!deletingPlanilla}
-            onOpenChange={(o) => !o && setDeletingPlanilla(null)}
-            onConfirm={handleDeletePlanilla}
-            title={`Borrar Planilla ${deletingPlanilla.label}`}
-            description={`Vas a eliminar todos los registros de la planilla ${deletingPlanilla.fid} y sus fotos.`}
-            isLoading={isDeletingPlanilla}
-          />
-        )}
+        {deletingPlanilla && <AdminDeleteDialog open={!!deletingPlanilla} onOpenChange={(o) => !o && setDeletingPlanilla(null)} onConfirm={handleDeletePlanilla} title={`Borrar Planilla ${deletingPlanilla.label}`} description={`Vas a eliminar todos los registros de la planilla ${deletingPlanilla.fid}.`} isLoading={isDeletingPlanilla} />}
       </div>
     );
   }
@@ -1417,171 +868,22 @@ export function DataEntryForm({
     <div className="space-y-4">
       {selectedPoint.stationId ? (
         <Card className="border-primary/20 bg-primary/5 shadow-sm overflow-hidden rounded-none">
-          <CardHeader className="p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Database className="h-4 w-4 text-black shrink-0" />
-                  <CardTitle className="text-lg font-normal text-black leading-none tracking-tight">{selectedPoint.name}</CardTitle>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setActiveView('edit-station')}
-                    className="h-6 w-6 ml-1 text-black hover:bg-primary/10 transition-colors"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  {isAdmin && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => setShowDeleteDialog(true)}
-                      className="h-6 w-6 ml-1 text-neutral-600 hover:bg-neutral-100 transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-                <div className="space-y-0.5 ml-6">
-                  <CardDescription className="text-[10px] font-normal text-black font-body">
-                    {selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}
-                  </CardDescription>
-                  <CardDescription className="text-[10px] font-normal text-black font-body">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>
-                  {stationDetails?.description && (
-                    <CardDescription className="text-[11px] font-normal text-black mt-2 italic leading-relaxed">
-                      {stationDetails.description}
-                    </CardDescription>
-                  )}
-                </div>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => { onDeselect(); setActiveView('summary'); }} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
-            </div>
-          </CardHeader>
-          <AdminDeleteDialog 
-            open={showDeleteDialog}
-            onOpenChange={setShowDeleteDialog}
-            onConfirm={handleDeleteStation}
-            title={`Eliminar Estación ${selectedPoint.name}`}
-            description="Estás por borrar una ubicación fija de monitoreo."
-            isLoading={isDeletingStation}
-          />
+          <CardHeader className="p-3"><div className="flex items-start justify-between gap-2"><div className="flex-1 space-y-1"><div className="flex items-center gap-2"><Database className="h-4 w-4 text-black shrink-0" /><CardTitle className="text-lg font-normal text-black leading-none tracking-tight">{selectedPoint.name}</CardTitle><Button variant="ghost" size="icon" onClick={() => setActiveView('edit-station')} className="h-6 w-6 ml-1 text-black hover:bg-primary/10 transition-colors"><Pencil className="h-3.5 w-3.5" /></Button>{isAdmin && (<Button variant="ghost" size="icon" onClick={() => setShowDeleteDialog(true)} className="h-6 w-6 ml-1 text-neutral-600 hover:bg-neutral-100 transition-colors"><Trash2 className="h-3.5 w-3.5" /></Button>)}</div><div className="space-y-0.5 ml-6"><CardDescription className="text-[10px] font-normal text-black font-body">{selectedPoint.lat.toFixed(6)}, {selectedPoint.lon.toFixed(6)}</CardDescription><CardDescription className="text-[10px] font-normal text-black font-body">Creación: {formatDate(stationDetails?.createdAt)}</CardDescription>{stationDetails?.description && (<CardDescription className="text-[11px] font-normal text-black mt-2 italic leading-relaxed">{stationDetails.description}</CardDescription>)}</div></div><Button variant="ghost" size="icon" onClick={() => { onDeselect(); setActiveView('summary'); }} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button></div></CardHeader>
+          <AdminDeleteDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} onConfirm={handleDeleteStation} title={`Eliminar Estación ${selectedPoint.name}`} description="Estás por borrar una ubicación fija." isLoading={isDeletingStation} />
         </Card>
       ) : (
-        <Card className="border-primary/20 bg-primary/5 shadow-sm rounded-none">
-          <CardHeader className="p-3">
-            <div className="flex items-start justify-between gap-2">
-              <CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight"><PlusCircle className="h-5 w-5" />NUEVO PUNTO</CardTitle>
-              <Button variant="ghost" size="icon" onClick={() => { onDeselect(); setActiveView('summary'); }} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button>
-            </div>
-          </CardHeader>
-        </Card>
+        <Card className="border-primary/20 bg-primary/5 shadow-sm rounded-none"><CardHeader className="p-3"><div className="flex items-start justify-between gap-2"><CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight"><PlusCircle className="h-5 w-5" />NUEVO PUNTO</CardTitle><Button variant="ghost" size="icon" onClick={() => { onDeselect(); setActiveView('summary'); }} className="h-8 w-8 -mt-1 -mr-1 text-black hover:text-destructive hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></Button></div></CardHeader></Card>
       )}
-
       {(activeView === 'create-station' || activeView === 'edit-station') && (
-        <Card className="border-none bg-transparent shadow-none animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden rounded-none">
-          <CardContent className="p-0 space-y-2">
+        <Card className="border-none bg-transparent shadow-none animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-hidden rounded-none"><CardContent className="p-0 space-y-2">
             <form onSubmit={stationForm.handleSubmit(activeView === 'edit-station' ? handleUpdateStation : handleCreateStation)} className="space-y-4">
-              <div className="space-y-0">
-                <div className="flex items-center justify-between py-2 border-b border-neutral-200">
-                  <Label htmlFor="station-name" className="text-[10px] font-normal uppercase text-black shrink-0">ETIQUETA</Label>
-                  <div className="relative flex-1 flex justify-end">
-                    <Input 
-                      id="station-name" 
-                      placeholder="EMA0000" 
-                      {...stationForm.register('name')} 
-                      className="text-black font-body text-[12px] h-8 border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" 
-                    />
-                    {isGeneratingName && <div className="absolute right-0 top-2"><Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" /></div>}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between py-2 border-b border-neutral-200">
-                  <Label className="text-[10px] font-normal uppercase text-black shrink-0">LATITUD</Label>
-                  <Input 
-                    type="text" 
-                    value={editLat} 
-                    onChange={(e) => handleManualCoordChange('lat', e.target.value)}
-                    className="h-8 text-[12px] font-body text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between py-2 border-b border-neutral-200">
-                  <Label className="text-[10px] font-normal uppercase text-black shrink-0">LONGITUD</Label>
-                  <Input 
-                    type="text" 
-                    value={editLon} 
-                    onChange={(e) => handleManualCoordChange('lon', e.target.value)}
-                    className="h-8 text-[12px] font-body text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full"
-                  />
-                </div>
-
-                <div className="py-3 border-b border-neutral-200 space-y-2">
-                  <Label htmlFor="description" className="text-[10px] font-normal uppercase text-black">DESCRIPCIÓN / NOTAS</Label>
-                  <Textarea 
-                    id="description" 
-                    {...stationForm.register('description')}
-                    placeholder="Detalles sobre el acceso, entorno o estado del punto..."
-                    className="min-h-[80px] text-[12px] font-body text-black border-neutral-200 focus-visible:ring-primary/50 rounded-none bg-neutral-50"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleCaptureGPS}
-                  className="w-full h-11 border-primary/20 text-primary hover:bg-primary/5 font-normal uppercase tracking-widest text-[10px] rounded-none"
-                >
-                  <Navigation className="mr-2 h-4 w-4" /> CAPTURAR MI UBICACIÓN (GPS)
-                </Button>
-                <div className="flex gap-2">
-                   {activeView === 'edit-station' && (
-                     <Button 
-                       type="button" 
-                       variant="ghost"
-                       onClick={() => setActiveView('summary')}
-                       className="flex-1 h-12 text-black font-normal uppercase tracking-widest text-[10px] rounded-none border border-neutral-300"
-                     >
-                       CANCELAR
-                     </Button>
-                   )}
-                   <Button 
-                     type="submit" 
-                     className="flex-[2] h-12 bg-primary hover:bg-primary/90 text-white font-normal uppercase tracking-widest shadow-md rounded-none" 
-                     disabled={isGeneratingName}
-                   >
-                     <Send className="mr-2 h-4 w-4" /> {activeView === 'edit-station' ? 'ACTUALIZAR DATOS' : 'GUARDAR PUNTO'}
-                   </Button>
-                </div>
-              </div>
+              <div className="space-y-0"><div className="flex items-center justify-between py-2 border-b border-neutral-200"><Label htmlFor="station-name" className="text-[10px] font-normal uppercase text-black shrink-0">ETIQUETA</Label><div className="relative flex-1 flex justify-end"><Input id="station-name" placeholder="EMA0000" {...stationForm.register('name')} className="text-black font-body text-[12px] h-8 border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" />{isGeneratingName && <div className="absolute right-0 top-2"><Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" /></div>}</div></div><div className="flex items-center justify-between py-2 border-b border-neutral-200"><Label className="text-[10px] font-normal uppercase text-black shrink-0">LATITUD</Label><Input type="text" value={editLat} onChange={(e) => handleManualCoordChange('lat', e.target.value)} className="h-8 text-[12px] font-body text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" /></div><div className="flex items-center justify-between py-2 border-b border-neutral-200"><Label className="text-[10px] font-normal uppercase text-black shrink-0">LONGITUD</Label><Input type="text" value={editLon} onChange={(e) => handleManualCoordChange('lon', e.target.value)} className="h-8 text-[12px] font-body text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" /></div><div className="py-3 border-b border-neutral-200 space-y-2"><Label htmlFor="description" className="text-[10px] font-normal uppercase text-black">DESCRIPCIÓN / NOTAS</Label><Textarea id="description" {...stationForm.register('description')} placeholder="Detalles..." className="min-h-[80px] text-[12px] font-body text-black border-neutral-200 focus-visible:ring-primary/50 rounded-none bg-neutral-50" /></div></div>
+              <div className="grid grid-cols-1 gap-2"><Button type="button" variant="outline" onClick={handleCaptureGPS} className="w-full h-11 border-primary/20 text-primary hover:bg-primary/5 font-normal uppercase tracking-widest text-[10px] rounded-none"><Navigation className="mr-2 h-4 w-4" /> CAPTURAR MI UBICACIÓN (GPS)</Button><div className="flex gap-2">{activeView === 'edit-station' && (<Button type="button" variant="ghost" onClick={() => setActiveView('summary')} className="flex-1 h-12 text-black font-normal uppercase tracking-widest text-[10px] rounded-none border border-neutral-300">CANCELAR</Button>)}<Button type="submit" className="flex-[2] h-12 bg-primary hover:bg-primary/90 text-white font-normal uppercase tracking-widest shadow-md rounded-none" disabled={isGeneratingName}><Send className="mr-2 h-4 w-4" /> {activeView === 'edit-station' ? 'ACTUALIZAR DATOS' : 'GUARDAR PUNTO'}</Button></div></div>
             </form>
-          </CardContent>
-        </Card>
+        </CardContent></Card>
       )}
-
       {activeView === 'summary' && selectedPoint.stationId && (
-        <div className="space-y-3 pt-2">
-          <Separator className="bg-neutral-200" />
-          <div className="grid grid-cols-1 gap-2 pt-1">
-            <Button 
-              variant="outline"
-              className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 border-neutral-300 bg-neutral-100 text-black hover:bg-neutral-200 shadow-sm rounded-none" 
-              onClick={() => setActiveView('consult')}
-            >
-              <Search className="h-6 w-6" /> REPORTES
-            </Button>
-            <Button 
-              className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" 
-              onClick={() => {
-                setCurrentReportId(null);
-                setActiveView('select-project');
-              }}
-            >
-              <FolderOpen className="h-6 w-6" /> Crear reporte
-            </Button>
-          </div>
-        </div>
+        <div className="space-y-3 pt-2"><Separator className="bg-neutral-200" /><div className="grid grid-cols-1 gap-2 pt-1"><Button variant="outline" className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 border-neutral-300 bg-neutral-100 text-black hover:bg-neutral-200 shadow-sm rounded-none" onClick={() => setActiveView('consult')}><Search className="h-6 w-6" /> REPORTES</Button><Button className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" onClick={() => { setCurrentReportId(null); setActiveView('select-project'); }}><FolderOpen className="h-6 w-6" /> Crear reporte</Button></div></div>
       )}
     </div>
   );
