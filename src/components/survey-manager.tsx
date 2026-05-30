@@ -130,6 +130,9 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
       if (selectedSurveyData.manualDate) {
         const d = selectedSurveyData.manualDate.toDate ? selectedSurveyData.manualDate.toDate() : new Date(selectedSurveyData.manualDate);
         setManualDate(d.toISOString().slice(0, 16));
+      } else if (selectedSurveyData.createdAt) {
+        const d = selectedSurveyData.createdAt.toDate ? selectedSurveyData.createdAt.toDate() : new Date(selectedSurveyData.createdAt);
+        setManualDate(d.toISOString().slice(0, 16));
       }
       setTrelloProject(selectedSurveyData.trelloCardName || '');
     }
@@ -179,6 +182,8 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
       await updateDoc(doc(db, 'levantamientos', selectedSurveyId), {
         description,
         trelloCardName: trelloProject,
+        isDeferred,
+        manualDate: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : null,
         status: 'open'
       });
       toast({ title: "Actualizado", description: "Datos del levantamiento guardados." });
@@ -219,7 +224,13 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
   const formatDate = (ts: any) => {
     if (!ts) return '---';
     const date = ts.toDate ? ts.toDate() : new Date(ts);
-    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    return date.toLocaleString('es-AR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (view === 'create' || view === 'edit') {
@@ -248,16 +259,14 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
               <div className="flex flex-wrap items-center gap-4 text-[9px] font-normal uppercase border-b border-neutral-100 pb-3 text-black">
                  <div className="flex items-center gap-1.5">
                    <Calendar className="h-3 w-3 text-primary" />
-                   <span>{formatDate(selectedSurveyData?.createdAt || new Date())}</span>
+                   <span>{isDeferred ? "Fecha Manual:" : formatDate(selectedSurveyData?.createdAt || new Date())}</span>
                  </div>
                  <div className="flex items-center gap-2">
                     <button 
-                      onClick={() => view === 'create' && setIsDeferred(!isDeferred)}
-                      disabled={view === 'edit'}
+                      onClick={() => setIsDeferred(!isDeferred)}
                       className={cn(
                         "px-2 py-0.5 rounded-full border transition-all font-normal",
-                        isDeferred ? "bg-red-50 border-red-200 text-red-600" : "bg-green-50 border-green-200 text-green-600",
-                        view === 'edit' && "opacity-80"
+                        isDeferred ? "bg-red-50 border-red-200 text-red-600" : "bg-green-50 border-green-200 text-green-600"
                       )}
                     >
                       {isDeferred ? "DIFERIDO" : "REAL"}
@@ -267,8 +276,7 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
                         type="datetime-local" 
                         value={manualDate} 
                         onChange={(e) => setManualDate(e.target.value)}
-                        disabled={view === 'edit'}
-                        className="bg-transparent border-none p-0 text-[9px] font-normal uppercase outline-none focus:ring-0 w-32 text-black"
+                        className="bg-white border border-neutral-200 px-1.5 py-0.5 rounded-sm text-[9px] font-normal uppercase outline-none focus:ring-1 focus:ring-primary/30 w-32 text-black"
                       />
                     )}
                  </div>
