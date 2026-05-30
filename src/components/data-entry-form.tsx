@@ -503,8 +503,9 @@ export function DataEntryForm({
       return;
     }
     const currentKey = `${selectedPoint.lat.toFixed(6)}-${selectedPoint.lon.toFixed(6)}-${selectedPoint.stationId}`;
+    const protectedViews: FormView[] = ['select-template', 'report-entry', 'consult', 'campañas'];
+    
     if (!isInitialLoadRef.current && lastPointKeyRef.current !== currentKey) {
-      const protectedViews: FormView[] = ['select-template', 'report-entry', 'consult', 'campañas'];
       if (protectedViews.includes(activeView)) {
         lastPointKeyRef.current = currentKey;
         return;
@@ -548,20 +549,6 @@ export function DataEntryForm({
     }
   }, []);
 
-  const filteredTrelloProjects = useMemo(() => {
-    const transformed = trelloProjects.map(p => {
-      const match = p.match(/\((.*?)\)$/);
-      const display = match ? `${match[0]} ${p.replace(match[0], '').trim()}` : p;
-      return { original: p, display };
-    });
-    let filtered = transformed;
-    if (projectSearch) {
-      const searchLower = projectSearch.toLowerCase();
-      filtered = transformed.filter(item => item.display.toLowerCase().includes(searchLower) || item.original.toLowerCase().includes(searchLower));
-    }
-    return filtered.sort((a, b) => a.display.localeCompare(b.display));
-  }, [trelloProjects, projectSearch]);
-
   const stationRef = useMemo(() => {
     if (!db || !selectedPoint?.stationId) return null;
     return doc(db, 'stations', selectedPoint.stationId);
@@ -603,7 +590,8 @@ export function DataEntryForm({
           }
           stationForm.setValue('name', `${prefix}${nextNumber.toString().padStart(4, '0')}`);
         } catch (error) {
-          stationForm.setValue('name', `${prefix}0001`);
+          // Fallback offline: nombre temporal
+          stationForm.setValue('name', `${prefix}TEMP-${Date.now().toString().slice(-4)}`);
         } finally {
           setIsGeneratingName(false);
         }
@@ -656,7 +644,6 @@ export function DataEntryForm({
     const finalLon = parseFloat(editLon);
     if (isNaN(finalLat) || isNaN(finalLon)) { toast({ variant: "destructive", title: "Error", description: "Coordenadas inválidas." }); return; }
     
-    // Non-blocking write: Crear la referencia y el objeto inmediatamente
     const newStationRef = doc(collection(db, 'stations'));
     const stationData = { 
       name: data.name, 
@@ -669,7 +656,6 @@ export function DataEntryForm({
       createdAt: serverTimestamp() 
     };
     
-    // Iniciar escritura sin await para permitir fluidez offline
     setDoc(newStationRef, stationData).catch(async (error) => { 
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: newStationRef.path, 
@@ -678,7 +664,6 @@ export function DataEntryForm({
       })); 
     });
 
-    // Cambiar vista de UI inmediatamente después de disparar la escritura
     onStationCreated(newStationRef.id, data.name); 
     setActiveView('summary'); 
     toast({ title: "Estación registrada", description: data.name });
@@ -693,7 +678,6 @@ export function DataEntryForm({
     const currentStationRef = doc(db, 'stations', selectedPoint.stationId);
     const updateData = { name: data.name, latitude: finalLat, longitude: finalLon, description: data.description || '' };
     
-    // Non-blocking update
     updateDoc(currentStationRef, updateData).catch(async (error) => { 
       errorEmitter.emit('permission-error', new FirestorePermissionError({ 
         path: currentStationRef.path, 
@@ -712,7 +696,6 @@ export function DataEntryForm({
     setIsDeletingStation(true);
     const stationRef = doc(db, 'stations', selectedPoint.stationId);
     
-    // Non-blocking delete
     deleteDoc(stationRef).catch(async (error) => { 
        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: stationRef.path, operation: 'delete' })); 
     });
@@ -739,7 +722,7 @@ export function DataEntryForm({
       setActiveFormId(newFormId);
       if (currentReportId) setActiveView('report-entry');
       else await handleStartReport(newFormId);
-    } catch (e) { const fallbackId = `PL-ERR-${crypto.randomUUID().substring(0,8)}`; setActiveFormId(fallbackId); if (currentReportId) setActiveView('report-entry'); else await handleStartReport(fallbackId); }
+    } catch (e) { const fallbackId = `PL${(stationDetails as any)?.basinCode || 'OFF'}${Date.now().toString().slice(-4)}`; setActiveFormId(fallbackId); if (currentReportId) setActiveView('report-entry'); else await handleStartReport(fallbackId); }
     finally { setIsStartingReport(false); }
   };
 
@@ -769,7 +752,6 @@ export function DataEntryForm({
         surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId 
       };
 
-      // Non-blocking report creation
       setDoc(newReportRef, reportData).catch(async (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: newReportRef.path,
@@ -781,7 +763,15 @@ export function DataEntryForm({
       setCurrentReportId(newReportRef.id);
       setActiveView('report-entry');
       toast({ title: "Reporte iniciado", description: oid });
-    } catch (e) {} finally { setIsStartingReport(false); }
+    } catch (e) {
+      // Fallback offline para OID
+      const fallbackOid = `${prefix}OFF-${Date.now().toString().slice(-4)}`;
+      const newReportRef = doc(collection(db, 'reports'));
+      const reportData = { oid: fallbackOid, stationId: selectedPoint.stationId, trelloCardName: selectedProject || '', description: reportEditDesc || '', createdAt: serverTimestamp(), createdByEmail: user.email, status: 'open', editors: [user.email], surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId };
+      setDoc(newReportRef, reportData);
+      setCurrentReportId(newReportRef.id);
+      setActiveView('report-entry');
+    } finally { setIsStartingReport(false); }
   };
 
   const handleSaveReportEdits = async () => {
@@ -792,7 +782,6 @@ export function DataEntryForm({
       surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId 
     };
     
-    // Non-blocking update
     updateDoc(reportRef, updateData).catch(console.error);
     toast({ title: "Reporte actualizado" });
   };
@@ -823,7 +812,6 @@ export function DataEntryForm({
       const q = query(collection(db, 'samples'), where('reportId', '==', currentReportId), where('formId', '==', deletingPlanilla.fid));
       const snap = await getDocs(q);
       for (const sDoc of snap.docs) {
-        // Non-blocking deletion within loop
         deleteDoc(doc(db, 'samples', sDoc.id));
       }
       if (storage) {
@@ -903,7 +891,7 @@ export function DataEntryForm({
             <div className="space-y-3">
               <Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Proyecto de Trello</Label>
               <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-black" /><Input placeholder="Buscá el proyecto o código..." className="pl-9 h-11 text-xs font-normal border-input focus-visible:ring-primary/50 text-black rounded-none" value={projectSearch} onChange={(e) => setProjectSearch(e.target.value)} /></div>
-              <ScrollArea className="h-[200px] border rounded-none p-1 bg-white"><div className="space-y-1">{filteredTrelloProjects.length === 0 ? <div className="p-4 text-center text-xs text-neutral-600 italic">No se encontraron proyectos.</div> : filteredTrelloProjects.map((item) => <button key={item.original} onClick={() => { setSelectedProject(item.original); setProjectSearch(item.display); }} className={cn("w-full text-left px-3 py-2.5 rounded-none text-[11px] font-normal transition-colors flex items-start justify-between gap-2", selectedProject === item.original ? "bg-primary text-white" : "hover:bg-primary/5 text-black border border-transparent")}><span className="flex-1 break-words">{item.display}</span>{selectedProject === item.original && <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />}</button>)}</div></ScrollArea>
+              <ScrollArea className="h-[200px] border rounded-none p-1 bg-white"><div className="space-y-1">{trelloProjects.length === 0 ? <div className="p-4 text-center text-xs text-neutral-600 italic">No se encontraron proyectos.</div> : trelloProjects.filter(p => p.toLowerCase().includes(projectSearch.toLowerCase())).map((p) => <button key={p} onClick={() => { setSelectedProject(p); setProjectSearch(p); }} className={cn("w-full text-left px-3 py-2.5 rounded-none text-[11px] font-normal transition-colors flex items-start justify-between gap-2", selectedProject === p ? "bg-primary text-white" : "hover:bg-primary/5 text-black border border-transparent")}><span className="flex-1 break-words">{p}</span>{selectedProject === p && <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" />}</button>)}</div></ScrollArea>
             </div>
             <Button className="w-full h-12 text-sm font-normal uppercase tracking-widest bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" onClick={() => setActiveView('select-template')}>Siguiente: Elegir Planilla <ArrowLeft className="ml-2 h-4 w-4 rotate-180" /></Button>
           </CardContent>
@@ -913,12 +901,12 @@ export function DataEntryForm({
   }
 
   if (activeView === 'select-template' && selectedPoint.stationId) {
-    const associatedSurvey = campañas?.find((l: any) => l.id === currentReportData?.surveyId);
+    const associatedCampaign = campañas?.find((l: any) => l.id === currentReportData?.surveyId);
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
         <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2 text-black font-normal"><ArrowLeft className="mr-2 h-4 w-4" /> Volver atrás</Button>
         <Card className="border-t-4 border-t-accent shadow-lg overflow-hidden rounded-none">
-          <CardHeader className="pb-4"><CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight"><LayoutList className="h-5 w-5 text-black" />{currentReportId ? `Reporte: ${currentReportData?.oid || 'Cargando...'}` : '2. Elegir Planilla de Carga'}</CardTitle><CardDescription className="text-[11px] text-black font-normal uppercase">{currentReportId ? (associatedSurvey ? <div className="flex items-center gap-1.5 mt-1"><span className="opacity-60">Campaña:</span><button onClick={() => { setPreSelectedSurveyId(associatedSurvey.id); setActiveView('campañas'); }} className="text-primary hover:underline transition-all">{associatedSurvey.oid}</button></div> : <span className="opacity-40 mt-1 block italic">Sin vinculación a campaña</span>) : 'Seleccioná el protocolo de monitoreo.'}</CardDescription></CardHeader>
+          <CardHeader className="pb-4"><CardTitle className="text-md flex items-center gap-2 text-black font-normal uppercase tracking-tight"><LayoutList className="h-5 w-5 text-black" />{currentReportId ? `Reporte: ${currentReportData?.oid || 'Cargando...'}` : '2. Elegir Planilla de Carga'}</CardTitle><CardDescription className="text-[11px] text-black font-normal uppercase">{currentReportId ? (associatedCampaign ? <div className="flex items-center gap-1.5 mt-1"><span className="opacity-60">Campaña:</span><button onClick={() => { setPreSelectedSurveyId(associatedCampaign.id); setActiveView('campañas'); }} className="text-primary hover:underline transition-all">{associatedCampaign.oid}</button></div> : <span className="opacity-40 mt-1 block italic">Sin vinculación a campaña</span>) : 'Seleccioná el protocolo de monitoreo.'}</CardDescription></CardHeader>
           <CardContent className="space-y-6">
             {currentReportId && (
               <Accordion type="single" collapsible className="w-full border rounded-none overflow-hidden">
@@ -960,7 +948,7 @@ export function DataEntryForm({
         </CardContent></Card>
       )}
       {activeView === 'summary' && selectedPoint.stationId && (
-        <div className="space-y-3 pt-2"><Separator className="bg-neutral-200" /><div className="grid grid-cols-1 gap-2 pt-1"><Button variant="outline" className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 border-neutral-300 bg-neutral-100 text-black hover:bg-neutral-200 shadow-sm rounded-none" onClick={() => setActiveView('consult')}><Search className="h-6 w-6" /> REPORTES</Button><Button className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" onClick={() => { setCurrentReportId(null); setActiveView('select-project'); }}><FolderOpen className="h-6 w-6" /> Crear reporte</Button></div></div>
+        <div className="space-y-3 pt-2"><Separator className="bg-neutral-200" /><div className="grid grid-cols-1 gap-2 pt-1"><Button variant="outline" className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 border-neutral-300 bg-neutral-100 text-black hover:bg-neutral-200 shadow-sm rounded-none" onClick={() => setActiveView('consult')}><Search className="h-6 w-6" /> REPORTES</Button><Button className="w-full h-14 text-md font-normal uppercase tracking-widest flex items-center gap-3 bg-primary hover:bg-primary/90 shadow-md text-white rounded-none" onClick={() => { setCurrentReportId(null); setReportSurveyId('sin-vinculo'); setActiveView('select-project'); }}><FolderOpen className="h-6 w-6" /> Crear reporte</Button></div></div>
       )}
     </div>
   );

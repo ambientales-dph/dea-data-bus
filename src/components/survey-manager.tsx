@@ -105,22 +105,29 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
 
   const currentSurveyBasin = useMemo(() => {
     if (!selectedSurveyData?.oid) return null;
-    const match = selectedSurveyData.oid.match(/^LV-?([A-Za-z]{2,4})/);
+    // Regex flexible para LV-RPM o LVRPM
+    const match = selectedSurveyData.oid.match(/LV-?([A-Za-z]{2,4})/i);
     return match ? match[1].toUpperCase() : null;
   }, [selectedSurveyData?.oid]);
 
   const unlinkedReports = useMemo(() => {
     const q = reportSearch.toLowerCase();
     return allReports.filter((r: any) => {
-      if (r.surveyId) return false;
+      // Si ya tiene un surveyId asignado (aunque sea "" o null explícito), lo filtramos si no coincide
+      if (r.surveyId && r.surveyId !== "") return false;
+      
       const reportOid = r.oid || '';
-      const match = reportOid.match(/^RM-?([A-Za-z]{2,4})/);
+      // Regex flexible para RM-RPM o RMRPM
+      const match = reportOid.match(/RM-?([A-Za-z]{2,4})/i);
       const reportBasin = match ? match[1].toUpperCase() : null;
-      if (reportBasin !== currentSurveyBasin) return false;
+      
+      // Si la campaña tiene una cuenca definida, solo mostramos reportes de esa cuenca
+      if (currentSurveyBasin && reportBasin !== currentSurveyBasin) return false;
+      
       return reportOid.toLowerCase().includes(q) || (r.trelloCardName || '').toLowerCase().includes(q);
     })
     .sort((a: any, b: any) => (a.oid || "").localeCompare(b.oid || ""))
-    .slice(0, 20); 
+    .slice(0, 50); // Aumentamos límite para evitar que desaparezcan offline
   }, [allReports, reportSearch, currentSurveyBasin]);
 
   useEffect(() => {
@@ -170,7 +177,11 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
       setSelectedSurveyId(docRef.id);
       setView('edit');
     } catch (e) {
-      console.error(e);
+      // Fallback offline
+      const tempRef = doc(collection(db, 'levantamientos'));
+      setDoc(tempRef, surveyData);
+      setSelectedSurveyId(tempRef.id);
+      setView('edit');
     } finally {
       setIsSaving(false);
     }
@@ -179,15 +190,16 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
   const handleUpdate = async () => {
     if (!selectedSurveyId) return;
     setIsSaving(true);
+    const updateData = {
+      description,
+      trelloCardName: trelloProject,
+      isDeferred,
+      manualDate: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : null,
+      status: 'open'
+    };
     try {
-      await updateDoc(doc(db, 'levantamientos', selectedSurveyId), {
-        description,
-        trelloCardName: trelloProject,
-        isDeferred,
-        manualDate: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : null,
-        status: 'open'
-      });
-      toast({ title: "Campaña actualizada" });
+      updateDoc(doc(db, 'levantamientos', selectedSurveyId), updateData).catch(console.error);
+      toast({ title: "Campaña sincronizada localmente" });
     } catch (e) {
       console.error(e);
     } finally {
@@ -200,9 +212,9 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
     setIsDeleting(true);
     try {
       for (const r of linkedReports) {
-        await updateDoc(doc(db, 'reports', r.id), { surveyId: null });
+        updateDoc(doc(db, 'reports', r.id), { surveyId: null });
       }
-      await deleteDoc(doc(db, 'levantamientos', selectedSurveyId));
+      deleteDoc(doc(db, 'levantamientos', selectedSurveyId));
       toast({ title: "Campaña eliminada" });
       setView('list');
     } catch (e) {
@@ -215,11 +227,11 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
 
   const linkReport = async (reportId: string) => {
     if (!selectedSurveyId) return;
-    await updateDoc(doc(db, 'reports', reportId), { surveyId: selectedSurveyId });
+    updateDoc(doc(db, 'reports', reportId), { surveyId: selectedSurveyId }).catch(console.error);
   };
 
   const unlinkReport = async (reportId: string) => {
-    await updateDoc(doc(db, 'reports', reportId), { surveyId: null });
+    updateDoc(doc(db, 'reports', reportId), { surveyId: null }).catch(console.error);
   };
 
   const formatDate = (ts: any) => {
