@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDoc, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDoc, getDocs, Timestamp, setDoc } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useDoc } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -118,17 +118,33 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
           const medium = template.medium || param.mediumKey || 'agua_superficial';
           const t1 = entry.capturedAt || Date.now();
           const deltaMs = Date.now() - t1;
+          
+          // Non-blocking write: No esperamos la confirmación del servidor para cada analito
           const q = query(samplesCol, where('reportId', '==', reportId), where('formId', '==', formId), where('analyte', '==', param.nombre));
           const snapshot = await getDocs(q);
           const payload = { value: entry.value, latitude: location?.latitude ?? null, longitude: location?.longitude ?? null, retrasoSincronizacionMs: isDeferred ? 0 : deltaMs, fechaServidor: serverTimestamp(), timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(), isDeferred, userId: user.uid, userEmail: user.email };
-          if (!snapshot.empty) await updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
-          else await addDoc(samplesCol, { ...payload, medium, parameterType: param.categoria, analyte: param.nombre, reportId, formId, stationId });
+          
+          if (!snapshot.empty) {
+            updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload).catch(console.error);
+          } else {
+            addDoc(samplesCol, { ...payload, medium, parameterType: param.categoria, analyte: param.nombre, reportId, formId, stationId }).catch(console.error);
+          }
           savedCount++;
         }
       }
-      if (savedCount > 0 && user.email && reportRef) await updateDoc(reportRef, { editors: arrayUnion(user.email) });
-      toast({ title: "Planilla sincronizada" });
-    } catch (e) { toast({ variant: "destructive", title: "Error" }); } finally { setIsSavingPlanilla(false); }
+      
+      if (savedCount > 0 && user.email && reportRef) {
+        updateDoc(reportRef, { editors: arrayUnion(user.email) }).catch(console.error);
+      }
+      
+      // Feedback inmediato y cierre
+      toast({ title: "Planilla sincronizada localmente" });
+      onClose(); // Cerramos la planilla de inmediato para evitar re-clics
+    } catch (e) { 
+      toast({ variant: "destructive", title: "Error en sincronización" }); 
+    } finally { 
+      setIsSavingPlanilla(false); 
+    }
   };
 
   const formatTimestamp = (ts: any) => {

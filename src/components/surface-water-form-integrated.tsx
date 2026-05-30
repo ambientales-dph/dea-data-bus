@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -166,10 +167,11 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         userEmail: user.email
       };
 
+      // Non-blocking writes: Iniciamos la operación pero no la esperamos con await
       if (!snapshot.empty) {
-        await updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload);
+        updateDoc(doc(db, 'samples', snapshot.docs[0].id), payload).catch(console.error);
       } else {
-        await addDoc(collection(db, 'samples'), {
+        addDoc(collection(db, 'samples'), {
           ...payload,
           medium: 'agua_superficial',
           parameterType: category,
@@ -177,18 +179,19 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
           reportId,
           formId,
           stationId,
-        });
+        }).catch(console.error);
       }
 
-      await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
+      updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+      
+      // Feedback inmediato
       setSavedFields(prev => ({ ...prev, [name]: true }));
       toast({ 
-        title: "Guardado", 
-        description: location ? "Dato sincronizado con GPS." : "Guardado (Sin señal de GPS)." 
+        title: "Dato en cola", 
+        description: location ? "Sincronizado localmente con GPS." : "Sincronizado localmente." 
       });
     } catch (error: any) {
       console.error(error);
-      toast({ variant: "destructive", title: "Error al guardar", description: "No se pudo sincronizar el dato." });
     } finally {
       setSavingFields(prev => ({ ...prev, [name]: false }));
     }

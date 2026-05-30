@@ -655,9 +655,33 @@ export function DataEntryForm({
     const finalLat = parseFloat(editLat);
     const finalLon = parseFloat(editLon);
     if (isNaN(finalLat) || isNaN(finalLon)) { toast({ variant: "destructive", title: "Error", description: "Coordenadas inválidas." }); return; }
+    
+    // Non-blocking write: Crear la referencia y el objeto inmediatamente
     const newStationRef = doc(collection(db, 'stations'));
-    const stationData = { name: data.name, latitude: finalLat, longitude: finalLon, description: data.description || '', basinCode: selectedPoint.basinCode || '', userId: user?.uid, userEmail: user?.email, createdAt: serverTimestamp() };
-    setDoc(newStationRef, stationData).then(() => { onStationCreated(newStationRef.id, data.name); setActiveView('summary'); toast({ title: "Estación registrada", description: data.name }); }).catch(async (error) => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: newStationRef.path, operation: 'create', requestResourceData: stationData })); });
+    const stationData = { 
+      name: data.name, 
+      latitude: finalLat, 
+      longitude: finalLon, 
+      description: data.description || '', 
+      basinCode: selectedPoint.basinCode || '', 
+      userId: user?.uid, 
+      userEmail: user?.email, 
+      createdAt: serverTimestamp() 
+    };
+    
+    // Iniciar escritura sin await para permitir fluidez offline
+    setDoc(newStationRef, stationData).catch(async (error) => { 
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path: newStationRef.path, 
+        operation: 'create', 
+        requestResourceData: stationData 
+      })); 
+    });
+
+    // Cambiar vista de UI inmediatamente después de disparar la escritura
+    onStationCreated(newStationRef.id, data.name); 
+    setActiveView('summary'); 
+    toast({ title: "Estación registrada", description: data.name });
   };
 
   const handleUpdateStation = (data: StationValues) => {
@@ -665,17 +689,39 @@ export function DataEntryForm({
     const finalLat = parseFloat(editLat);
     const finalLon = parseFloat(editLon);
     if (isNaN(finalLat) || isNaN(finalLon)) { toast({ variant: "destructive", title: "Error", description: "Coordenadas inválidas." }); return; }
+    
     const currentStationRef = doc(db, 'stations', selectedPoint.stationId);
     const updateData = { name: data.name, latitude: finalLat, longitude: finalLon, description: data.description || '' };
-    updateDoc(currentStationRef, updateData).then(() => { onPointUpdate({ ...selectedPoint, lat: finalLat, lon: finalLon, name: data.name }); setActiveView('summary'); toast({ title: "Estación actualizada", description: data.name }); }).catch(async (error) => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: currentStationRef.path, operation: 'update', requestResourceData: updateData })); });
+    
+    // Non-blocking update
+    updateDoc(currentStationRef, updateData).catch(async (error) => { 
+      errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+        path: currentStationRef.path, 
+        operation: 'update', 
+        requestResourceData: updateData 
+      })); 
+    });
+
+    onPointUpdate({ ...selectedPoint, lat: finalLat, lon: finalLon, name: data.name }); 
+    setActiveView('summary'); 
+    toast({ title: "Estación actualizada", description: data.name });
   };
 
   const handleDeleteStation = async () => {
     if (!selectedPoint?.stationId || !db) return;
     setIsDeletingStation(true);
-    try { await deleteDoc(doc(db, 'stations', selectedPoint.stationId)); onDeselect(); setActiveView('summary'); toast({ title: "Estación eliminada" }); }
-    catch (e) { toast({ variant: "destructive", title: "Error", description: "No se pudo eliminar la estación." }); }
-    finally { setIsDeletingStation(false); setShowDeleteDialog(false); }
+    const stationRef = doc(db, 'stations', selectedPoint.stationId);
+    
+    // Non-blocking delete
+    deleteDoc(stationRef).catch(async (error) => { 
+       errorEmitter.emit('permission-error', new FirestorePermissionError({ path: stationRef.path, operation: 'delete' })); 
+    });
+
+    onDeselect(); 
+    setActiveView('summary'); 
+    toast({ title: "Estación eliminada" });
+    setIsDeletingStation(false); 
+    setShowDeleteDialog(false);
   };
 
   const handleConfirmTemplate = async () => {
@@ -709,8 +755,30 @@ export function DataEntryForm({
       const snapshot = await getDocs(q);
       if (!snapshot.empty) { const lastOid = snapshot.docs[0].data().oid as string; const numPart = lastOid.substring(prefix.length); const lastNum = parseInt(numPart, 10); if (!isNaN(lastNum)) nextNumber = lastNum + 1; }
       const oid = `${prefix}${nextNumber.toString().padStart(4, '0')}`;
-      const docRef = await addDoc(reportsCol, { oid, stationId: selectedPoint.stationId, trelloCardName: selectedProject || '', description: reportEditDesc || '', createdAt: serverTimestamp(), createdByEmail: user.email, status: 'open', editors: [user.email], surveyId: null });
-      setCurrentReportId(docRef.id);
+      
+      const newReportRef = doc(reportsCol);
+      const reportData = { 
+        oid, 
+        stationId: selectedPoint.stationId, 
+        trelloCardName: selectedProject || '', 
+        description: reportEditDesc || '', 
+        createdAt: serverTimestamp(), 
+        createdByEmail: user.email, 
+        status: 'open', 
+        editors: [user.email], 
+        surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId 
+      };
+
+      // Non-blocking report creation
+      setDoc(newReportRef, reportData).catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: newReportRef.path,
+          operation: 'create',
+          requestResourceData: reportData
+        }));
+      });
+
+      setCurrentReportId(newReportRef.id);
       setActiveView('report-entry');
       toast({ title: "Reporte iniciado", description: oid });
     } catch (e) {} finally { setIsStartingReport(false); }
@@ -718,9 +786,15 @@ export function DataEntryForm({
 
   const handleSaveReportEdits = async () => {
     if (!reportRef) return;
-    updateDoc(reportRef, { trelloCardName: selectedProject || '', description: reportEditDesc || '', surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId })
-      .then(() => { toast({ title: "Reporte actualizado" }); })
-      .catch(console.error);
+    const updateData = { 
+      trelloCardName: selectedProject || '', 
+      description: reportEditDesc || '', 
+      surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId 
+    };
+    
+    // Non-blocking update
+    updateDoc(reportRef, updateData).catch(console.error);
+    toast({ title: "Reporte actualizado" });
   };
 
   const handleOpenExistingReport = (reportId: string) => { setCurrentReportId(reportId); setActiveView('select-template'); };
@@ -748,7 +822,10 @@ export function DataEntryForm({
     try {
       const q = query(collection(db, 'samples'), where('reportId', '==', currentReportId), where('formId', '==', deletingPlanilla.fid));
       const snap = await getDocs(q);
-      for (const sDoc of snap.docs) await deleteDoc(doc(db, 'samples', sDoc.id));
+      for (const sDoc of snap.docs) {
+        // Non-blocking deletion within loop
+        deleteDoc(doc(db, 'samples', sDoc.id));
+      }
       if (storage) {
         const planillaStorageRef = ref(storage, `reports/${currentReportId}/${deletingPlanilla.fid}`);
         try { const listRes = await listAll(planillaStorageRef); for (const item of listRes.items) await deleteObject(item); } catch (storageErr) {}
