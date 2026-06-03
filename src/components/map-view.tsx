@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
@@ -160,7 +161,7 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       target: mapRef.current,
       layers: [baseLayer, basinsLayer, codesLayer, uploadedLayer, presenceLayer, stationsLayer, selectionLayer],
       view: new View({
-        center: fromLonLat([-60.0, -37.0]),
+        center: fromLonLat([-60.868278666608284, -37.185603433684726]),
         zoom: 6.0,
       }),
     });
@@ -565,7 +566,6 @@ export function MapView({ onPointSelect, selectedPoint, activeLayer, onLayerChan
       >
         <div className="absolute w-12 h-[0.5px] bg-white opacity-90" />
         <div className="absolute h-12 w-[0.5px] bg-white opacity-90" />
-        <div className="absolute w-4 h-4 rounded-full border-[0.5px] border-white opacity-90" />
       </div>
 
       <div className="absolute bottom-6 right-6 z-40 flex flex-row items-center gap-1.5">

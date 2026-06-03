@@ -7,6 +7,7 @@
       "type": "object",
       "properties": {
         "name": { "type": "string", "description": "Denominación de la estación." },
+        "aka": { "type": "string", "description": "Nombre alternativo o alias de la estación (AKA)." },
         "latitude": { "type": "number", "description": "Latitud geográfica." },
         "longitude": { "type": "number", "description": "Logitud geográfica." },
         "description": { "type": "string", "description": "Descripción o notas adicionales de la estación." },
