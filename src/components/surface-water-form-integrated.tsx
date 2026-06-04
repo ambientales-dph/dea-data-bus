@@ -232,7 +232,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         const location = await getCurrentGPSLocation();
         const finalValue = analyteState.unit ? `${reading.value} ${analyteState.unit}` : reading.value;
         
-        // Si es temporal, generamos un ID fijo basado en tiempo para evitar duplicados en re-guardados
         const docId = readingId.startsWith('temp_') 
           ? `${reportId}_${formId}_${analyteName.replace(/\s+/g, '_')}_${reading.capturedAt}`
           : readingId;
@@ -278,7 +277,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
     const variance = nums.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1);
     const sd = Math.sqrt(variance);
-    const se = sd / Math.sqrt(n); // Error estándar
+    const se = sd / Math.sqrt(n); 
 
     return { mean: mean.toFixed(3), error: se.toFixed(3), n };
   };
@@ -375,7 +374,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                       <span className="text-[12px] font-normal text-black uppercase tracking-tight">{analyte.name}</span>
                       {stats && (
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] font-code font-black text-primary">$\bar{x}$: {stats.mean}</span>
+                          <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean}</span>
                           <span className="text-[8px] text-neutral-400 uppercase">n={stats.n} lecturas</span>
                         </div>
                       )}
