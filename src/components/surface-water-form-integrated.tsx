@@ -1,17 +1,24 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, Timestamp, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, CheckCircle2, Clock, User, Calendar, Beaker, MapPin, Settings2 } from 'lucide-react';
+import { Loader2, Check, CheckCircle2, Clock, User, Calendar, Beaker, MapPin, Settings2, Plus, Trash2, ChevronDown, ChevronUp, Sigma, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
 import { getCurrentGPSLocation } from '@/lib/geo-utils';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type MeasurementSystem = 'metric' | 'imperial' | 'local';
+
+interface Reading {
+  id: string;
+  value: string;
+  capturedAt: number;
+  isSaved: boolean;
+  isSaving: boolean;
+}
 
 interface AnalyteConfig {
   name: string;
@@ -57,10 +64,10 @@ const LAB_CONFIG = [
   { name: "Plomo", unit: "mg/l", cat: "Metales" }
 ];
 
-interface SurfaceWaterEntry {
-  value: string;
+interface SurfaceWaterAnalyteState {
+  readings: Reading[];
   unit: string;
-  capturedAt: number | null;
+  isExpanded: boolean;
 }
 
 interface Props {
@@ -76,9 +83,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   const { user } = useUser();
   
   const [globalSystem, setGlobalSystem] = useState<MeasurementSystem>('metric');
-  const [formData, setFormData] = useState<Record<string, SurfaceWaterEntry>>({});
-  const [savingFields, setSavingFields] = useState<Record<string, boolean>>({});
-  const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
+  const [formData, setFormData] = useState<Record<string, SurfaceWaterAnalyteState>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
@@ -96,28 +101,34 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         );
         const snapshot = await getDocs(q);
         
-        const newFormData: Record<string, SurfaceWaterEntry> = {};
-        const newSavedFields: Record<string, boolean> = {};
+        const newFormData: Record<string, SurfaceWaterAnalyteState> = {};
         let foundMetadata = { user: user?.email || '', timestamp: null };
         let foundDeferred = false;
 
-        snapshot.docs.forEach(doc => {
-          const data = doc.data();
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
           const analyte = data.analyte;
           const fullValue = data.value || "";
           
-          // Intentamos separar valor de unidad si están guardados juntos
           const lastSpaceIdx = fullValue.lastIndexOf(" ");
           let val = fullValue;
           let unit = "";
-          
           if (lastSpaceIdx !== -1) {
             val = fullValue.substring(0, lastSpaceIdx);
             unit = fullValue.substring(lastSpaceIdx + 1);
           }
 
-          newFormData[analyte] = { value: val, unit: unit, capturedAt: null };
-          newSavedFields[analyte] = true;
+          if (!newFormData[analyte]) {
+            newFormData[analyte] = { readings: [], unit: unit || "", isExpanded: false };
+          }
+
+          newFormData[analyte].readings.push({
+            id: docSnap.id,
+            value: val,
+            capturedAt: data.capturedAt?.toMillis?.() || Date.now(),
+            isSaved: true,
+            isSaving: false
+          });
           
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
             foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
@@ -129,8 +140,12 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
           if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
         });
 
+        // Ordenar lecturas por tiempo
+        Object.keys(newFormData).forEach(key => {
+          newFormData[key].readings.sort((a, b) => a.capturedAt - b.capturedAt);
+        });
+
         setFormData(newFormData);
-        setSavedFields(newSavedFields);
         setMetadata(foundMetadata);
         setIsDeferred(foundDeferred);
       } catch (e) {
@@ -143,91 +158,129 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
     fetchExistingData();
   }, [db, reportId, formId, user?.email]);
 
-  const handleInputChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: { ...prev[name], value, capturedAt: Date.now() }
-    }));
-    if (savedFields[name]) {
-      setSavedFields(prev => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
-    }
+  const handleReadingChange = (analyteName: string, readingId: string, value: string) => {
+    setFormData(prev => {
+      const analyte = prev[analyteName] || { readings: [], unit: "", isExpanded: true };
+      const updatedReadings = analyte.readings.map(r => 
+        r.id === readingId ? { ...r, value, isSaved: false } : r
+      );
+      return { ...prev, [analyteName]: { ...analyte, readings: updatedReadings } };
+    });
   };
 
-  const handleUnitChange = (name: string, unit: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: { ...prev[name], unit, capturedAt: Date.now() }
-    }));
-    if (savedFields[name]) {
-      setSavedFields(prev => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
-    }
+  const addReading = (analyteName: string, initialUnit: string) => {
+    setFormData(prev => {
+      const analyte = prev[analyteName] || { readings: [], unit: initialUnit, isExpanded: true };
+      const newReading: Reading = {
+        id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        value: "",
+        capturedAt: Date.now(),
+        isSaved: false,
+        isSaving: false
+      };
+      return { 
+        ...prev, 
+        [analyteName]: { 
+          ...analyte, 
+          readings: [...analyte.readings, newReading],
+          isExpanded: true 
+        } 
+      };
+    });
   };
 
-  const saveIndividualParam = (name: string, category: string) => {
+  const removeReading = (analyteName: string, readingId: string) => {
+    setFormData(prev => {
+      const analyte = prev[analyteName];
+      if (!analyte) return prev;
+      
+      const toDelete = analyte.readings.find(r => r.id === readingId);
+      if (toDelete?.isSaved && !readingId.startsWith('temp_')) {
+        deleteDoc(doc(db, 'samples', readingId)).catch(console.error);
+      }
+
+      return { 
+        ...prev, 
+        [analyteName]: { 
+          ...analyte, 
+          readings: analyte.readings.filter(r => r.id !== readingId) 
+        } 
+      };
+    });
+  };
+
+  const saveReading = (analyteName: string, readingId: string, category: string) => {
     if (!user || !db) return;
-    const entry = formData[name];
-    if (!entry || entry.value === null || entry.value === undefined || entry.value === "") return;
-
-    // FEEDBACK INSTANTÁNEO
-    setSavedFields(prev => ({ ...prev, [name]: true }));
+    const analyteState = formData[analyteName];
+    const reading = analyteState.readings.find(r => r.id === readingId);
     
-    // Proceso en segundo plano
+    if (!reading || reading.value === "") return;
+
+    // Feedback visual optimista
+    setFormData(prev => ({
+      ...prev,
+      [analyteName]: {
+        ...prev[analyteName],
+        readings: prev[analyteName].readings.map(r => 
+          r.id === readingId ? { ...r, isSaved: true, isSaving: false } : r
+        )
+      }
+    }));
+
     (async () => {
       try {
         const location = await getCurrentGPSLocation();
-        const t1 = entry.capturedAt || Date.now();
-        const deltaMs = Date.now() - t1;
+        const finalValue = analyteState.unit ? `${reading.value} ${analyteState.unit}` : reading.value;
+        
+        // Si es temporal, generamos un ID fijo basado en tiempo para evitar duplicados en re-guardados
+        const docId = readingId.startsWith('temp_') 
+          ? `${reportId}_${formId}_${analyteName.replace(/\s+/g, '_')}_${reading.capturedAt}`
+          : readingId;
 
-        const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
-        const docId = `${reportId}_${formId}_${safeAnalyte}`;
         const sampleRef = doc(db, 'samples', docId);
-
-        // Guardamos valor y unidad juntos en el campo value para compatibilidad legacy
-        const finalValue = entry.unit ? `${entry.value} ${entry.unit}` : entry.value;
-
         const payload = {
           medium: 'agua_superficial',
           parameterType: category,
-          analyte: name,
+          analyte: analyteName,
           reportId,
           formId,
           stationId,
           value: finalValue,
           latitude: location?.latitude ?? null,
           longitude: location?.longitude ?? null,
-          retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+          retrasoSincronizacionMs: isDeferred ? 0 : Date.now() - reading.capturedAt,
           fechaServidor: serverTimestamp(),
           timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
           isDeferred,
           userId: user.uid,
-          userEmail: user.email
+          userEmail: user.email,
+          capturedAt: Timestamp.fromMillis(reading.capturedAt)
         };
 
         setDoc(sampleRef, payload, { merge: true }).catch(console.error);
         updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
       } catch (err) {
-        console.error("Error en guardado:", err);
+        console.error("Error guardando lectura:", err);
       }
     })();
-    
-    toast({ title: "Capturado", description: `${name} sincronizado localmente.` });
+
+    toast({ title: "Lectura capturada", description: `${analyteName} sincronizando...` });
   };
 
-  const getAvailableUnits = (analyte: AnalyteConfig) => {
-    let units = analyte[globalSystem];
-    // Si el sistema actual no tiene unidades, mostramos las de otros sistemas como respaldo
-    if (units.length === 0) {
-      units = [...analyte.metric, ...analyte.imperial, ...analyte.local];
-    }
-    return units;
+  const calculateStats = (readings: Reading[]) => {
+    const nums = readings.map(r => parseFloat(r.value)).filter(n => !isNaN(n));
+    if (nums.length === 0) return null;
+    
+    const n = nums.length;
+    const mean = nums.reduce((a, b) => a + b, 0) / n;
+    
+    if (n < 2) return { mean: mean.toFixed(3), error: "0.000", n };
+
+    const variance = nums.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1);
+    const sd = Math.sqrt(variance);
+    const se = sd / Math.sqrt(n); // Error estándar
+
+    return { mean: mean.toFixed(3), error: se.toFixed(3), n };
   };
 
   const formatTimestamp = (ts: any) => {
@@ -237,19 +290,17 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   };
 
   if (isLoadingExisting) {
-    return <div className="p-12 text-center text-xs animate-pulse font-normal uppercase text-black">Cargando protocolo AS-001...</div>;
+    return <div className="p-12 text-center text-xs animate-pulse font-normal uppercase text-black">Iniciando instrumental AS-001...</div>;
   }
-
-  const isDeferredLocked = Object.keys(savedFields).length > 0;
 
   return (
     <div className="mx-auto w-full border border-black bg-white font-body shadow-sm rounded-none overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
-      {/* HEADER */}
+      {/* CABECERA */}
       <div className="border-b border-black bg-neutral-100 px-4 py-4">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-sm font-normal uppercase tracking-tight text-black font-headline">Agua Superficial • AS-001</h1>
-            <p className="text-[10px] text-neutral-600 font-normal uppercase leading-none tracking-tight mt-1">ID Planilla: {formId}</p>
+            <p className="text-[10px] text-neutral-600 font-normal uppercase leading-none tracking-tight mt-1">Planilla ID: {formId}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-1 bg-white border border-black px-2 py-1">
@@ -261,7 +312,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                >
                  <option value="metric">Sistema Métrico (SI)</option>
                  <option value="imperial">Sistema Imperial</option>
-                 <option value="local">Adimensional / Local</option>
+                 <option value="local">Local / Adimensional</option>
                </select>
             </div>
           </div>
@@ -275,95 +326,125 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                 type="datetime-local" 
                 value={manualDate} 
                 onChange={(e) => setManualDate(e.target.value)}
-                disabled={isDeferredLocked}
                 className="bg-transparent border-none p-0 text-[9px] font-black uppercase outline-none focus:ring-0 w-32"
               />
             </div>
           ) : (
             <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
           )}
-          
           <button 
-            onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)}
-            disabled={isDeferredLocked}
+            onClick={() => setIsDeferred(!isDeferred)}
             className={cn(
               "flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all",
-              isDeferred 
-                ? "bg-red-50 border-red-200 text-red-600" 
-                : "bg-green-50 border-green-200 text-green-600",
-              isDeferredLocked ? "opacity-100 cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"
+              isDeferred ? "bg-red-50 border-red-200 text-red-600" : "bg-green-50 border-green-200 text-green-600"
             )}
           >
             <CheckCircle2 className="h-2.5 w-2.5" />
             <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
           </button>
-
           <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
         </div>
       </div>
 
       <div className="p-0">
-        {/* SECCIÓN IN SITU */}
-        <div className="bg-black text-white px-4 py-2 flex items-center gap-2">
-           <MapPin className="h-4 w-4" />
-           <span className="text-[10px] font-normal uppercase tracking-[0.2em]">Sección I: Mediciones In Situ</span>
+        {/* SECCIÓN I: IN SITU CON LECTURAS MÚLTIPLES */}
+        <div className="bg-black text-white px-4 py-2 flex items-center justify-between">
+           <div className="flex items-center gap-2">
+             <Sigma className="h-4 w-4" />
+             <span className="text-[10px] font-normal uppercase tracking-[0.2em]">Sección I: Mediciones In Situ (Estabilización)</span>
+           </div>
+           <AlertCircle className="h-3 w-3 text-neutral-400" title="Se recomienda cargar al menos 3 lecturas para estabilizar." />
         </div>
         
         <div className="divide-y divide-neutral-200">
           {IN_SITU_CONFIG.map((analyte) => {
-            const units = getAvailableUnits(analyte);
-            const currentEntry = formData[analyte.name] || { value: "", unit: units[0] || "", capturedAt: null };
+            const units = [...analyte[globalSystem], ...analyte.metric, ...analyte.imperial, ...analyte.local].filter((u, i, self) => u && self.indexOf(u) === i);
+            const state = formData[analyte.name] || { readings: [], unit: units[0] || "", isExpanded: false };
+            const stats = calculateStats(state.readings);
             
             return (
-              <div key={analyte.name} className="flex flex-col md:flex-row md:items-center justify-between py-3 px-4 hover:bg-neutral-50 transition-colors group">
-                <div className="flex-1 mb-2 md:mb-0">
-                  <label className="text-[11px] font-normal text-black uppercase tracking-tight block">{analyte.name}</label>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  {/* Selector de Unidad */}
-                  {units.length > 0 && (
-                    <div className="bg-neutral-100 px-2 py-1 border border-neutral-300 min-w-[60px] flex justify-center">
-                      <select 
-                        value={currentEntry.unit || units[0]} 
-                        onChange={(e) => handleUnitChange(analyte.name, e.target.value)}
-                        className="text-[9px] font-normal uppercase bg-transparent border-none outline-none focus:ring-0 p-0 text-center cursor-pointer"
-                      >
-                        {units.map(u => <option key={u} value={u}>{u}</option>)}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Input de Valor */}
-                  <input 
-                    type="text" 
-                    className="h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right focus:ring-0 outline-none placeholder:text-neutral-300" 
-                    value={currentEntry.value} 
-                    onChange={(e) => handleInputChange(analyte.name, e.target.value)} 
-                    placeholder="---"
-                  />
-
-                  {/* Botón Guardar */}
+              <div key={analyte.name} className="flex flex-col bg-white overflow-hidden">
+                {/* Cabecera del Analito */}
+                <div className="flex items-center justify-between py-3 px-4 hover:bg-neutral-50 transition-colors">
                   <button 
-                    onClick={() => saveIndividualParam(analyte.name, analyte.category)} 
-                    className={cn(
-                      "p-1 transition-colors", 
-                      savedFields[analyte.name] ? "text-green-600" : "text-neutral-300 hover:text-black"
-                    )}
+                    onClick={() => setFormData(prev => ({ ...prev, [analyte.name]: { ...state, isExpanded: !state.isExpanded } }))}
+                    className="flex-1 text-left flex items-center gap-2"
                   >
-                    {savingFields[analyte.name] ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Check className={cn("h-4 w-4", !savedFields[analyte.name] && "opacity-30")} />
-                    )}
+                    {state.isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
+                    <div className="flex flex-col">
+                      <span className="text-[12px] font-normal text-black uppercase tracking-tight">{analyte.name}</span>
+                      {stats && (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] font-code font-black text-primary">$\bar{x}$: {stats.mean}</span>
+                          <span className="text-[8px] text-neutral-400 uppercase">n={stats.n} lecturas</span>
+                        </div>
+                      )}
+                    </div>
                   </button>
+
+                  <div className="flex items-center gap-3">
+                    {stats && (
+                       <div className="bg-neutral-100 px-2 py-0.5 rounded-sm border border-neutral-200" title="Error Estándar (SE)">
+                          <span className="text-[9px] font-code text-neutral-600">± {stats.error}</span>
+                       </div>
+                    )}
+                    <select 
+                      value={state.unit} 
+                      onChange={(e) => setFormData(prev => ({ ...prev, [analyte.name]: { ...state, unit: e.target.value } }))}
+                      className="text-[9px] font-bold uppercase bg-neutral-50 border border-neutral-300 px-1 py-1 outline-none"
+                    >
+                      {units.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                    <button 
+                      onClick={() => addReading(analyte.name, units[0])}
+                      className="h-8 w-8 flex items-center justify-center bg-black text-white hover:bg-neutral-800 transition-colors"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
+
+                {/* Sub-lista de Lecturas */}
+                {state.isExpanded && (
+                  <div className="bg-neutral-50/50 px-4 pb-4 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                    {state.readings.map((reading, idx) => (
+                      <div key={reading.id} className="flex items-center justify-between gap-4 p-2 bg-white border border-neutral-200 shadow-sm">
+                        <span className="text-[10px] font-normal uppercase text-neutral-400 shrink-0">Lectura {idx + 1}</span>
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <input 
+                            type="number" 
+                            step="any"
+                            placeholder="Valor..."
+                            className="h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right outline-none focus:ring-1 focus:ring-primary/20"
+                            value={reading.value}
+                            onChange={(e) => handleReadingChange(analyte.name, reading.id, e.target.value)}
+                          />
+                          <button 
+                            onClick={() => saveReading(analyte.name, reading.id, analyte.category)}
+                            className={cn("p-1.5 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-300 hover:text-black")}
+                          >
+                            {reading.isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                          </button>
+                          <button 
+                            onClick={() => removeReading(analyte.name, reading.id)}
+                            className="p-1.5 text-neutral-300 hover:text-red-600 transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {state.readings.length === 0 && (
+                      <p className="text-[10px] text-center text-neutral-400 py-2 italic">No hay lecturas registradas. Toque (+) para empezar.</p>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
 
-        {/* SECCIÓN LABORATORIO */}
+        {/* SECCIÓN II: LABORATORIO (DATOS ÚNICOS) */}
         <div className="bg-neutral-800 text-white px-4 py-2 flex items-center gap-2 mt-4">
            <Beaker className="h-4 w-4" />
            <span className="text-[10px] font-normal uppercase tracking-[0.2em]">Sección II: Analitos de Laboratorio</span>
@@ -371,36 +452,35 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
         <div className="divide-y divide-neutral-200">
           {LAB_CONFIG.map((param) => {
-            const currentEntry = formData[param.name] || { value: "", unit: param.unit, capturedAt: null };
+            const state = formData[param.name] || { readings: [], unit: param.unit, isExpanded: true };
+            const currentReading = state.readings[0] || { id: `temp_lab_${param.name}`, value: "", capturedAt: Date.now(), isSaved: false, isSaving: false };
             
             return (
-              <div key={param.name} className="flex items-center justify-between py-3 px-4 hover:bg-neutral-50 transition-colors group">
-                <div className="flex-1">
-                  <label className="text-[11px] font-normal text-black uppercase tracking-tight block">{param.name}</label>
-                  <span className="text-[9px] text-neutral-400 uppercase font-normal">{param.cat}</span>
+              <div key={param.name} className="flex items-center justify-between py-3 px-4 hover:bg-neutral-50 transition-colors">
+                <div className="flex flex-col">
+                  <label className="text-[11px] font-normal text-black uppercase tracking-tight">{param.name}</label>
+                  <span className="text-[8px] text-neutral-400 uppercase font-normal">{param.cat}</span>
                 </div>
                 
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] font-normal text-neutral-500 uppercase">{param.unit}</span>
                   <input 
                     type="text" 
-                    className="h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right focus:ring-0 outline-none placeholder:text-neutral-300" 
-                    value={currentEntry.value} 
-                    onChange={(e) => handleInputChange(param.name, e.target.value)} 
+                    className="h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right outline-none placeholder:text-neutral-300" 
+                    value={currentReading.value} 
+                    onChange={(e) => {
+                      if (state.readings.length === 0) {
+                        setFormData(prev => ({ ...prev, [param.name]: { readings: [currentReading], unit: param.unit, isExpanded: true } }));
+                      }
+                      handleReadingChange(param.name, currentReading.id, e.target.value);
+                    }} 
                     placeholder="---"
                   />
                   <button 
-                    onClick={() => saveIndividualParam(param.name, param.cat)} 
-                    className={cn(
-                      "p-1 transition-colors", 
-                      savedFields[param.name] ? "text-green-600" : "text-neutral-300 hover:text-black"
-                    )}
+                    onClick={() => saveReading(param.name, currentReading.id, param.cat)} 
+                    className={cn("p-1 transition-colors", currentReading.isSaved ? "text-green-600" : "text-neutral-300 hover:text-black")}
                   >
-                    {savingFields[param.name] ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Check className={cn("h-4 w-4", !savedFields[param.name] && "opacity-30")} />
-                    )}
+                    <Check className="h-4 w-4" />
                   </button>
                 </div>
               </div>
