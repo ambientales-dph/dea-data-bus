@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, Timestamp, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, CheckCircle2, Clock, User, Calendar, Beaker, MapPin, Settings2, Plus, Trash2, ChevronDown, ChevronUp, Sigma, AlertCircle } from 'lucide-react';
+import { Loader2, Check, CheckCircle2, Clock, User, Calendar, Beaker, Settings2, Plus, Trash2, ChevronDown, ChevronUp, Sigma, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
@@ -140,7 +140,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
           if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
         });
 
-        // Ordenar lecturas por tiempo
         Object.keys(newFormData).forEach(key => {
           newFormData[key].readings.sort((a, b) => a.capturedAt - b.capturedAt);
         });
@@ -216,7 +215,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
     
     if (!reading || reading.value === "") return;
 
-    // Feedback visual optimista
     setFormData(prev => ({
       ...prev,
       [analyteName]: {
@@ -294,7 +292,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
   return (
     <div className="mx-auto w-full border border-black bg-white font-body shadow-sm rounded-none overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
-      {/* CABECERA */}
       <div className="border-b border-black bg-neutral-100 px-4 py-4">
         <div className="flex justify-between items-start">
           <div>
@@ -346,7 +343,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
       </div>
 
       <div className="p-0">
-        {/* SECCIÓN I: IN SITU CON LECTURAS MÚLTIPLES */}
         <div className="bg-black text-white px-4 py-2 flex items-center justify-between">
            <div className="flex items-center gap-2">
              <Sigma className="h-4 w-4" />
@@ -363,7 +359,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
             
             return (
               <div key={analyte.name} className="flex flex-col bg-white overflow-hidden">
-                {/* Cabecera del Analito */}
                 <div className="flex items-center justify-between py-3 px-4 hover:bg-neutral-50 transition-colors">
                   <button 
                     onClick={() => setFormData(prev => ({ ...prev, [analyte.name]: { ...state, isExpanded: !state.isExpanded } }))}
@@ -403,38 +398,37 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                   </div>
                 </div>
 
-                {/* Sub-lista de Lecturas */}
                 {state.isExpanded && (
-                  <div className="bg-neutral-50/50 px-4 pb-4 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                  <div className="bg-white pb-2 animate-in slide-in-from-top-1 duration-200 divide-y divide-neutral-50 border-t border-neutral-100">
                     {state.readings.map((reading, idx) => (
-                      <div key={reading.id} className="flex items-center justify-between gap-4 p-2 bg-white border border-neutral-200 shadow-sm">
-                        <span className="text-[10px] font-normal uppercase text-neutral-400 shrink-0">Lectura {idx + 1}</span>
+                      <div key={reading.id} className="flex items-center justify-between gap-2 py-1 px-4 border-b border-neutral-50 last:border-0 hover:bg-neutral-50/50 transition-colors group">
+                        <span className="text-[9px] font-normal uppercase text-neutral-300 group-hover:text-neutral-500 transition-colors shrink-0">L{idx + 1}</span>
                         <div className="flex items-center gap-2 flex-1 justify-end">
                           <input 
                             type="number" 
                             step="any"
-                            placeholder="Valor..."
-                            className="h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right outline-none focus:ring-1 focus:ring-primary/20"
+                            placeholder="0.00"
+                            className="h-7 w-20 border-none bg-transparent px-1 text-[11px] font-code text-black text-right outline-none focus:ring-0"
                             value={reading.value}
                             onChange={(e) => handleReadingChange(analyte.name, reading.id, e.target.value)}
                           />
                           <button 
                             onClick={() => saveReading(analyte.name, reading.id, analyte.category)}
-                            className={cn("p-1.5 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-300 hover:text-black")}
+                            className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-300 hover:text-black")}
                           >
-                            {reading.isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                            {reading.isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className={cn("h-3.5 w-3.5", !reading.isSaved && "opacity-30")} />}
                           </button>
                           <button 
                             onClick={() => removeReading(analyte.name, reading.id)}
-                            className="p-1.5 text-neutral-300 hover:text-red-600 transition-colors"
+                            className="p-1 text-neutral-300 hover:text-red-600 transition-colors"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
                       </div>
                     ))}
                     {state.readings.length === 0 && (
-                      <p className="text-[10px] text-center text-neutral-400 py-2 italic">No hay lecturas registradas. Toque (+) para empezar.</p>
+                      <p className="text-[9px] text-center text-neutral-400 py-3 italic uppercase tracking-wider">Sin lecturas</p>
                     )}
                   </div>
                 )}
@@ -443,7 +437,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
           })}
         </div>
 
-        {/* SECCIÓN II: LABORATORIO (DATOS ÚNICOS) */}
         <div className="bg-neutral-800 text-white px-4 py-2 flex items-center gap-2 mt-4">
            <Beaker className="h-4 w-4" />
            <span className="text-[10px] font-normal uppercase tracking-[0.2em]">Sección II: Analitos de Laboratorio</span>
@@ -487,7 +480,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
           })}
         </div>
 
-        {/* EVIDENCIA FOTOGRÁFICA */}
         <div className="px-4 py-6 bg-neutral-50 border-t border-neutral-200 mt-6">
           <PhotoRegistry 
             reportId={reportId} 
