@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -29,7 +30,7 @@ interface Props {
 
 /**
  * Constructor de planillas personalizadas.
- * Permite seleccionar analitos de todas las planillas existentes.
+ * Lista todos los analitos disponibles en el sistema DEA con trazabilidad de origen.
  */
 export function CustomTemplateBuilder({ onTemplateCreated, onCancel }: Props) {
   const { toast } = useToast();
@@ -40,7 +41,7 @@ export function CustomTemplateBuilder({ onTemplateCreated, onCancel }: Props) {
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Consolidamos todos los analitos disponibles en el sistema
+  // Consolidamos todos los analitos disponibles del catálogo expandido
   const allAvailableParameters = useMemo(() => {
     const params: ParameterOption[] = [];
 
@@ -58,17 +59,7 @@ export function CustomTemplateBuilder({ onTemplateCreated, onCancel }: Props) {
       });
     });
 
-    // Añadimos parámetros específicos que no están en MONITORING_TEMPLATES por ser dinámicos
-    const additional = [
-      { id: 'frea_cota_brocal', source: 'Freatímetros', nombre: 'Cota Brocal', categoria: 'Geometría', unidades: 'm s.n.m.', medium: 'agua_subterranea' },
-      { id: 'frea_nivel_estatico', source: 'Freatímetros', nombre: 'Nivel Estático', categoria: 'Campo', unidades: 'm', medium: 'agua_subterranea' },
-      { id: 'geo_spt', source: 'Suelos Geotecnia', nombre: 'Golpes SPT', categoria: 'Estratigrafía', unidades: 'N', medium: 'suelo' },
-      { id: 'geo_humedad', source: 'Suelos Geotecnia', nombre: 'Humedad Natural (W)', categoria: 'Estratigrafía', unidades: '%', medium: 'suelo' },
-      { id: 'aire_pm10', source: 'Calidad Aire', nombre: 'PM10', categoria: 'Particulado', unidades: 'µg/m³', medium: 'aire' },
-      { id: 'aire_pm25', source: 'Calidad Aire', nombre: 'PM2.5', categoria: 'Particulado', unidades: 'µg/m³', medium: 'aire' },
-    ];
-
-    return [...params, ...additional];
+    return params;
   }, []);
 
   const filteredParams = allAvailableParameters.filter(p => 
@@ -126,11 +117,11 @@ export function CustomTemplateBuilder({ onTemplateCreated, onCancel }: Props) {
               <Star className="h-4 w-4 text-accent fill-accent" />
             </div>
             <div>
-              <CardTitle className="text-sm font-normal uppercase tracking-tight">Constructor de Protocolo PP-001</CardTitle>
-              <CardDescription className="text-[10px] uppercase font-normal text-neutral-500">Diseñá tu propio set de monitoreo</CardDescription>
+              <CardTitle className="text-sm font-normal uppercase tracking-tight text-black">Constructor de Protocolo PP-001</CardTitle>
+              <CardDescription className="text-[10px] uppercase font-normal text-black">Diseñá tu propio set de monitoreo</CardDescription>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onCancel} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={onCancel} className="h-8 w-8 text-black">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -138,22 +129,22 @@ export function CustomTemplateBuilder({ onTemplateCreated, onCancel }: Props) {
       
       <CardContent className="p-4 space-y-4">
         <div className="space-y-2">
-          <Label className="text-[9px] font-black uppercase text-neutral-400">Título de la Planilla</Label>
+          <Label className="text-[9px] font-normal uppercase text-black">Título de la Planilla</Label>
           <Input 
             value={templateName} 
             onChange={(e) => setTemplateName(e.target.value)}
-            className="h-10 text-xs font-normal border-neutral-300 rounded-none focus-visible:ring-accent/30"
+            className="h-10 text-xs font-normal border-neutral-300 rounded-none focus-visible:ring-accent/30 text-black"
           />
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-[9px] font-black uppercase text-neutral-400">Seleccionar Analitos ({selectedIds.length})</Label>
+            <Label className="text-[9px] font-normal uppercase text-black">Seleccionar Analitos ({selectedIds.length})</Label>
             <div className="relative w-48">
-              <Search className="absolute left-2 top-1.5 h-3 w-3 text-neutral-400" />
+              <Search className="absolute left-2 top-1.5 h-3 w-3 text-black opacity-30" />
               <input 
                 placeholder="Buscar..."
-                className="w-full pl-7 pr-2 py-1 text-[10px] border border-neutral-200 rounded-full focus:outline-none focus:ring-1 focus:ring-accent/30"
+                className="w-full pl-7 pr-2 py-1 text-[10px] border border-neutral-200 rounded-full focus:outline-none focus:ring-1 focus:ring-accent/30 text-black font-normal"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -178,7 +169,7 @@ export function CustomTemplateBuilder({ onTemplateCreated, onCancel }: Props) {
                           <span className="mx-2 text-accent">---&gt;</span>
                           <span className="uppercase">{p.nombre}</span>
                         </span>
-                        <span className="text-[9px] text-neutral-400 uppercase font-normal">{p.categoria} {p.unidades ? `• ${p.unidades}` : ''}</span>
+                        <span className="text-[9px] text-black uppercase font-normal opacity-60">{p.categoria} {p.unidades ? `• ${p.unidades}` : ''}</span>
                       </div>
                     </Label>
                   </div>

@@ -1,6 +1,7 @@
 
 /**
  * @fileOverview Definición estática de protocolos y datos geográficos para funcionamiento offline.
+ * Se ha expandido el catálogo de parámetros para alimentar al constructor de plantillas PP-001.
  */
 
 export const MONITORING_TEMPLATES = [
@@ -9,13 +10,26 @@ export const MONITORING_TEMPLATES = [
     nombre: "Agua Superficial (Protocolo AS-001)",
     medium: "agua_superficial",
     parametros: [
-      { nombre: "Turbidez/Turbiedad", categoria: "Fisicoquímico", unidades: "NTU" },
-      { nombre: "Sólidos Suspendidos", categoria: "Sólidos", unidades: "mg/l" },
+      { nombre: "Temperatura", categoria: "In Situ", unidades: "°C" },
+      { nombre: "pH", categoria: "In Situ", unidades: "upH" },
+      { nombre: "Conductividad", categoria: "In Situ", unidades: "μS/cm" },
+      { nombre: "Oxígeno Disuelto", categoria: "In Situ", unidades: "mg/L" },
+      { nombre: "Turbidez/Turbiedad", categoria: "In Situ", unidades: "NTU" },
+      { nombre: "Sólidos Disueltos Totales", categoria: "In Situ", unidades: "mg/L" },
+      { nombre: "Salinidad", categoria: "In Situ", unidades: "PSU" },
+      { nombre: "ORP", categoria: "In Situ", unidades: "mV" },
+      { nombre: "Caudal", categoria: "In Situ", unidades: "m³/s" },
+      { nombre: "Tirante (H)", categoria: "In Situ", unidades: "m" },
       { nombre: "Nitrógeno Amoniacal", categoria: "Nutrientes", unidades: "mg/l" },
+      { nombre: "Nitrógeno total", categoria: "Nutrientes", unidades: "mg/l" },
       { nombre: "Fosforo total", categoria: "Nutrientes", unidades: "mg/l" },
+      { nombre: "DBO5", categoria: "Orgánicos", unidades: "mg/l" },
       { nombre: "Coliformes totales", categoria: "Microbiología", unidades: "3NMP/100ml" },
-      { nombre: "Arsenico", categoria: "Metales", unidades: "mg/l" },
-      { nombre: "Plomo", categoria: "Metales", unidades: "mg/l" }
+      { nombre: "Escherichia coli", categoria: "Microbiología", unidades: "3NMP/100ml" },
+      { nombre: "Arsénico", categoria: "Metales", unidades: "mg/l" },
+      { nombre: "Plomo", categoria: "Metales", unidades: "mg/l" },
+      { nombre: "Cadmio", categoria: "Metales", unidades: "ug/l" },
+      { nombre: "Cromo", categoria: "Metales", unidades: "mg/l" }
     ]
   },
   {
@@ -27,7 +41,11 @@ export const MONITORING_TEMPLATES = [
       { nombre: "Nivel Estático", categoria: "Campo", unidades: "m" },
       { nombre: "pH", categoria: "Campo", unidades: "upH" },
       { nombre: "Conductividad", categoria: "Campo", unidades: "μS/cm" },
-      { nombre: "Temperatura", categoria: "Campo", unidades: "°C" }
+      { nombre: "Temperatura", categoria: "Campo", unidades: "°C" },
+      { nombre: "Plomo (Pb)", categoria: "Laboratorio", unidades: "mg/L" },
+      { nombre: "Cadmio (Cd)", categoria: "Laboratorio", unidades: "mg/L" },
+      { nombre: "Arsénico (As)", categoria: "Laboratorio", unidades: "mg/L" },
+      { nombre: "TPH (Hidrocarburos)", categoria: "Laboratorio", unidades: "mg/L" }
     ]
   },
   {
@@ -47,19 +65,57 @@ export const MONITORING_TEMPLATES = [
     id: "suelo_edafologico",
     nombre: "Perfil Edafológico (Protocolo PE-001)",
     medium: "suelo",
-    parametros: [] // Se maneja dinámicamente en su componente específico
+    parametros: [
+      { nombre: "Lugar / Localidad", categoria: "General", unidades: "" },
+      { nombre: "Punto Específico", categoria: "General", unidades: "GPS" },
+      { nombre: "Paisaje / Forma", categoria: "Entorno", unidades: "" },
+      { nombre: "Material Originario", categoria: "Geología", unidades: "" },
+      { nombre: "Clima / Región", categoria: "Entorno", unidades: "" },
+      { nombre: "Vegetación / Cultivo", categoria: "Entorno", unidades: "" },
+      { nombre: "Drenaje", categoria: "Propiedades", unidades: "0-6" },
+      { nombre: "Pendiente", categoria: "Propiedades", unidades: "%" },
+      { nombre: "Profundidad Napa", categoria: "Propiedades", unidades: "m" },
+      { nombre: "Serie de Suelo", categoria: "Clasificación", unidades: "" }
+    ]
   },
   {
     id: "suelo_geotecnia",
     nombre: "Mecánica de suelos (MS-001)",
     medium: "suelo",
-    parametros: [] // Se maneja dinámicamente en su componente específico
+    parametros: [
+      { nombre: "Sondeo Nº", categoria: "Encabezado", unidades: "" },
+      { nombre: "Profundidad (m)", categoria: "Encabezado", unidades: "m" },
+      { nombre: "Golpes SPT", categoria: "Estratigrafía", unidades: "N" },
+      { nombre: "Límite Atterberg LL", categoria: "Estratigrafía", unidades: "%" },
+      { nombre: "Límite Atterberg IP", categoria: "Estratigrafía", unidades: "%" },
+      { nombre: "Expansión Libre (FST)", categoria: "Estratigrafía", unidades: "%" },
+      { nombre: "Humedad Natural (W)", categoria: "Estratigrafía", unidades: "%" },
+      { nombre: "Pasante Tamiz #200", categoria: "Estratigrafía", unidades: "%" },
+      { nombre: "Densidad δH/S", categoria: "Estratigrafía", unidades: "gr/cm³" },
+      { nombre: "Cohesión (Cu)", categoria: "Estratigrafía", unidades: "kg/cm²" },
+      { nombre: "Ángulo Fricción (∅u)", categoria: "Estratigrafía", unidades: "°" },
+      { nombre: "Clasificación USCS", categoria: "Estratigrafía", unidades: "" }
+    ]
   },
   {
     id: "pgays_inspeccion",
     nombre: "Inspección de Obra (PGAyS-001)",
-    medium: "sedimentos", // Usamos sedimentos como medio técnico para diferenciar en la lista si fuera necesario
-    parametros: [] 
+    medium: "sedimentos",
+    parametros: [
+      { nombre: "Empresa Contratista", categoria: "Encabezado", unidades: "" },
+      { nombre: "% Avance Obra", categoria: "Encabezado", unidades: "%" },
+      { nombre: "Personal en Obra", categoria: "Encabezado", unidades: "" },
+      { nombre: "Cerramiento y Vallado", categoria: "Higiene y Seguridad", unidades: "SI/NO" },
+      { nombre: "Señalética y Cartelería", categoria: "Higiene y Seguridad", unidades: "SI/NO" },
+      { nombre: "Uso correcto de EPP", categoria: "Higiene y Seguridad", unidades: "SI/NO" },
+      { nombre: "Orden del obrador", categoria: "Gestión Ambiental", unidades: "SI/NO" },
+      { nombre: "Manejo de RSU", categoria: "Gestión Ambiental", unidades: "SI/NO" },
+      { nombre: "Contención de Hidrocarburos", categoria: "Gestión Ambiental", unidades: "SI/NO" },
+      { nombre: "Control de Polvo", categoria: "Frente de Obra", unidades: "SI/NO" },
+      { nombre: "Control de Ruidos", categoria: "Frente de Obra", unidades: "SI/NO" },
+      { nombre: "Protección de Arbolado", categoria: "Frente de Obra", unidades: "SI/NO" },
+      { nombre: "Atención de Reclamos", categoria: "Comunidad", unidades: "SI/NO" }
+    ] 
   }
 ];
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -237,7 +238,6 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
     return <div className="p-12 text-center text-xs animate-pulse font-normal uppercase text-black">Cargando Protocolo PP-001...</div>;
   }
 
-  // Agrupamos parámetros por categoría para las secciones
   const groupedParams = (templateData?.parameters || []).reduce((acc: any, p: any) => {
     const cat = p.categoria || 'General';
     if (!acc[cat]) acc[cat] = [];
@@ -256,7 +256,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                   <input 
                     value={currentTitle} 
                     onChange={(e) => setCurrentTitle(e.target.value)}
-                    className="text-sm font-normal uppercase tracking-tight bg-white border border-black px-2 py-0.5 focus:ring-0 outline-none w-full"
+                    className="text-sm font-normal uppercase tracking-tight bg-white border border-black px-2 py-0.5 focus:ring-0 outline-none w-full text-black"
                     autoFocus
                   />
                   <button onClick={handleUpdateTemplateName} className="p-1 text-green-600"><Check className="h-4 w-4" /></button>
@@ -278,7 +278,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                <select 
                  value={globalSystem} 
                  onChange={(e) => setGlobalSystem(e.target.value as MeasurementSystem)}
-                 className="text-[9px] font-black uppercase bg-transparent border-none outline-none focus:ring-0 p-0"
+                 className="text-[9px] font-normal uppercase bg-transparent border-none outline-none focus:ring-0 p-0 text-black"
                >
                  <option value="metric">Métrico (SI)</option>
                  <option value="imperial">Imperial</option>
@@ -296,7 +296,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                 type="datetime-local" 
                 value={manualDate} 
                 onChange={(e) => setManualDate(e.target.value)}
-                className="bg-transparent border-none p-0 text-[9px] font-black uppercase outline-none focus:ring-0 w-32"
+                className="bg-transparent border-none p-0 text-[9px] font-normal uppercase outline-none focus:ring-0 w-32 text-black"
               />
             </div>
           ) : (
@@ -305,12 +305,12 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
           <button 
             onClick={() => setIsDeferred(!isDeferred)}
             className={cn(
-              "flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all",
+              "flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all font-normal",
               isDeferred ? "bg-red-50 border-red-200 text-red-600" : "bg-green-50 border-green-200 text-green-600"
             )}
           >
             <CheckCircle2 className="h-2.5 w-2.5" />
-            <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
+            <span className="text-[7px] font-normal">{isDeferred ? "DIFERIDA" : "REAL"}</span>
           </button>
         </div>
       </div>
@@ -351,10 +351,10 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                       <div className="flex items-center gap-3">
                         {stats && (
                           <div className="bg-neutral-100 px-3 py-1 rounded-sm border border-neutral-200 flex items-center gap-1.5" title="Media ± SE">
-                            <span className="text-[10px] font-code font-black text-accent">x̄: {stats.mean} ± {stats.error}</span>
+                            <span className="text-[10px] font-code font-normal text-black">x̄: {stats.mean} ± {stats.error}</span>
                           </div>
                         )}
-                        <span className="text-[9px] font-bold text-neutral-300 px-2">{param.unidades}</span>
+                        <span className="text-[9px] font-normal text-neutral-300 px-2">{param.unidades}</span>
                       </div>
                     </div>
 
@@ -367,7 +367,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                               <input 
                                 type="text" 
                                 placeholder="0.00"
-                                className="h-7 w-20 border-none bg-transparent px-1 text-[11px] font-code text-black text-right outline-none focus:ring-0"
+                                className="h-7 w-20 border-none bg-transparent px-1 text-[11px] font-code text-black text-right outline-none focus:ring-0 font-normal"
                                 value={reading.value}
                                 onChange={(e) => handleReadingChange(param.nombre, reading.id, e.target.value)}
                               />
@@ -401,7 +401,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                           <div className="p-4 text-center">
                             <button 
                               onClick={() => addReading(param.nombre, param.unidades)}
-                              className="h-8 px-4 text-[9px] uppercase tracking-widest border border-dashed border-neutral-300 hover:bg-neutral-50 transition-colors"
+                              className="h-8 px-4 text-[9px] uppercase tracking-widest border border-dashed border-neutral-300 hover:bg-neutral-50 transition-colors text-black font-normal"
                             >
                               <Plus className="h-3 w-3 inline mr-1" /> Comenzar carga
                             </button>
