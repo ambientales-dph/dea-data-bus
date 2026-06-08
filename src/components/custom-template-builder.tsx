@@ -31,6 +31,7 @@ interface Props {
 /**
  * Constructor de planillas personalizadas.
  * Lista todos los analitos disponibles en el sistema DEA con trazabilidad de origen.
+ * Tipografía en negro pleno y peso normal.
  */
 export function CustomTemplateBuilder({ onTemplateCreated, onCancel }: Props) {
   const { toast } = useToast();
@@ -167,11 +168,14 @@ export function CustomTemplateBuilder({ onTemplateCreated, onCancel }: Props) {
                         <span className="text-[11px] font-normal text-black leading-tight">
                           <span>{p.source}</span>
                           <span className="mx-2 text-accent">---&gt;</span>
-                          <span className="uppercase">{p.nombre}</span>
+                          <span>{p.nombre}</span>
                         </span>
-                        <span className="text-[9px] text-black font-normal uppercase">
-                          {p.categoria} {p.unidades ? `• ${p.unidades}` : ''}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] text-black font-normal uppercase">{p.categoria}</span>
+                          {p.unidades && (
+                            <span className="text-[9px] text-black font-normal"> • {p.unidades}</span>
+                          )}
+                        </div>
                       </div>
                     </Label>
                   </div>

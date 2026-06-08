@@ -12,6 +12,7 @@ export const MONITORING_TEMPLATES = [
     parametros: [
       { nombre: "Temperatura", categoria: "In Situ", unidades: "°C" },
       { nombre: "pH", categoria: "In Situ", unidades: "upH" },
+      { nombre: "pHmV", categoria: "In Situ", unidades: "mV" },
       { nombre: "Conductividad", categoria: "In Situ", unidades: "µS/cm" },
       { nombre: "Oxígeno Disuelto", categoria: "In Situ", unidades: "mg/L" },
       { nombre: "Turbidez/Turbiedad", categoria: "In Situ", unidades: "NTU" },

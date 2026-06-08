@@ -338,7 +338,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                       >
                         {state.isExpanded ? <ChevronUp className="h-4 w-4 text-black" /> : <ChevronDown className="h-4 w-4 text-black" />}
                         <div className="flex flex-col">
-                          <span className="text-[12px] font-normal text-black uppercase tracking-tight">{param.nombre}</span>
+                          <span className="text-[12px] font-normal text-black tracking-tight">{param.nombre}</span>
                           {hasSavedValue && state.userEmail && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <User className="h-2.5 w-2.5 text-black" />
