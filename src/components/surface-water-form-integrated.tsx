@@ -383,7 +383,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                     <select 
                       value={state.unit} 
                       onChange={(e) => setFormData(prev => ({ ...prev, [analyte.name]: { ...state, unit: e.target.value } }))}
-                      className="text-[9px] font-bold uppercase bg-neutral-50 border border-neutral-300 px-1 py-1 outline-none"
+                      className="text-[9px] font-bold bg-neutral-50 border border-neutral-300 px-1 py-1 outline-none"
                     >
                       {units.map(u => <option key={u} value={u}>{u}</option>)}
                     </select>
@@ -470,7 +470,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-normal text-neutral-500 uppercase">{param.unit}</span>
+                  <span className="text-[9px] font-normal text-neutral-500">{param.unit}</span>
                   <input 
                     type="text" 
                     className="h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right outline-none placeholder:text-neutral-300" 

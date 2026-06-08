@@ -339,7 +339,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
                           <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean} ± {stats.error}</span>
                        </div>
                     )}
-                    <span className="text-[9px] font-bold uppercase text-neutral-300 px-2">{param.unit}</span>
+                    <span className="text-[9px] font-bold text-neutral-300 px-2">{param.unit}</span>
                   </div>
                 </div>
 

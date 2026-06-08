@@ -342,10 +342,10 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
             {stats && (
               <div className="bg-neutral-100 px-3 py-1 rounded-sm border border-neutral-200 flex items-center gap-1.5" title="Media ± SE">
                 <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean} ± {stats.error}</span>
-                <span className="text-[8px] text-neutral-400 uppercase ml-1">{config.unit}</span>
+                <span className="text-[8px] text-neutral-400 ml-1">{config.unit}</span>
               </div>
             )}
-            {!stats && <span className="text-[9px] font-bold uppercase text-neutral-300">{config.unit}</span>}
+            {!stats && <span className="text-[9px] font-bold text-neutral-300">{config.unit}</span>}
           </div>
         </div>
 
