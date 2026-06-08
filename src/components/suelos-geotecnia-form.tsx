@@ -200,7 +200,8 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       if (c.id !== layerId) return c;
       const state = c.multidata[field] || { readings: [], isExpanded: true };
       const readings = state.readings.map(r => r.id === readingId ? { ...r, value, isSaved: false } : r);
-      return { ...c, multidata: { ...c.multidata, [field]: { ...state, readings } } };
+      // Limpiar email de técnico si se edita un valor guardado
+      return { ...c, multidata: { ...c.multidata, [field]: { ...state, readings, userEmail: undefined } } };
     }));
   };
 
@@ -254,6 +255,17 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     }));
   };
 
+  const handleHeaderChange = (id: string, value: any) => {
+    setFormData(prev => ({ ...prev, [id]: { ...prev[id], value, userEmail: undefined } }));
+    if (savedFields[id]) {
+      setSavedFields(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  };
+
   const handleSimpleFieldSave = (analyte: string, category: string, value: any) => {
     if (!user || !db || value === "") return;
     setSavedFields(prev => ({ ...prev, [analyte]: true }));
@@ -277,6 +289,19 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         isDeferred, userId: user.uid, userEmail: user.email
       }, { merge: true });
     })();
+  };
+
+  const captureGPS = async () => {
+    toast({ title: "Obteniendo coordenadas...", description: "Forzando alta precisión GPS." });
+    const location = await getCurrentGPSLocation();
+    if (location) {
+      const val = `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
+      handleHeaderChange("ubicacion", val);
+      handleSimpleFieldSave("ubicacion", "Encabezado", val);
+      toast({ title: "Ubicación capturada", description: val });
+    } else {
+      toast({ variant: "destructive", title: "Falla de GPS", description: "No se pudo obtener la ubicación física." });
+    }
   };
 
   const renderMultidataCell = (layerId: string, field: string, unit = "") => {
@@ -384,7 +409,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
             <div className="flex items-center gap-2">
               <input 
                 className="h-7 w-32 text-right border-none bg-neutral-50 px-2 text-[12px] font-code text-black focus:ring-0 outline-none"
-                value={formData[f.id].value} onChange={(e) => setFormData(p => ({...p, [f.id]: {value: e.target.value}}))}
+                value={formData[f.id].value} onChange={(e) => handleHeaderChange(f.id, e.target.value)}
               />
               {f.gps && <button onClick={captureGPS} className="p-1"><Locate className="h-4 w-4 text-primary" /></button>}
               <button onClick={() => handleSimpleFieldSave(f.id, f.cat, formData[f.id].value)} className={cn("p-1", savedFields[f.id] ? "text-green-600" : "text-neutral-300")}><Check className="h-4 w-4" /></button>
@@ -437,7 +462,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                    </div>
                 </td>
                 <td className="border-r border-black p-1 bg-white relative">
-                   <textarea value={c.descripcion} onBlur={() => handleSimpleFieldSave(`L${c.id}: descripcion`, 'Estratigrafía', c.descripcion)} onChange={(e) => setCapas(p => p.map(l => l.id === c.id ? {...l, descripcion: e.target.value} : l))} className="w-full h-20 text-[9px] border-none resize-none focus:ring-0 p-0 leading-tight" />
+                   <textarea value={c.descripcion} onBlur={() => handleSimpleFieldSave(`L${c.id}: descripcion`, 'Estratigrafía', c.descripcion)} onChange={(e) => setCapas(p => p.map(l => l.id === c.id ? {...l, descripcion: e.target.value, userEmails: { ...l.userEmails, descripcion: '' }} : l))} className="w-full h-20 text-[9px] border-none resize-none focus:ring-0 p-0 leading-tight" />
                    {c.userEmails['descripcion'] && (
                       <TechnicianLink email={c.userEmails['descripcion']} className="text-[7px] absolute bottom-0.5 left-1 uppercase opacity-30" />
                    )}
@@ -467,7 +492,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                    )}
                 </td>
                 <td className="border-r border-black p-1 bg-white relative">
-                   <input value={c.clasificacionUSCS} onBlur={() => handleSimpleFieldSave(`L${c.id}: clasificacionUSCS`, 'Estratigrafía', c.clasificacionUSCS)} onChange={(e) => setCapas(p => p.map(l => l.id === c.id ? {...l, clasificacionUSCS: e.target.value.toUpperCase()} : l))} className="w-full text-center border-none uppercase font-bold text-primary focus:ring-0 p-0" placeholder="ML" />
+                   <input value={c.clasificacionUSCS} onBlur={() => handleSimpleFieldSave(`L${c.id}: clasificacionUSCS`, 'Estratigrafía', c.clasificacionUSCS)} onChange={(e) => setCapas(p => p.map(l => l.id === c.id ? {...l, clasificacionUSCS: e.target.value.toUpperCase(), userEmails: { ...l.userEmails, clasificacionUSCS: '' }} : l))} className="w-full text-center border-none uppercase font-bold text-primary focus:ring-0 p-0" placeholder="ML" />
                    {c.userEmails['clasificacionUSCS'] && (
                       <TechnicianLink email={c.userEmails['clasificacionUSCS']} className="text-[7px] absolute bottom-0.5 right-1 uppercase opacity-30" />
                    )}
