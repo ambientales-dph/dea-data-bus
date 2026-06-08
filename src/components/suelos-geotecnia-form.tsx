@@ -50,16 +50,16 @@ const patronesDisponibles = [
 
 const coloresDisponibles = [
   { value: "#FFFFFF", label: "Blanco" },
-  { value: "#F5F5DC", label: "Beige claro" },
-  { value: "#D2B48C", label: "Marrón claro" },
-  { value: "#A0522D", label: "Marrón" },
-  { value: "#8B4513", label: "Marrón oscuro" },
-  { value: "#696969", label: "Gris" },
-  { value: "#A9A9A9", label: "Gris claro" },
-  { value: "#E6D5AC", label: "Arena" },
-  { value: "#C4A77D", label: "Limo" },
-  { value: "#8B7355", label: "Arcilla" },
-  { value: "#4169E1", label: "Azulado" },
+  { value: "#223322", label: "Verde Oscuro (S. Vegetal)" },
+  { value: "#9EB0AF", label: "Gley 1 (Claro)" },
+  { value: "#748A89", label: "Gley 2 (Medio)" },
+  { value: "#4D5E5D", label: "Gley 3 (Oscuro)" },
+  { value: "#D1D1D1", label: "Gris Claro" },
+  { value: "#8C8C8C", label: "Gris Medio" },
+  { value: "#4F4F4F", label: "Gris Oscuro" },
+  { value: "#F5F5DC", label: "Beige" },
+  { value: "#D2B48C", label: "Marrón Claro" },
+  { value: "#8B4513", label: "Marrón Oscuro" },
 ]
 
 function PatronSVG({ patron, color }: { patron: string; color: string }) {
@@ -103,6 +103,11 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
 
+  const NUMERIC_FIELDS = [
+    'golpesSPT', 'limiteLL', 'limiteIP', 'expansionLibre', 'humedadNatural', 
+    'pasanteTamiz200', 'densidad', 'cohesion', 'anguloFriccion'
+  ];
+
   useEffect(() => {
     const fetchExistingData = async () => {
       if (!reportId || !formId || !db) return;
@@ -134,8 +139,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
             const fieldName = layerMatch[2];
             if (!layersMap[lId]) layersMap[lId] = { id: lId, multidata: {}, userEmails: {} };
             
-            const numericFields = ['golpesSPT', 'limiteLL', 'limiteIP', 'humedad'];
-            if (numericFields.includes(fieldName)) {
+            if (NUMERIC_FIELDS.includes(fieldName)) {
               if (!layersMap[lId]!.multidata![fieldName]) layersMap[lId]!.multidata![fieldName] = { readings: [], isExpanded: false, userEmail: data.userEmail };
               layersMap[lId]!.multidata![fieldName].readings.push({
                 id: docSnap.id, value, capturedAt: data.capturedAt?.toMillis() || Date.now(), isSaved: true, isSaving: false
@@ -200,7 +204,6 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       if (c.id !== layerId) return c;
       const state = c.multidata[field] || { readings: [], isExpanded: true };
       const readings = state.readings.map(r => r.id === readingId ? { ...r, value, isSaved: false } : r);
-      // Limpiar email de técnico si se edita un valor guardado
       return { ...c, multidata: { ...c.multidata, [field]: { ...state, readings, userEmail: undefined } } };
     }));
   };
@@ -247,10 +250,9 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     setCapas(prev => prev.map(c => {
       if (c.id !== layerId) return c;
       const state = c.multidata[field];
-      if (readingId.startsWith('temp_')) {
-        return { ...c, multidata: { ...c.multidata, [field]: { ...state, readings: state.readings.filter(r => r.id !== readingId) } } };
+      if (!readingId.startsWith('temp_')) {
+        deleteDoc(doc(db, 'samples', readingId));
       }
-      deleteDoc(doc(db, 'samples', readingId));
       return { ...c, multidata: { ...c.multidata, [field]: { ...state, readings: state.readings.filter(r => r.id !== readingId) } } };
     }));
   };
@@ -326,7 +328,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         </button>
 
         {state.isExpanded && (
-          <div className="absolute z-[60] bg-white border border-neutral-300 shadow-2xl p-2 rounded-sm w-40 animate-in fade-in zoom-in-95 duration-200">
+          <div className="absolute z-[60] bg-white border border-neutral-300 shadow-2xl p-2 rounded-sm w-44 animate-in fade-in zoom-in-95 duration-200">
              <div className="flex items-center justify-between mb-1.5 border-b pb-1">
                 <span className="text-[8px] font-black uppercase text-neutral-400">{field} ({unit})</span>
                 <button onClick={() => setCapas(prev => prev.map(c => c.id === layerId ? { ...c, multidata: { ...c.multidata, [field]: { ...state, isExpanded: false } } } : c))}>
@@ -338,7 +340,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                   <div key={r.id} className="flex items-center gap-1">
                     <span className="text-[8px] text-neutral-300">L{i+1}</span>
                     <input 
-                      className="h-6 w-12 text-[10px] font-code border border-neutral-100 px-1 focus:ring-0 outline-none" 
+                      className="h-6 w-14 text-[10px] font-code border border-neutral-100 px-1 focus:ring-0 outline-none" 
                       value={r.value} 
                       onChange={(e) => handleReadingChange(layerId, field, r.id, e.target.value)} 
                     />
@@ -376,7 +378,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         <div>
           <h1 className="text-sm font-normal uppercase tracking-tight text-black font-headline">Mecánica de suelos • MS-001</h1>
           <div className="flex flex-col gap-0.5 mt-2">
-            <p className="text-[10px] text-neutral-600 font-normal uppercase">Planilla ID: {formId}</p>
+            <p className="text-[10px] text-neutral-600 font-normal uppercase leading-tight">Planilla ID: {formId}</p>
             <div className="flex flex-wrap items-center gap-3 text-[9px] text-black font-normal uppercase mt-1">
               {isDeferred ? (
                 <div className="flex items-center gap-1.5 bg-white border border-black px-2 py-0.5 rounded-sm">
@@ -387,7 +389,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
             </div>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => window.print()} className="h-8 text-[10px] uppercase rounded-none border-black"><Printer className="h-3 w-3 mr-1.5" />Imprimir</Button>
+        <Button variant="outline" size="sm" onClick={() => window.print()} className="h-8 text-[10px] uppercase rounded-none border-black shrink-0"><Printer className="h-3 w-3 mr-1.5" />Imprimir</Button>
       </div>
 
       <div className="p-0 border-b border-black">
@@ -421,16 +423,21 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       <div className="overflow-x-auto relative">
         <table className="w-full border-collapse text-[10px]">
           <thead>
-            <tr className="bg-neutral-100 font-normal uppercase text-center border-b border-black h-12 text-black">
-              <th className="border-r border-black p-1 w-14">Prof. (m)</th>
-              <th className="border-r border-black p-1 w-8">N.F.</th>
-              <th className="border-r border-black p-1 w-14">Gráfico</th>
-              <th className="border-r border-black p-1 min-w-[120px]">Descripción</th>
-              <th className="border-r border-black p-1 w-12">SPT</th>
-              <th className="border-r border-black p-1 w-10">LL</th>
-              <th className="border-r border-black p-1 w-10">IP</th>
-              <th className="border-r border-black p-1 w-10">Hum%</th>
-              <th className="border-r border-black p-1 w-12">USCS</th>
+            <tr className="bg-neutral-100 font-normal uppercase text-center border-b border-black h-14 text-black">
+              <th className="border-r border-black p-1 w-14 leading-tight">Prof.<br/>(m)</th>
+              <th className="border-r border-black p-1 w-8 leading-tight">N.F.</th>
+              <th className="border-r border-black p-1 w-14 leading-tight">Gráfico</th>
+              <th className="border-r border-black p-1 min-w-[140px] leading-tight">Descripción</th>
+              <th className="border-r border-black p-1 w-12 leading-tight">SPT</th>
+              <th className="border-r border-black p-1 w-10 leading-tight">LL</th>
+              <th className="border-r border-black p-1 w-10 leading-tight">IP</th>
+              <th className="border-r border-black p-1 w-10 leading-tight">FST<br/>(%)</th>
+              <th className="border-r border-black p-1 w-10 leading-tight">W<br/>(%)</th>
+              <th className="border-r border-black p-1 w-10 leading-tight">T200</th>
+              <th className="border-r border-black p-1 w-12 leading-tight">δH/S</th>
+              <th className="border-r border-black p-1 w-12 leading-tight">Cu</th>
+              <th className="border-r border-black p-1 w-10 leading-tight">∅u</th>
+              <th className="border-r border-black p-1 w-12 leading-tight">USCS</th>
               <th className="p-1 w-8 print:hidden"></th>
             </tr>
           </thead>
@@ -467,30 +474,15 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                       <TechnicianLink email={c.userEmails['descripcion']} className="text-[7px] absolute bottom-0.5 left-1 uppercase opacity-30" />
                    )}
                 </td>
-                <td className="border-r border-black p-0 bg-white relative">
-                   {renderMultidataCell(c.id, 'golpesSPT')}
-                   {c.multidata['golpesSPT']?.userEmail && (
-                      <div className="flex justify-center"><TechnicianLink email={c.multidata['golpesSPT'].userEmail!} className="text-[6px] uppercase opacity-40 leading-none" /></div>
-                   )}
-                </td>
-                <td className="border-r border-black p-0 bg-white relative">
-                   {renderMultidataCell(c.id, 'limiteLL')}
-                   {c.multidata['limiteLL']?.userEmail && (
-                      <div className="flex justify-center"><TechnicianLink email={c.multidata['limiteLL'].userEmail!} className="text-[6px] uppercase opacity-40 leading-none" /></div>
-                   )}
-                </td>
-                <td className="border-r border-black p-0 bg-white relative">
-                   {renderMultidataCell(c.id, 'limiteIP')}
-                   {c.multidata['limiteIP']?.userEmail && (
-                      <div className="flex justify-center"><TechnicianLink email={c.multidata['limiteIP'].userEmail!} className="text-[6px] uppercase opacity-40 leading-none" /></div>
-                   )}
-                </td>
-                <td className="border-r border-black p-0 bg-white relative">
-                   {renderMultidataCell(c.id, 'humedad', '%')}
-                   {c.multidata['humedad']?.userEmail && (
-                      <div className="flex justify-center"><TechnicianLink email={c.multidata['humedad'].userEmail!} className="text-[6px] uppercase opacity-40 leading-none" /></div>
-                   )}
-                </td>
+                <td className="border-r border-black p-0 bg-white">{renderMultidataCell(c.id, 'golpesSPT')}</td>
+                <td className="border-r border-black p-0 bg-white">{renderMultidataCell(c.id, 'limiteLL')}</td>
+                <td className="border-r border-black p-0 bg-white">{renderMultidataCell(c.id, 'limiteIP')}</td>
+                <td className="border-r border-black p-0 bg-white">{renderMultidataCell(c.id, 'expansionLibre', '%')}</td>
+                <td className="border-r border-black p-0 bg-white">{renderMultidataCell(c.id, 'humedadNatural', '%')}</td>
+                <td className="border-r border-black p-0 bg-white">{renderMultidataCell(c.id, 'pasanteTamiz200')}</td>
+                <td className="border-r border-black p-0 bg-white">{renderMultidataCell(c.id, 'densidad', 'gr/cm3')}</td>
+                <td className="border-r border-black p-0 bg-white">{renderMultidataCell(c.id, 'cohesion', 'kg/cm2')}</td>
+                <td className="border-r border-black p-0 bg-white">{renderMultidataCell(c.id, 'anguloFriccion', '°')}</td>
                 <td className="border-r border-black p-1 bg-white relative">
                    <input value={c.clasificacionUSCS} onBlur={() => handleSimpleFieldSave(`L${c.id}: clasificacionUSCS`, 'Estratigrafía', c.clasificacionUSCS)} onChange={(e) => setCapas(p => p.map(l => l.id === c.id ? {...l, clasificacionUSCS: e.target.value.toUpperCase(), userEmails: { ...l.userEmails, clasificacionUSCS: '' }} : l))} className="w-full text-center border-none uppercase font-bold text-primary focus:ring-0 p-0" placeholder="ML" />
                    {c.userEmails['clasificacionUSCS'] && (
@@ -498,7 +490,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                    )}
                 </td>
                 <td className="p-1 text-center print:hidden bg-white">
-                   <button onClick={() => setCapas(prev => prev.filter(l => l.id !== c.id))} disabled={capas.length === 1} className="text-neutral-400 hover:text-red-600"><Trash2 className="h-3 w-3" /></button>
+                   <button onClick={() => setCapas(prev => prev.filter(l => l.id !== c.id))} disabled={capas.length === 1} className="text-neutral-400 hover:text-red-600 transition-colors"><Trash2 className="h-3 w-3" /></button>
                 </td>
               </tr>
             ))}
@@ -507,7 +499,9 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       </div>
 
       <div className="p-3 border-b border-black print:hidden">
-        <Button variant="outline" size="sm" onClick={agregarCapa} className="w-full h-10 border-dashed border-neutral-400 font-normal uppercase text-[10px] tracking-widest text-black rounded-none"><Plus className="h-4 w-4 mr-2" />Agregar Estrato</Button>
+        <Button variant="outline" size="sm" onClick={agregarCapa} className="w-full h-10 border-dashed border-neutral-400 font-normal uppercase text-[10px] tracking-widest text-black rounded-none">
+          <Plus className="h-4 w-4 mr-2" />Agregar Estrato
+        </Button>
       </div>
 
       <div className="p-4 bg-neutral-50 print:hidden">
