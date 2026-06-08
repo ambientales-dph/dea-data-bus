@@ -141,7 +141,7 @@ export function CustomTemplateBuilder({ onTemplateCreated, onCancel }: Props) {
           <div className="flex items-center justify-between">
             <Label className="text-[9px] font-normal uppercase text-black">Seleccionar Analitos ({selectedIds.length})</Label>
             <div className="relative w-48">
-              <Search className="absolute left-2 top-1.5 h-3 w-3 text-black opacity-30" />
+              <Search className="absolute left-2 top-1.5 h-3 w-3 text-black" />
               <input 
                 placeholder="Buscar..."
                 className="w-full pl-7 pr-2 py-1 text-[10px] border border-neutral-200 rounded-full focus:outline-none focus:ring-1 focus:ring-accent/30 text-black font-normal"
@@ -165,11 +165,13 @@ export function CustomTemplateBuilder({ onTemplateCreated, onCancel }: Props) {
                     <Label htmlFor={p.id} className="flex-1 cursor-pointer">
                       <div className="flex flex-col">
                         <span className="text-[11px] font-normal text-black leading-tight">
-                          <span className="opacity-40">{p.source}</span>
+                          <span>{p.source}</span>
                           <span className="mx-2 text-accent">---&gt;</span>
                           <span className="uppercase">{p.nombre}</span>
                         </span>
-                        <span className="text-[9px] text-black uppercase font-normal opacity-60">{p.categoria} {p.unidades ? `• ${p.unidades}` : ''}</span>
+                        <span className="text-[9px] text-black font-normal uppercase">
+                          {p.categoria} {p.unidades ? `• ${p.unidades}` : ''}
+                        </span>
                       </div>
                     </Label>
                   </div>

@@ -265,16 +265,16 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                 <>
                   <h1 className="text-sm font-normal uppercase tracking-tight text-black font-headline">{currentTitle} • PP-001</h1>
                   <button onClick={() => setIsEditingTitle(true)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1">
-                    <Pencil className="h-3 w-3 text-neutral-400" />
+                    <Pencil className="h-3 w-3 text-black" />
                   </button>
                 </>
               )}
             </div>
-            <p className="text-[10px] text-neutral-600 font-normal uppercase leading-none tracking-tight mt-1">OID Planilla: {formId}</p>
+            <p className="text-[10px] text-black font-normal uppercase leading-none tracking-tight mt-1">OID Planilla: {formId}</p>
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0 ml-4">
             <div className="flex items-center gap-1 bg-white border border-black px-2 py-1">
-               <Settings2 className="h-3 w-3 text-accent" />
+               <Settings2 className="h-3 w-3 text-black" />
                <select 
                  value={globalSystem} 
                  onChange={(e) => setGlobalSystem(e.target.value as MeasurementSystem)}
@@ -300,7 +300,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
               />
             </div>
           ) : (
-            <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-accent" /> {new Date().toLocaleString('es-AR')}</span>
+            <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-black" /> {new Date().toLocaleString('es-AR')}</span>
           )}
           <button 
             onClick={() => setIsDeferred(!isDeferred)}
@@ -336,13 +336,13 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                         onClick={() => setFormData(prev => ({ ...prev, [param.nombre]: { ...state, isExpanded: !state.isExpanded } }))}
                         className="flex-1 text-left flex items-center gap-2"
                       >
-                        {state.isExpanded ? <ChevronUp className="h-4 w-4 text-accent" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
+                        {state.isExpanded ? <ChevronUp className="h-4 w-4 text-black" /> : <ChevronDown className="h-4 w-4 text-black" />}
                         <div className="flex flex-col">
                           <span className="text-[12px] font-normal text-black uppercase tracking-tight">{param.nombre}</span>
                           {hasSavedValue && state.userEmail && (
                             <div className="flex items-center gap-1 mt-0.5">
-                              <User className="h-2.5 w-2.5 text-neutral-300" />
-                              <TechnicianLink email={state.userEmail} className="text-[8px] uppercase text-neutral-400 font-normal" />
+                              <User className="h-2.5 w-2.5 text-black" />
+                              <TechnicianLink email={state.userEmail} className="text-[8px] uppercase text-black font-normal" />
                             </div>
                           )}
                         </div>
@@ -354,7 +354,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                             <span className="text-[10px] font-code font-normal text-black">x̄: {stats.mean} ± {stats.error}</span>
                           </div>
                         )}
-                        <span className="text-[9px] font-normal text-neutral-300 px-2">{param.unidades}</span>
+                        <span className="text-[9px] font-normal text-black px-2">{param.unidades}</span>
                       </div>
                     </div>
 
@@ -362,7 +362,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                       <div className="bg-white pb-2 animate-in slide-in-from-top-1 duration-200 divide-y divide-neutral-50 border-t border-neutral-100">
                         {state.readings.map((reading, idx) => (
                           <div key={reading.id} className="flex items-center justify-between gap-2 py-1 px-4 border-b border-neutral-50 last:border-0 hover:bg-neutral-50/50 transition-colors group">
-                            <span className="text-[9px] font-normal uppercase text-neutral-300 group-hover:text-neutral-500 transition-colors shrink-0">L{idx + 1}</span>
+                            <span className="text-[9px] font-normal uppercase text-black transition-colors shrink-0">L{idx + 1}</span>
                             <div className="flex items-center gap-2 flex-1 justify-end">
                               <input 
                                 type="text" 
@@ -374,21 +374,21 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                               <div className="flex items-center gap-1 border-l border-neutral-100 pl-2 ml-2">
                                 <button 
                                   onClick={() => saveReading(param.nombre, reading.id, param.categoria, param.mediumKey)}
-                                  className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-300 hover:text-black")}
+                                  className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-black")}
                                   title="Guardar"
                                 >
                                   {reading.isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className={cn("h-3.5 w-3.5", !reading.isSaved && "opacity-30")} />}
                                 </button>
                                 <button 
                                   onClick={() => addReading(param.nombre, param.unidades)}
-                                  className="p-1 text-neutral-300 hover:text-black transition-colors"
+                                  className="p-1 text-black transition-colors"
                                   title="Agregar"
                                 >
                                   <Plus className="h-3.5 w-3.5" />
                                 </button>
                                 <button 
                                   onClick={() => removeReading(param.nombre, reading.id)}
-                                  className="p-1 text-neutral-300 hover:text-red-600 transition-colors"
+                                  className="p-1 text-black hover:text-red-600 transition-colors"
                                   title="Borrar"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
