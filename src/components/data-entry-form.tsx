@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -150,10 +149,11 @@ function DataExplorer({
     rSamples.forEach((s: any) => {
       const fId = s.formId || 'legacy';
       const existing = planillasMap.get(fId);
-      let detectedTemplate = 'manual';
+      let detectedTemplate = 'agua_superficial';
       if (s.medium === 'agua_superficial') detectedTemplate = 'agua_superficial';
       else if (s.medium === 'agua_subterranea') detectedTemplate = 'agua_subterranea';
       else if (s.medium === 'sedimentos') detectedTemplate = 'pgays_inspeccion';
+      else if (s.medium === 'aire') detectedTemplate = 'calidad_aire';
       else if (s.medium === 'suelo') {
         if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') detectedTemplate = 'suelo_geotecnia';
         else detectedTemplate = 'suelo_edafologico';
@@ -170,7 +170,7 @@ function DataExplorer({
         if (s.timestamp && (!existing.timestamp || s.timestamp.toMillis() > existing.timestamp.toMillis())) {
           existing.timestamp = s.timestamp;
         }
-        if (detectedTemplate !== 'manual') existing.templateId = detectedTemplate;
+        existing.templateId = detectedTemplate;
       }
     });
     return Array.from(planillasMap.entries()).map(([formId, data]) => ({ 
@@ -192,6 +192,7 @@ function DataExplorer({
     if (templateId === 'pgays_inspeccion') return 'Inspección de Obra (PGAyS-001)';
     if (templateId === 'suelo_geotecnia') return 'Mecánica de suelos (MS-001)';
     if (templateId === 'suelo_edafologico') return 'Perfil Edafológico (PE-001)';
+    if (templateId === 'calidad_aire') return 'Calidad de Aire (CA-001)';
     if (medium === 'agua_superficial') return 'Agua Superficial (AS-001)';
     if (medium === 'agua_subterranea') return 'Freatímetro (FTA-001)';
     return medium.replace('_', ' ');
@@ -417,7 +418,7 @@ export function DataEntryForm({
   const [trelloProjects, setTrelloProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [projectSearch, setProjectSearch] = useState<string>('');
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('manual');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('agua_superficial');
 
   const [editLat, setEditLat] = useState('');
   const [editLon, setEditLon] = useState('');
@@ -494,6 +495,7 @@ export function DataEntryForm({
         else if (s.analyte === 'Material_Originario' || s.analyte === 'Paisaje') detectedProtocol = 'suelo_edafologico';
       } else if (medium === 'agua_superficial') detectedProtocol = 'agua_superficial';
       else if (medium === 'agua_subterranea') detectedProtocol = 'agua_subterranea';
+      else if (medium === 'aire') detectedProtocol = 'calidad_aire';
       if (!existing) {
         planillasMap.set(fId, { formId: fId, medium: medium, userEmail: s.userEmail, timestamp: s.timestamp, count: 1, protocol: detectedProtocol });
       } else {
@@ -527,7 +529,7 @@ export function DataEntryForm({
             setCurrentReportId(parsed.currentReportId || null);
             setActiveFormId(parsed.activeFormId || null);
             setSelectedProject(parsed.selectedProject || '');
-            setSelectedTemplate(parsed.selectedTemplate || 'manual');
+            setSelectedTemplate(parsed.selectedTemplate || 'agua_superficial');
           } else {
             setActiveView(selectedPoint.stationId ? 'summary' : 'create-station');
           }
@@ -567,7 +569,7 @@ export function DataEntryForm({
       if (selectedPoint.formId && selectedPoint.reportId) {
         setCurrentReportId(selectedPoint.reportId);
         setActiveFormId(selectedPoint.formId);
-        setSelectedTemplate(selectedPoint.templateId || 'manual');
+        setSelectedTemplate(selectedPoint.templateId || 'agua_superficial');
         setActiveView('report-entry');
       } else {
         if (selectedPoint.stationId) setActiveView('summary');
@@ -580,7 +582,7 @@ export function DataEntryForm({
         setActiveFormId(null);
         setSelectedProject('');
         setProjectSearch('');
-        setSelectedTemplate('manual');
+        setSelectedTemplate('agua_superficial');
       }
       lastPointKeyRef.current = currentKey;
     }
@@ -867,7 +869,7 @@ export function DataEntryForm({
 
   const handleReopenPlanilla = (planilla: { formId: string, medium: string, protocol?: string }) => {
     setActiveFormId(planilla.formId);
-    let templateId = 'manual';
+    let templateId = 'agua_superficial';
     if (planilla.protocol) templateId = planilla.protocol;
     else { const foundTemplate = MONITORING_TEMPLATES.find(t => t.medium === planilla.medium); if (foundTemplate) templateId = foundTemplate.id; }
     setSelectedTemplate(templateId);
@@ -950,6 +952,7 @@ export function DataEntryForm({
     if (protocolId === 'pgays_inspeccion') return 'Inspección de Obra (PGAyS-001)';
     if (protocolId === 'suelo_geotecnia') return 'Mecánica de suelos (MS-001)';
     if (protocolId === 'suelo_edafologico') return 'Perfil Edafológico (PE-001)';
+    if (protocolId === 'calidad_aire') return 'Calidad de Aire (CA-001)';
     if (medium === 'agua_superficial') return 'Agua Superficial (AS-001)';
     if (medium === 'agua_subterranea') return 'Freatímetro (FTA-001)';
     return medium.replace('_', ' ');
@@ -1010,7 +1013,7 @@ export function DataEntryForm({
                 </AccordionContent></AccordionItem>
               </Accordion>
             )}
-            <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Nueva Planilla</Label><div className="flex gap-2"><Select value={selectedTemplate} onValueChange={setSelectedTemplate}><SelectTrigger className="h-11 flex-1 text-xs font-normal border-accent/20 bg-accent/5 text-black rounded-none"><SelectValue placeholder="Elegí un protocolo..." /></SelectTrigger><SelectContent><SelectItem value="manual" className="text-xs font-normal">Carga Manual</SelectItem><SelectItem value="personalizada" className="text-xs font-normal text-black flex items-center gap-1"><Star className="h-3 w-3 inline mr-1 fill-accent" /> Crear Planilla Personalizada</SelectItem>{customTemplates && customTemplates.length > 0 && (<><Separator className="my-1" /><div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Tus Planillas</div>{customTemplates.map((ct: any) => (<SelectItem key={ct.id} value={`custom_${ct.id}`} className="text-xs">{ct.name}</SelectItem>))}</>)}<Separator className="my-1" /><div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Plantillas del Sistema</div>{MONITORING_TEMPLATES.map((t) => (<SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>))}</SelectContent></Select><Button className="h-11 px-4 bg-primary hover:bg-primary/90 font-normal uppercase tracking-widest text-white rounded-none" disabled={isStartingReport} onClick={handleConfirmTemplate}>{isStartingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : "INICIAR CARGA"}</Button></div></div>
+            <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Nueva Planilla</Label><div className="flex gap-2"><Select value={selectedTemplate} onValueChange={setSelectedTemplate}><SelectTrigger className="h-11 flex-1 text-xs font-normal border-accent/20 bg-accent/5 text-black rounded-none"><SelectValue placeholder="Elegí un protocolo..." /></SelectTrigger><SelectContent><SelectItem value="personalizada" className="text-xs font-normal text-black flex items-center gap-1"><Star className="h-3 w-3 inline mr-1 fill-accent" /> Crear Planilla Personalizada</SelectItem>{customTemplates && customTemplates.length > 0 && (<><Separator className="my-1" /><div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Tus Planillas</div>{customTemplates.map((ct: any) => (<SelectItem key={ct.id} value={`custom_${ct.id}`} className="text-xs">{ct.name}</SelectItem>))}</>)}<Separator className="my-1" /><div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Plantillas del Sistema</div>{MONITORING_TEMPLATES.map((t) => (<SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>))}</SelectContent></Select><Button className="h-11 px-4 bg-primary hover:bg-primary/90 font-normal uppercase tracking-widest text-white rounded-none" disabled={isStartingReport} onClick={handleConfirmTemplate}>{isStartingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : "INICIAR CARGA"}</Button></div></div>
             {currentReportId && existingPlanillas.length > 0 && (
               <div className="space-y-3 pt-2"><Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Planillas en este reporte (Editar)</Label><div className="grid grid-cols-1 gap-2">{existingPlanillas.map((p) => { const protocolLabel = getProtocolLabel(p.protocol, p.medium); return (<div key={p.formId} className="group relative"><button onClick={() => handleReopenPlanilla(p)} className="w-full flex items-center justify-between p-3 rounded-none bg-neutral-100 border border-neutral-300 hover:bg-primary/5 hover:border-primary/30 transition-all"><div className="flex items-center gap-3"><div className="p-1.5 rounded-none bg-white shadow-sm border"><FileText className="h-3.5 w-3.5 text-black" /></div><div className="text-left"><p className="text-xs text-black uppercase tracking-tight font-normal">{p.formId}</p><div className="flex flex-col mt-0.5"><p className="text-[9px] text-black uppercase font-normal">{protocolLabel} <span className="opacity-60 font-normal ml-1">({p.count})</span></p><div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter mt-1"><span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span><span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span></div></div></div></div><ChevronRight className="h-4 w-4 text-black group-hover:translate-x-1 transition-all" /></button>{isAdmin && (<button onClick={(e) => { e.stopPropagation(); setDeletingPlanilla({ fid: p.formId, label: protocolLabel }); }} className="absolute -top-2 -right-2 h-6 w-6 bg-neutral-600 text-white rounded-full flex items-center justify-center shadow-md z-10" title="BORRAR PLANILLA"><Trash2 className="h-3 w-3" /></button>)}</div>); })}</div></div>
             )}
