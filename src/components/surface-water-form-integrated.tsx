@@ -179,7 +179,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
       };
       return { 
         ...prev, 
-        ...prev, 
         [analyteName]: { 
           ...analyte, 
           readings: [...analyte.readings, newReading],
@@ -266,7 +265,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   };
 
   const calculateStats = (readings: Reading[]) => {
-    const nums = readings.map(r => parseFloat(r.value)).filter(n => !isNaN(n));
+    const nums = readings.map(r => parseFloat(r.value.replace(',', '.'))).filter(n => !isNaN(n));
     if (nums.length === 0) return null;
     
     const n = nums.length;
@@ -378,8 +377,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                   <div className="flex items-center gap-3">
                     {stats && (
                        <div className="bg-neutral-100 px-3 py-1 rounded-sm border border-neutral-200 flex items-center gap-1.5" title="Media ± SE">
-                          <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean}</span>
-                          <span className="text-[10px] font-code text-neutral-400">± {stats.error}</span>
+                          <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean} ± {stats.error}</span>
                        </div>
                     )}
                     <select 
@@ -389,12 +387,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                     >
                       {units.map(u => <option key={u} value={u}>{u}</option>)}
                     </select>
-                    <button 
-                      onClick={() => addReading(analyte.name, units[0])}
-                      className="h-8 w-8 flex items-center justify-center bg-black text-white hover:bg-neutral-800 transition-colors"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
 
@@ -405,30 +397,50 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                         <span className="text-[9px] font-normal uppercase text-neutral-300 group-hover:text-neutral-500 transition-colors shrink-0">L{idx + 1}</span>
                         <div className="flex items-center gap-2 flex-1 justify-end">
                           <input 
-                            type="number" 
-                            step="any"
+                            type="text" 
                             placeholder="0.00"
                             className="h-7 w-20 border-none bg-transparent px-1 text-[11px] font-code text-black text-right outline-none focus:ring-0"
                             value={reading.value}
                             onChange={(e) => handleReadingChange(analyte.name, reading.id, e.target.value)}
                           />
-                          <button 
-                            onClick={() => saveReading(analyte.name, reading.id, analyte.category)}
-                            className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-300 hover:text-black")}
-                          >
-                            {reading.isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className={cn("h-3.5 w-3.5", !reading.isSaved && "opacity-30")} />}
-                          </button>
-                          <button 
-                            onClick={() => removeReading(analyte.name, reading.id)}
-                            className="p-1 text-neutral-300 hover:text-red-600 transition-colors"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                          <div className="flex items-center gap-1 border-l border-neutral-100 pl-2 ml-2">
+                            <button 
+                              onClick={() => saveReading(analyte.name, reading.id, analyte.category)}
+                              className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-300 hover:text-black")}
+                              title="Guardar lectura"
+                            >
+                              {reading.isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className={cn("h-3.5 w-3.5", !reading.isSaved && "opacity-30")} />}
+                            </button>
+                            <button 
+                              onClick={() => addReading(analyte.name, units[0])}
+                              className="p-1 text-neutral-300 hover:text-black transition-colors"
+                              title="Agregar otra lectura"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                            <button 
+                              onClick={() => removeReading(analyte.name, reading.id)}
+                              className="p-1 text-neutral-300 hover:text-red-600 transition-colors"
+                              title="Eliminar lectura"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
                     {state.readings.length === 0 && (
-                      <p className="text-[9px] text-center text-neutral-400 py-3 italic uppercase tracking-wider">Sin lecturas</p>
+                      <div className="p-4 text-center">
+                        <p className="text-[9px] text-neutral-400 mb-2 uppercase tracking-wider italic">Sin lecturas para {analyte.name}</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => addReading(analyte.name, units[0])}
+                          className="h-8 text-[9px] uppercase tracking-widest rounded-none border-dashed"
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Comenzar carga
+                        </Button>
+                      </div>
                     )}
                   </div>
                 )}
