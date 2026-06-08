@@ -71,7 +71,7 @@ export const MONITORING_TEMPLATES = [
       { nombre: "Punto Específico", categoria: "General", unidades: "GPS" },
       { nombre: "Paisaje / Forma", categoria: "Entorno", unidades: "" },
       { nombre: "Material Originario", categoria: "Geología", unidades: "" },
-      { nombre: "Clima / Región", categoria: "Entorno", unidades: "" },
+      { nombre: "Clima / Region", categoria: "Entorno", unidades: "" },
       { nombre: "Vegetación / Cultivo", categoria: "Entorno", unidades: "" },
       { nombre: "Drenaje", categoria: "Propiedades", unidades: "0-6" },
       { nombre: "Pendiente", categoria: "Propiedades", unidades: "%" },

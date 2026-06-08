@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, Timestamp, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, CheckCircle2, Clock, User, Calendar, Settings2, Plus, Trash2, ChevronDown, ChevronUp, Star, Pencil } from 'lucide-react';
+import { Loader2, Check, CheckCircle2, Clock, User, Calendar, Settings2, Plus, Trash2, ChevronDown, ChevronUp, Star, Pencil, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
