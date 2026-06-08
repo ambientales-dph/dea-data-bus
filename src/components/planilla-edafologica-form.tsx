@@ -25,11 +25,13 @@ interface Reading {
 interface AnalyteState {
   readings: Reading[];
   isExpanded: boolean;
+  userEmail?: string;
 }
 
 interface SoilEntry {
   value: any;
   capturedAt: number | null;
+  userEmail?: string;
 }
 
 interface Props {
@@ -56,7 +58,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   const [savingFields, setSavingFields] = useState<Record<string, boolean>>({});
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
-  const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [metadata, setMetadata] = useState<{ timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
 
@@ -81,7 +83,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         const newFormData: Record<string, SoilEntry> = {};
         const newMultidata: Record<string, AnalyteState> = {};
         const newSavedFields: Record<string, boolean> = {};
-        let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundMetadata = { timestamp: null };
         let foundDeferred = false;
         let maxH = 1;
 
@@ -91,7 +93,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           const value = data.value;
 
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
+            foundMetadata = { timestamp: data.fechaServidor || data.timestamp };
             if (data.timestamp) {
                const date = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
                setManualDate(date.toISOString().slice(0, 16));
@@ -99,12 +101,11 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           }
           if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
 
-          // Detectar campos numéricos multilectura
           const isMultidataField = analyte === 'Pendiente' || analyte === 'Prof_Napa' || analyte.endsWith(' pH');
           
           if (isMultidataField) {
             if (!newMultidata[analyte]) {
-              newMultidata[analyte] = { readings: [], isExpanded: false };
+              newMultidata[analyte] = { readings: [], isExpanded: false, userEmail: data.userEmail };
             }
             newMultidata[analyte].readings.push({
               id: docSnap.id,
@@ -115,7 +116,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
             });
             newSavedFields[analyte] = true;
           } else {
-            newFormData[analyte] = { value, capturedAt: null };
+            newFormData[analyte] = { value, capturedAt: null, userEmail: data.userEmail };
             newSavedFields[analyte] = true;
           }
 
@@ -126,7 +127,6 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           }
         });
 
-        // Ordenar lecturas
         Object.keys(newMultidata).forEach(key => {
           newMultidata[key].readings.sort((a, b) => a.capturedAt - b.capturedAt);
         });
@@ -156,6 +156,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
 
     setSavedFields(prev => ({ ...prev, [name]: true }));
     setSavingFields(prev => ({ ...prev, [name]: false }));
+    setFormData(prev => ({ ...prev, [name]: { ...prev[name], userEmail: user.email! } }));
     
     (async () => {
       try {
@@ -250,6 +251,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       ...prev,
       [analyteName]: {
         ...prev[analyteName],
+        userEmail: user.email!,
         readings: prev[analyteName].readings.map(r => 
           r.id === readingId ? { ...r, isSaved: true, isSaving: false } : r
         )
@@ -304,7 +306,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   };
 
   const handleInputChange = (name: string, value: any) => {
-    setFormData(prev => ({ ...prev, [name]: { value, capturedAt: Date.now() } }));
+    setFormData(prev => ({ ...prev, [name]: { ...prev[name], value, capturedAt: Date.now() } }));
     if (savedFields[name]) {
       setSavedFields(prev => {
         const next = { ...prev };
@@ -360,42 +362,45 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     }
   };
 
-  const handleMunsellChange = (name: string, val: string) => {
-    handleInputChange(name, val.toUpperCase());
-  };
-
   const sectionHeaderClass = "flex items-center gap-2 bg-neutral-100 px-4 py-2 border-y border-neutral-400 mt-6 first:mt-0";
   const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-4";
   const labelClass = "text-[11px] font-normal text-black tracking-tight font-headline leading-none w-1/3 shrink-0 uppercase";
   const inputClass = "h-7 flex-1 border-none bg-transparent px-2 text-[12px] font-code text-black font-normal text-right rounded-none focus:ring-0 outline-none placeholder:text-neutral-300";
 
-  const renderField = (name: string, label: string, cat: string, placeholder = "---") => (
-    <div className={rowClass}>
-      <div className="flex flex-col flex-1">
-        <label className={labelClass}>{label}</label>
-        <div className="flex items-center gap-1 mt-0.5">
-          <User className="h-2.5 w-2.5 text-neutral-300" />
-          <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+  const renderField = (name: string, label: string, cat: string, placeholder = "---") => {
+    const entry = formData[name];
+    const isSaved = savedFields[name];
+    return (
+      <div className={rowClass}>
+        <div className="flex flex-col flex-1">
+          <label className={labelClass}>{label}</label>
+          {isSaved && entry?.userEmail && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <User className="h-2.5 w-2.5 text-neutral-300" />
+              <TechnicianLink email={entry.userEmail} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          <input 
+            type="text" 
+            className={inputClass} 
+            value={formData[name]?.value ?? ""} 
+            onChange={(e) => handleInputChange(name, e.target.value)} 
+            placeholder={placeholder}
+          />
+          <button onClick={() => saveParam(name, cat)} className={cn("p-1 transition-colors", isSaved ? "text-green-600" : "text-black hover:text-primary")}>
+            {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isSaved ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
+          </button>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-1 justify-end">
-        <input 
-          type="text" 
-          className={inputClass} 
-          value={formData[name]?.value ?? ""} 
-          onChange={(e) => handleInputChange(name, e.target.value)} 
-          placeholder={placeholder}
-        />
-        <button onClick={() => saveParam(name, cat)} className={cn("p-1 transition-colors", savedFields[name] ? "text-green-600" : "text-black hover:text-primary")}>
-          {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields[name] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderMultidataField = (name: string, label: string, cat: string, unit = "") => {
     const state = multidata[name] || { readings: [], isExpanded: false };
     const stats = calculateStats(state.readings);
+    const hasSavedValue = state.readings.some(r => r.isSaved);
 
     return (
       <div key={name} className="flex flex-col bg-white overflow-hidden border-b border-neutral-300">
@@ -407,10 +412,12 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
             {state.isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
             <div className="flex flex-col">
               <span className={labelClass}>{label}</span>
-              <div className="flex items-center gap-1 mt-0.5">
-                <User className="h-2.5 w-2.5 text-neutral-300" />
-                <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
-              </div>
+              {hasSavedValue && state.userEmail && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <User className="h-2.5 w-2.5 text-neutral-300" />
+                  <TechnicianLink email={state.userEmail} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+                </div>
+              )}
             </div>
           </button>
 
@@ -418,7 +425,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
             {stats && (
               <div className="bg-neutral-100 px-3 py-1 rounded-sm border border-neutral-200 flex items-center gap-1.5" title="Media ± SE">
                 <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean} ± {stats.error}</span>
-                <span className="text-[8px] text-neutral-400 ml-1">{unit}</span>
+                <span className="text-[8px] text-neutral-400 ml-1 font-normal">{unit}</span>
               </div>
             )}
             {!stats && unit && <span className="text-[9px] font-bold text-neutral-300">{unit}</span>}
@@ -443,7 +450,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
                       onClick={() => saveReading(name, reading.id, cat)}
                       className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-300 hover:text-black")}
                     >
-                      {reading.isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className={cn("h-3.5 w-3.5", !reading.isSaved && "opacity-30")} />}
+                      {reading.isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className={cn("h-3.5 w-3.5", !reading.isSaved && "opacity-30")} />}
                     </button>
                     <button 
                       onClick={() => addReading(name)}
@@ -477,38 +484,44 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     );
   };
 
-  const renderSelect = (name: string, label: string, cat: string, options: {v: string, l: string}[]) => (
-    <div className={rowClass}>
-      <div className="flex flex-col flex-1">
-        <label className={labelClass}>{label}</label>
-        <div className="flex items-center gap-1 mt-0.5">
-          <User className="h-2.5 w-2.5 text-neutral-300" />
-          <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+  const renderSelect = (name: string, label: string, cat: string, options: {v: string, l: string}[]) => {
+    const isSaved = savedFields[name];
+    const entry = formData[name];
+    return (
+      <div className={rowClass}>
+        <div className="flex flex-col flex-1">
+          <label className={labelClass}>{label}</label>
+          {isSaved && entry?.userEmail && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <User className="h-2.5 w-2.5 text-neutral-300" />
+              <TechnicianLink email={entry.userEmail} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          <Select 
+            value={formData[name]?.value ?? ""} 
+            onValueChange={(val) => {
+              handleInputChange(name, val);
+              saveParam(name, cat, val);
+            }}
+          >
+            <SelectTrigger className="h-7 border-none bg-transparent shadow-none focus:ring-0 text-[11px] font-normal text-black text-right flex-row-reverse p-0 w-full justify-start gap-2">
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map(opt => (
+                <SelectItem key={opt.v} value={opt.v} className="text-xs font-normal uppercase">{opt.l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className={cn("p-1", isSaved ? "text-green-600" : "text-transparent")}>
+            {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin text-black" /> : <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5" /></div>}
+          </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-1 justify-end">
-        <Select 
-          value={formData[name]?.value ?? ""} 
-          onValueChange={(val) => {
-            handleInputChange(name, val);
-            saveParam(name, cat, val);
-          }}
-        >
-          <SelectTrigger className="h-7 border-none bg-transparent shadow-none focus:ring-0 text-[11px] font-normal text-black text-right flex-row-reverse p-0 w-full justify-start gap-2">
-            <SelectValue placeholder="Seleccionar..." />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map(opt => (
-              <SelectItem key={opt.v} value={opt.v} className="text-xs font-normal uppercase">{opt.l}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className={cn("p-1", savedFields[name] ? "text-green-600" : "text-transparent")}>
-          {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin text-black" /> : <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5" /></div>}
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const formatTimestamp = (ts: any) => {
     if (!ts) return new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -559,8 +572,6 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
                 <CheckCircle2 className="h-2.5 w-2.5" />
                 <span className="text-[7px] font-normal">{isDeferred ? "DIFERIDA" : "REAL"}</span>
               </button>
-
-              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>
         </div>
@@ -571,10 +582,12 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       <div className={cn(rowClass, "relative")}>
         <div className="flex flex-col flex-1">
           <label className={labelClass}>Lugar / Localidad</label>
-          <div className="flex items-center gap-1 mt-0.5">
-            <User className="h-2.5 w-2.5 text-neutral-300" />
-            <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal" />
-          </div>
+          {savedFields["Lugar"] && formData["Lugar"]?.userEmail && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <User className="h-2.5 w-2.5 text-neutral-300" />
+              <TechnicianLink email={formData["Lugar"].userEmail} className="text-[8px] uppercase text-neutral-400 font-normal" />
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-1 justify-end">
           <div className="relative flex-1 flex justify-end">
@@ -600,10 +613,12 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       <div className={rowClass}>
         <div className="flex flex-col flex-1">
           <label className={labelClass}>Punto Específico</label>
-          <div className="flex items-center gap-1 mt-0.5">
-            <User className="h-2.5 w-2.5 text-neutral-300" />
-            <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal" />
-          </div>
+          {savedFields["Punto_Muestreo"] && formData["Punto_Muestreo"]?.userEmail && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <User className="h-2.5 w-2.5 text-neutral-300" />
+              <TechnicianLink email={formData["Punto_Muestreo"].userEmail} className="text-[8px] uppercase text-neutral-400 font-normal" />
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-1 justify-end">
           <input type="text" className={inputClass} value={formData["Punto_Muestreo"]?.value ?? ""} onChange={(e) => handleInputChange("Punto_Muestreo", e.target.value)} />

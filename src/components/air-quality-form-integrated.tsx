@@ -22,6 +22,7 @@ interface AirAnalyteState {
   readings: Reading[];
   unit: string;
   isExpanded: boolean;
+  userEmail?: string;
 }
 
 interface Props {
@@ -37,7 +38,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
   const { user } = useUser();
   const [formData, setFormData] = useState<Record<string, AirAnalyteState>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
-  const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [metadata, setMetadata] = useState<{ timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
 
@@ -63,7 +64,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
         const snapshot = await getDocs(q);
         
         const newFormData: Record<string, AirAnalyteState> = {};
-        let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundMetadata = { timestamp: null };
         let foundDeferred = false;
 
         snapshot.docs.forEach(docSnap => {
@@ -83,7 +84,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
 
           if (!newFormData[analyte]) {
             const config = params.find(p => p.name === analyte);
-            newFormData[analyte] = { readings: [], unit: unit || config?.unit || "", isExpanded: false };
+            newFormData[analyte] = { readings: [], unit: unit || config?.unit || "", isExpanded: false, userEmail: data.userEmail };
           }
 
           newFormData[analyte].readings.push({
@@ -95,7 +96,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
           });
           
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
+            foundMetadata = { timestamp: data.fechaServidor || data.timestamp };
             if (data.timestamp) {
                const date = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
                setManualDate(date.toISOString().slice(0, 16));
@@ -104,7 +105,6 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
           if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
         });
 
-        // Ordenar lecturas por tiempo de captura
         Object.keys(newFormData).forEach(key => {
           newFormData[key].readings.sort((a, b) => a.capturedAt - b.capturedAt);
         });
@@ -180,11 +180,11 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
     
     if (!reading || reading.value === "") return;
 
-    // Optimistic UI update
     setFormData(prev => ({
       ...prev,
       [analyteName]: {
         ...prev[analyteName],
+        userEmail: user.email!,
         readings: prev[analyteName].readings.map(r => 
           r.id === readingId ? { ...r, isSaved: true, isSaving: false } : r
         )
@@ -298,8 +298,6 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
                 <CheckCircle2 className="h-2.5 w-2.5" />
                 <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
               </button>
-
-              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>
         </div>
@@ -314,6 +312,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
           {params.map((param) => {
             const state = formData[param.name] || { readings: [], unit: param.unit, isExpanded: false };
             const stats = calculateStats(state.readings);
+            const hasSavedValue = state.readings.some(r => r.isSaved);
             
             return (
               <div key={param.name} className="flex flex-col bg-white overflow-hidden">
@@ -325,10 +324,12 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
                     {state.isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
                     <div className="flex flex-col">
                       <span className="text-[12px] font-normal text-black uppercase tracking-tight">{param.name}</span>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <User className="h-2.5 w-2.5 text-neutral-300" />
-                        <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
-                      </div>
+                      {hasSavedValue && state.userEmail && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <User className="h-2.5 w-2.5 text-neutral-300" />
+                          <TechnicianLink email={state.userEmail} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+                        </div>
+                      )}
                       <span className="text-[10px] text-neutral-500 font-normal leading-tight mt-1">{param.desc}</span>
                     </div>
                   </button>

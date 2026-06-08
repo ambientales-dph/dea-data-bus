@@ -68,6 +68,7 @@ interface SurfaceWaterAnalyteState {
   readings: Reading[];
   unit: string;
   isExpanded: boolean;
+  userEmail?: string;
 }
 
 interface Props {
@@ -85,7 +86,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   const [globalSystem, setGlobalSystem] = useState<MeasurementSystem>('metric');
   const [formData, setFormData] = useState<Record<string, SurfaceWaterAnalyteState>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
-  const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [metadata, setMetadata] = useState<{ timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
 
@@ -102,7 +103,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         const snapshot = await getDocs(q);
         
         const newFormData: Record<string, SurfaceWaterAnalyteState> = {};
-        let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundMetadata = { timestamp: null };
         let foundDeferred = false;
 
         snapshot.docs.forEach(docSnap => {
@@ -119,7 +120,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
           }
 
           if (!newFormData[analyte]) {
-            newFormData[analyte] = { readings: [], unit: unit || "", isExpanded: false };
+            newFormData[analyte] = { readings: [], unit: unit || "", isExpanded: false, userEmail: data.userEmail };
           }
 
           newFormData[analyte].readings.push({
@@ -131,7 +132,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
           });
           
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
+            foundMetadata = { timestamp: data.fechaServidor || data.timestamp };
             if (data.timestamp) {
                const date = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
                setManualDate(date.toISOString().slice(0, 16));
@@ -219,6 +220,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
       ...prev,
       [analyteName]: {
         ...prev[analyteName],
+        userEmail: user.email!,
         readings: prev[analyteName].readings.map(r => 
           r.id === readingId ? { ...r, isSaved: true, isSaving: false } : r
         )
@@ -338,7 +340,6 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
             <CheckCircle2 className="h-2.5 w-2.5" />
             <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
           </button>
-          <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
         </div>
       </div>
 
@@ -356,6 +357,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
             const units = [...analyte[globalSystem], ...analyte.metric, ...analyte.imperial, ...analyte.local].filter((u, i, self) => u && self.indexOf(u) === i);
             const state = formData[analyte.name] || { readings: [], unit: units[0] || "", isExpanded: false };
             const stats = calculateStats(state.readings);
+            const hasSavedValue = state.readings.some(r => r.isSaved);
             
             return (
               <div key={analyte.name} className="flex flex-col bg-white overflow-hidden">
@@ -367,10 +369,12 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                     {state.isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
                     <div className="flex flex-col">
                       <span className="text-[12px] font-normal text-black uppercase tracking-tight">{analyte.name}</span>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <User className="h-2.5 w-2.5 text-neutral-300" />
-                        <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
-                      </div>
+                      {hasSavedValue && state.userEmail && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <User className="h-2.5 w-2.5 text-neutral-300" />
+                          <TechnicianLink email={state.userEmail} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+                        </div>
+                      )}
                     </div>
                   </button>
 
@@ -458,15 +462,18 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
           {LAB_CONFIG.map((param) => {
             const state = formData[param.name] || { readings: [], unit: param.unit, isExpanded: true };
             const currentReading = state.readings[0] || { id: `temp_lab_${param.name}`, value: "", capturedAt: Date.now(), isSaved: false, isSaving: false };
-            
+            const hasSavedValue = state.readings.some(r => r.isSaved);
+
             return (
               <div key={param.name} className="flex items-center justify-between py-3 px-4 hover:bg-neutral-50 transition-colors">
                 <div className="flex flex-col">
                   <label className="text-[11px] font-normal text-black uppercase tracking-tight">{param.name}</label>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <User className="h-2.5 w-2.5 text-neutral-300" />
-                    <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
-                  </div>
+                  {hasSavedValue && state.userEmail && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <User className="h-2.5 w-2.5 text-neutral-300" />
+                      <TechnicianLink email={state.userEmail} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-2">

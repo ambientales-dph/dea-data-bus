@@ -22,6 +22,7 @@ interface AnalyteState {
   readings: Reading[];
   unit: string;
   isExpanded: boolean;
+  userEmail?: string;
 }
 
 interface AnalyteConfig {
@@ -63,8 +64,9 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const { user } = useUser();
   const [formData, setFormData] = useState<Record<string, AnalyteState>>({});
   const [idPozo, setIdPozo] = useState("");
+  const [idPozoUser, setIdPozoUser] = useState<string | null>(null);
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
-  const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [metadata, setMetadata] = useState<{ timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
   const hasSetInitialId = useRef(false);
@@ -88,7 +90,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         const snapshot = await getDocs(q);
         
         const newFormData: Record<string, AnalyteState> = {};
-        let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundMetadata = { timestamp: null };
         let foundDeferred = false;
 
         snapshot.docs.forEach(docSnap => {
@@ -97,6 +99,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
           
           if (analyte === 'ID Pozo') {
             setIdPozo(data.value);
+            setIdPozoUser(data.userEmail);
             return;
           }
 
@@ -110,7 +113,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
           }
 
           if (!newFormData[analyte]) {
-            newFormData[analyte] = { readings: [], unit: unit || "", isExpanded: false };
+            newFormData[analyte] = { readings: [], unit: unit || "", isExpanded: false, userEmail: data.userEmail };
           }
 
           newFormData[analyte].readings.push({
@@ -122,7 +125,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
           });
           
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
+            foundMetadata = { timestamp: data.fechaServidor || data.timestamp };
             if (data.timestamp) {
                const date = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
                setManualDate(date.toISOString().slice(0, 16));
@@ -173,7 +176,6 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
     
     if (cb && ne) {
       const mean = parseFloat(cb.mean) - parseFloat(ne.mean);
-      // El error de la diferencia es la raíz de la suma de los cuadrados de los errores
       const error = Math.sqrt(Math.pow(parseFloat(cb.error), 2) + Math.pow(parseFloat(ne.error), 2));
       return { mean: mean.toFixed(3), error: error.toFixed(3) };
     }
@@ -236,6 +238,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
       ...prev,
       [analyteName]: {
         ...prev[analyteName],
+        userEmail: user.email!,
         readings: prev[analyteName].readings.map(r => 
           r.id === readingId ? { ...r, isSaved: true, isSaving: false } : r
         )
@@ -301,7 +304,9 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
       userId: user.uid,
       userEmail: user.email
     };
-    setDoc(sampleRef, payload, { merge: true }).catch(console.error);
+    setDoc(sampleRef, payload, { merge: true }).then(() => {
+      setIdPozoUser(user.email);
+    }).catch(console.error);
     toast({ title: "ID Pozo guardado" });
   };
 
@@ -320,6 +325,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const renderAnalyte = (config: AnalyteConfig) => {
     const state = formData[config.name] || { readings: [], unit: config.unit, isExpanded: false };
     const stats = calculateStats(state.readings);
+    const hasSavedValue = state.readings.some(r => r.isSaved);
 
     return (
       <div key={config.key} className="flex flex-col bg-white overflow-hidden border-b border-neutral-200">
@@ -331,10 +337,12 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
             {state.isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
             <div className="flex flex-col">
               <span className="text-[12px] font-normal text-black uppercase tracking-tight">{config.name}</span>
-              <div className="flex items-center gap-1 mt-0.5">
-                <User className="h-2.5 w-2.5 text-neutral-300" />
-                <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
-              </div>
+              {hasSavedValue && state.userEmail && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <User className="h-2.5 w-2.5 text-neutral-300" />
+                  <TechnicianLink email={state.userEmail} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+                </div>
+              )}
             </div>
           </button>
 
@@ -342,7 +350,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
             {stats && (
               <div className="bg-neutral-100 px-3 py-1 rounded-sm border border-neutral-200 flex items-center gap-1.5" title="Media ± SE">
                 <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean} ± {stats.error}</span>
-                <span className="text-[8px] text-neutral-400 ml-1">{config.unit}</span>
+                <span className="text-[8px] text-neutral-400 ml-1 font-normal">{config.unit}</span>
               </div>
             )}
             {!stats && <span className="text-[9px] font-bold text-neutral-300">{config.unit}</span>}
@@ -441,8 +449,6 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
               <CheckCircle2 className="h-2.5 w-2.5" />
               <span className="text-[7px] font-black">{isDeferred ? "DIFERIDA" : "REAL"}</span>
             </button>
-
-            <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
           </div>
         </div>
       </div>
@@ -455,10 +461,12 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         <div className="flex items-center justify-between py-3 px-4 border-b border-neutral-200 hover:bg-neutral-50 transition-colors">
           <div className="flex flex-col">
             <span className="text-[12px] font-normal text-black uppercase">ID Pozo</span>
-            <div className="flex items-center gap-1 mt-0.5">
-              <User className="h-2.5 w-2.5 text-neutral-300" />
-              <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal" />
-            </div>
+            {idPozoUser && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <User className="h-2.5 w-2.5 text-neutral-300" />
+                <TechnicianLink email={idPozoUser} className="text-[8px] uppercase text-neutral-400 font-normal" />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <input 
@@ -492,10 +500,6 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         <div className="bg-black px-6 py-6 flex items-center justify-between mt-4">
           <div className="flex flex-col">
             <span className="text-[11px] font-normal uppercase text-white tracking-[0.2em]">Cota de Agua Estimada</span>
-            <div className="flex items-center gap-1 mt-1">
-              <User className="h-2 w-2 text-neutral-500" />
-              <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-500 font-normal hover:text-white" />
-            </div>
             <span className="text-[9px] font-normal text-neutral-400 mt-1 uppercase italic opacity-60">Cálculo: CB̄ - NĒ (m s.n.m.)</span>
           </div>
           <div className="flex flex-col items-end gap-1">

@@ -24,6 +24,7 @@ interface Reading {
 interface AnalyteState {
   readings: Reading[];
   isExpanded: boolean;
+  userEmail?: string;
 }
 
 interface CapaSuelo {
@@ -36,7 +37,7 @@ interface CapaSuelo {
   descripcion: string
   clasificacionUSCS: string
   multidata: Record<string, AnalyteState>
-  capturedAt: Record<string, number | null>
+  userEmails: Record<string, string>
 }
 
 const patronesDisponibles = [
@@ -88,17 +89,17 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   const db = useFirestore();
   const { user } = useUser();
   
-  const [formData, setFormData] = useState<Record<string, { value: any; capturedAt: number | null }>>({
-    sondeoNumero: { value: "", capturedAt: null },
-    ubicacion: { value: "", capturedAt: null },
-    profundidadTotal: { value: "", capturedAt: null },
-    observaciones: { value: "", capturedAt: null }
+  const [formData, setFormData] = useState<Record<string, { value: any; userEmail?: string }>>({
+    sondeoNumero: { value: "" },
+    ubicacion: { value: "" },
+    profundidadTotal: { value: "" },
+    observaciones: { value: "" }
   });
 
   const [capas, setCapas] = useState<CapaSuelo[]>([]);
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
-  const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [metadata, setMetadata] = useState<{ timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
 
@@ -113,7 +114,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         const newFormData: Record<string, any> = {};
         const newSavedFields: Record<string, boolean> = {};
         const layersMap: Record<string, Partial<CapaSuelo>> = {};
-        let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundMetadata = { timestamp: null };
         let foundDeferred = false;
 
         snapshot.docs.forEach(docSnap => {
@@ -122,7 +123,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           const value = data.value;
 
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
+            foundMetadata = { timestamp: data.fechaServidor || data.timestamp };
             if (data.timestamp) { setManualDate(data.timestamp.toDate().toISOString().slice(0, 16)); }
           }
           if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
@@ -131,22 +132,24 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           if (layerMatch) {
             const lId = layerMatch[1];
             const fieldName = layerMatch[2];
-            if (!layersMap[lId]) layersMap[lId] = { id: lId, multidata: {}, capturedAt: {} };
+            if (!layersMap[lId]) layersMap[lId] = { id: lId, multidata: {}, userEmails: {} };
             
             const numericFields = ['golpesSPT', 'limiteLL', 'limiteIP', 'humedad'];
             if (numericFields.includes(fieldName)) {
-              if (!layersMap[lId]!.multidata![fieldName]) layersMap[lId]!.multidata![fieldName] = { readings: [], isExpanded: false };
+              if (!layersMap[lId]!.multidata![fieldName]) layersMap[lId]!.multidata![fieldName] = { readings: [], isExpanded: false, userEmail: data.userEmail };
               layersMap[lId]!.multidata![fieldName].readings.push({
                 id: docSnap.id, value, capturedAt: data.capturedAt?.toMillis() || Date.now(), isSaved: true, isSaving: false
               });
             } else if (fieldName === 'nivelFreatico') {
               layersMap[lId][fieldName] = value === 'true';
+              layersMap[lId]!.userEmails![fieldName] = data.userEmail;
             } else {
               (layersMap[lId] as any)[fieldName] = value;
+              layersMap[lId]!.userEmails![fieldName] = data.userEmail;
             }
             newSavedFields[analyte] = true;
           } else {
-            newFormData[analyte] = { value, capturedAt: null };
+            newFormData[analyte] = { value, userEmail: data.userEmail };
             newSavedFields[analyte] = true;
           }
         });
@@ -161,7 +164,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           descripcion: l.descripcion || "",
           clasificacionUSCS: l.clasificacionUSCS || "",
           multidata: l.multidata || {},
-          capturedAt: l.capturedAt || {}
+          userEmails: l.userEmails || {}
         } as CapaSuelo)).sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
         if (initialCapas.length === 0) initialCapas.push(createEmptyLayer(Date.now().toString(), "0.00"));
@@ -177,7 +180,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   }, [db, reportId, formId, user?.email]);
 
   const createEmptyLayer = (id: string, start: string): CapaSuelo => ({
-    id, profundidadInicio: start, profundidadFin: "", nivelFreatico: false, colorColumna: "#F5F5DC", patron: "none", descripcion: "", clasificacionUSCS: "", multidata: {}, capturedAt: {}
+    id, profundidadInicio: start, profundidadFin: "", nivelFreatico: false, colorColumna: "#F5F5DC", patron: "none", descripcion: "", clasificacionUSCS: "", multidata: {}, userEmails: {}
   });
 
   const calculateStats = (readings: Reading[]) => {
@@ -220,7 +223,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
     setCapas(prev => prev.map(c => {
       if (c.id !== layerId) return c;
       const readings = c.multidata[field].readings.map(r => r.id === readingId ? { ...r, isSaved: true } : r);
-      return { ...c, multidata: { ...c.multidata, [field]: { ...c.multidata[field], readings } } };
+      return { ...c, multidata: { ...c.multidata, [field]: { ...c.multidata[field], readings, userEmail: user.email! } } };
     }));
 
     (async () => {
@@ -254,6 +257,16 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   const handleSimpleFieldSave = (analyte: string, category: string, value: any) => {
     if (!user || !db || value === "") return;
     setSavedFields(prev => ({ ...prev, [analyte]: true }));
+    
+    const layerMatch = analyte.match(/^L(\d+): (.*)/);
+    if (layerMatch) {
+      const lId = layerMatch[1];
+      const field = layerMatch[2];
+      setCapas(prev => prev.map(c => c.id === lId ? { ...c, userEmails: { ...c.userEmails, [field]: user.email! } } : c));
+    } else {
+      setFormData(prev => ({ ...prev, [analyte]: { ...prev[analyte], userEmail: user.email! } }));
+    }
+
     (async () => {
       const location = await getCurrentGPSLocation();
       const docId = `${reportId}_${formId}_${analyte.replace(/[: ]/g, '_')}`;
@@ -346,7 +359,6 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                   <input type="datetime-local" value={manualDate} onChange={(e) => setManualDate(e.target.value)} className="bg-transparent border-none p-0 text-[9px] font-black outline-none w-32" />
                 </div>
               ) : <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {new Date().toLocaleString()}</span>}
-              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>
         </div>
@@ -362,15 +374,17 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           <div key={f.id} className="flex items-center justify-between py-2 px-4 border-b border-neutral-100 group">
             <div className="flex flex-col">
               <label className="text-[11px] font-normal uppercase text-black">{f.label}</label>
-              <div className="flex items-center gap-1 mt-0.5">
-                <User className="h-2 w-2 text-neutral-300" />
-                <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal" />
-              </div>
+              {savedFields[f.id] && formData[f.id]?.userEmail && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <User className="h-2 w-2 text-neutral-300" />
+                  <TechnicianLink email={formData[f.id].userEmail!} className="text-[8px] uppercase text-neutral-400 font-normal" />
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <input 
                 className="h-7 w-32 text-right border-none bg-neutral-50 px-2 text-[12px] font-code text-black focus:ring-0 outline-none"
-                value={formData[f.id].value} onChange={(e) => setFormData(p => ({...p, [f.id]: {value: e.target.value, capturedAt: Date.now()}}))}
+                value={formData[f.id].value} onChange={(e) => setFormData(p => ({...p, [f.id]: {value: e.target.value}}))}
               />
               {f.gps && <button onClick={captureGPS} className="p-1"><Locate className="h-4 w-4 text-primary" /></button>}
               <button onClick={() => handleSimpleFieldSave(f.id, f.cat, formData[f.id].value)} className={cn("p-1", savedFields[f.id] ? "text-green-600" : "text-neutral-300")}><Check className="h-4 w-4" /></button>
@@ -403,8 +417,13 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                   <div className="h-[1px] bg-neutral-200 mx-1" />
                   <input value={c.profundidadFin} onBlur={() => handleSimpleFieldSave(`L${c.id}: profundidadFin`, 'Estratigrafía', c.profundidadFin)} onChange={(e) => setCapas(prev => prev.map(l => l.id === c.id ? {...l, profundidadFin: e.target.value} : l))} className="w-full text-center border-none focus:ring-0 p-0 text-[10px] font-code" />
                 </td>
-                <td className="border-r border-black p-1 text-center bg-white">
-                   <input type="checkbox" checked={c.nivelFreatico} onChange={(e) => { setCapas(prev => prev.map(l => l.id === c.id ? {...l, nivelFreatico: e.target.checked} : l)); handleSimpleFieldSave(`L${c.id}: nivelFreatico`, 'Estratigrafía', e.target.checked); }} className="w-4 h-4" />
+                <td className="border-r border-black p-1 text-center bg-white relative">
+                   <div className="flex flex-col items-center">
+                    <input type="checkbox" checked={c.nivelFreatico} onChange={(e) => { setCapas(prev => prev.map(l => l.id === c.id ? {...l, nivelFreatico: e.target.checked} : l)); handleSimpleFieldSave(`L${c.id}: nivelFreatico`, 'Estratigrafía', e.target.checked); }} className="w-4 h-4" />
+                    {c.userEmails['nivelFreatico'] && (
+                      <TechnicianLink email={c.userEmails['nivelFreatico']} className="text-[6px] absolute bottom-1 uppercase opacity-40" />
+                    )}
+                   </div>
                 </td>
                 <td className="border-r border-black p-0 relative bg-white h-24">
                    <PatronSVG patron={c.patron} color={c.colorColumna} />
@@ -417,23 +436,41 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                       </select>
                    </div>
                 </td>
-                <td className="border-r border-black p-1 bg-white">
+                <td className="border-r border-black p-1 bg-white relative">
                    <textarea value={c.descripcion} onBlur={() => handleSimpleFieldSave(`L${c.id}: descripcion`, 'Estratigrafía', c.descripcion)} onChange={(e) => setCapas(p => p.map(l => l.id === c.id ? {...l, descripcion: e.target.value} : l))} className="w-full h-20 text-[9px] border-none resize-none focus:ring-0 p-0 leading-tight" />
+                   {c.userEmails['descripcion'] && (
+                      <TechnicianLink email={c.userEmails['descripcion']} className="text-[7px] absolute bottom-0.5 left-1 uppercase opacity-30" />
+                   )}
                 </td>
                 <td className="border-r border-black p-0 bg-white relative">
                    {renderMultidataCell(c.id, 'golpesSPT')}
+                   {c.multidata['golpesSPT']?.userEmail && (
+                      <div className="flex justify-center"><TechnicianLink email={c.multidata['golpesSPT'].userEmail!} className="text-[6px] uppercase opacity-40 leading-none" /></div>
+                   )}
                 </td>
                 <td className="border-r border-black p-0 bg-white relative">
                    {renderMultidataCell(c.id, 'limiteLL')}
+                   {c.multidata['limiteLL']?.userEmail && (
+                      <div className="flex justify-center"><TechnicianLink email={c.multidata['limiteLL'].userEmail!} className="text-[6px] uppercase opacity-40 leading-none" /></div>
+                   )}
                 </td>
                 <td className="border-r border-black p-0 bg-white relative">
                    {renderMultidataCell(c.id, 'limiteIP')}
+                   {c.multidata['limiteIP']?.userEmail && (
+                      <div className="flex justify-center"><TechnicianLink email={c.multidata['limiteIP'].userEmail!} className="text-[6px] uppercase opacity-40 leading-none" /></div>
+                   )}
                 </td>
                 <td className="border-r border-black p-0 bg-white relative">
                    {renderMultidataCell(c.id, 'humedad', '%')}
+                   {c.multidata['humedad']?.userEmail && (
+                      <div className="flex justify-center"><TechnicianLink email={c.multidata['humedad'].userEmail!} className="text-[6px] uppercase opacity-40 leading-none" /></div>
+                   )}
                 </td>
-                <td className="border-r border-black p-1 bg-white">
+                <td className="border-r border-black p-1 bg-white relative">
                    <input value={c.clasificacionUSCS} onBlur={() => handleSimpleFieldSave(`L${c.id}: clasificacionUSCS`, 'Estratigrafía', c.clasificacionUSCS)} onChange={(e) => setCapas(p => p.map(l => l.id === c.id ? {...l, clasificacionUSCS: e.target.value.toUpperCase()} : l))} className="w-full text-center border-none uppercase font-bold text-primary focus:ring-0 p-0" placeholder="ML" />
+                   {c.userEmails['clasificacionUSCS'] && (
+                      <TechnicianLink email={c.userEmails['clasificacionUSCS']} className="text-[7px] absolute bottom-0.5 right-1 uppercase opacity-30" />
+                   )}
                 </td>
                 <td className="p-1 text-center print:hidden bg-white">
                    <button onClick={() => setCapas(prev => prev.filter(l => l.id !== c.id))} disabled={capas.length === 1} className="text-neutral-400 hover:text-red-600"><Trash2 className="h-3 w-3" /></button>

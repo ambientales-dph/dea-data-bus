@@ -49,6 +49,7 @@ const SECTIONS = [
 interface PgaysEntry {
   value: any;
   capturedAt: number | null;
+  userEmail?: string;
 }
 
 export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Props) {
@@ -61,7 +62,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [openPhotos, setOpenPhotos] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
-  const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
+  const [metadata, setMetadata] = useState<{ timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
 
@@ -79,18 +80,18 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
         
         const newFormData: Record<string, PgaysEntry> = {};
         const newSavedFields: Record<string, boolean> = {};
-        let foundMetadata = { user: user?.email || '', timestamp: null };
+        let foundMetadata = { timestamp: null };
         let foundDeferred = false;
 
         snapshot.docs.forEach(doc => {
           const data = doc.data();
           if (data.parameterType === "Fotografía") return;
 
-          newFormData[data.analyte] = { value: data.value, capturedAt: null };
+          newFormData[data.analyte] = { value: data.value, capturedAt: null, userEmail: data.userEmail };
           newSavedFields[data.analyte] = true;
           
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
-            foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
+            foundMetadata = { timestamp: data.fechaServidor || data.timestamp };
             if (data.timestamp) {
                const date = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
                setManualDate(date.toISOString().slice(0, 16));
@@ -119,11 +120,10 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
     const value = valueOverride !== undefined ? valueOverride : entry?.value;
     if (value === null || value === undefined || value === "") return;
 
-    // FEEDBACK INSTANTÁNEO
     setSavedFields(prev => ({ ...prev, [name]: true }));
     setSavingFields(prev => ({ ...prev, [name]: false }));
+    setFormData(prev => ({ ...prev, [name]: { ...prev[name], userEmail: user.email! } }));
     
-    // Segundo plano
     (async () => {
       try {
         const location = await getCurrentGPSLocation();
@@ -163,7 +163,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
   };
 
   const handleInputChange = (name: string, value: any) => {
-    setFormData(prev => ({ ...prev, [name]: { value, capturedAt: Date.now() } }));
+    setFormData(prev => ({ ...prev, [name]: { ...prev[name], value, capturedAt: Date.now() } }));
     if (savedFields[name]) {
       setSavedFields(prev => {
         const next = { ...prev };
@@ -192,27 +192,45 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
   const renderItem = (item: { id: string, label: string, dynamic?: boolean }) => {
     const customLabelKey = `${item.id}:custom_label`;
     const labelToUse = item.dynamic ? (formData[customLabelKey]?.value || item.label) : item.label;
-    
+    const isLabelSaved = savedFields[customLabelKey];
+    const isItemSaved = savedFields[`${labelToUse}:cumple`];
+
     return (
       <div key={item.id} className="p-4 bg-white border-b border-neutral-100 last:border-0 hover:bg-neutral-50/30 transition-colors">
         <div className="flex flex-col gap-3">
           {item.dynamic ? (
-            <div className="flex items-center gap-2 group/label">
-              <Input 
-                value={formData[customLabelKey]?.value ?? ""}
-                onChange={(e) => handleInputChange(customLabelKey, e.target.value)}
-                placeholder="................................................................................"
-                className="h-9 text-[13px] font-normal border-none border-b border-dotted border-neutral-300 bg-transparent focus-visible:ring-0 p-0 rounded-none w-full placeholder:text-neutral-300"
-              />
-              <button 
-                onClick={() => saveParam(customLabelKey, "Etiqueta")}
-                className={cn("p-1 transition-colors shrink-0", savedFields[customLabelKey] ? "text-green-600" : "text-neutral-400 group-hover/label:text-black")}
-              >
-                {savingFields[customLabelKey] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className={cn("h-4 w-4", !savedFields[customLabelKey] && "opacity-20")} />}
-              </button>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2 group/label">
+                <Input 
+                  value={formData[customLabelKey]?.value ?? ""}
+                  onChange={(e) => handleInputChange(customLabelKey, e.target.value)}
+                  placeholder="................................................................................"
+                  className="h-9 text-[13px] font-normal border-none border-b border-dotted border-neutral-300 bg-transparent focus-visible:ring-0 p-0 rounded-none w-full placeholder:text-neutral-300"
+                />
+                <button 
+                  onClick={() => saveParam(customLabelKey, "Etiqueta")}
+                  className={cn("p-1 transition-colors shrink-0", isLabelSaved ? "text-green-600" : "text-neutral-400 group-hover/label:text-black")}
+                >
+                  {savingFields[customLabelKey] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className={cn("h-4 w-4", !isLabelSaved && "opacity-20")} />}
+                </button>
+              </div>
+              {isLabelSaved && formData[customLabelKey]?.userEmail && (
+                <div className="flex items-center gap-1">
+                  <User className="h-2 w-2 text-neutral-300" />
+                  <TechnicianLink email={formData[customLabelKey].userEmail!} className="text-[8px] uppercase text-neutral-400 font-normal" />
+                </div>
+              )}
             </div>
           ) : (
-            <Label className="text-[13px] font-normal text-black leading-tight flex-1">{item.label}</Label>
+            <div className="flex flex-col">
+              <Label className="text-[13px] font-normal text-black leading-tight flex-1">{item.label}</Label>
+              {isItemSaved && formData[`${labelToUse}:cumple`]?.userEmail && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <User className="h-2 w-2 text-neutral-300" />
+                  <TechnicianLink email={formData[`${labelToUse}:cumple`].userEmail!} className="text-[8px] uppercase text-neutral-400 font-normal" />
+                </div>
+              )}
+            </div>
           )}
 
           <div className="flex items-center justify-between gap-4">
@@ -314,8 +332,6 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
                 <CheckCircle2 className="h-2.5 w-2.5" />
                 <span className="text-[7px] font-normal">{isDeferred ? "DIFERIDA" : "REAL"}</span>
               </button>
-
-              <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
            </div>
         </div>
       </div>
@@ -328,7 +344,15 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
           { id: "personal_afectado", label: "Personal afectado a obra" }
         ].map(item => (
           <div key={item.id} className="flex items-center justify-between py-3 px-4 border-b border-neutral-100 group/personal">
-            <label className="text-[13px] font-normal text-black uppercase flex-1">{item.label}</label>
+            <div className="flex flex-col flex-1">
+              <label className="text-[13px] font-normal text-black uppercase">{item.label}</label>
+              {savedFields[item.label] && formData[item.label]?.userEmail && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <User className="h-2 w-2 text-neutral-300" />
+                  <TechnicianLink email={formData[item.label].userEmail!} className="text-[8px] uppercase text-neutral-400 font-normal" />
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <input 
                 type="text" 
