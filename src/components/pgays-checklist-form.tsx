@@ -7,9 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, Clock, User, Camera, ClipboardCheck, PenTool, CheckCircle2, Calendar } from 'lucide-react';
+import { Loader2, Check, Clock, User, Camera, ClipboardCheck, PenTool, CheckCircle2, Calendar, HardHat, Recycle, Truck, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
@@ -24,24 +23,50 @@ interface Props {
 
 const SECTIONS = [
   {
-    title: "1. Acuerdos y solicitudes anteriores",
+    title: "1. Compromisos y Acuerdos Anteriores",
+    icon: Clock,
     items: [
       { id: "acuerdo_1", label: "", dynamic: true },
       { id: "acuerdo_2", label: "", dynamic: true }
     ]
   },
   {
-    title: "2. Programa de Manejo de Obrador",
+    title: "2. Higiene y Seguridad en Obra",
+    icon: HardHat,
     items: [
-      { id: "obrador_limpieza", label: "Orden y Limpieza del obrador" },
-      { id: "obrador_rsu", label: "Correcto manejo de RSU en obrador" }
+      { id: "hs_vallado", label: "Cerramiento y Vallado perimetral de obra" },
+      { id: "hs_carteleria", label: "Señalética y Cartelería de seguridad visible" },
+      { id: "hs_epp", label: "Uso correcto de EPP por parte del personal" },
+      { id: "hs_orden", label: "Orden y limpieza general de los frentes" }
     ]
   },
   {
-    title: "3. Frente de Obra",
+    title: "3. Gestión Ambiental de Obrador",
+    icon: Recycle,
     items: [
-      { id: "frente_limpieza", label: "Orden y Limpieza del frente de obra" },
-      { id: "frente_rsu", label: "Correcto manejo de RSU en frente de obra" }
+      { id: "obrador_limpieza", label: "Orden y Limpieza del obrador" },
+      { id: "obrador_rsu", label: "Correcto manejo de RSU (Contenedores)" },
+      { id: "obrador_hazmat", label: "Contención de hidrocarburos / Aceites" },
+      { id: "obrador_banos", label: "Estado y limpieza de baños químicos" }
+    ]
+  },
+  {
+    title: "4. Gestión en Frente de Obra",
+    icon: Truck,
+    items: [
+      { id: "frente_polvo", label: "Control de polvo y material particulado" },
+      { id: "frente_ruido", label: "Control de ruidos molestos / Horarios" },
+      { id: "frente_barros", label: "Manejo de barros y sedimentos en calzada" },
+      { id: "frente_arbolado", label: "Protección de vegetación y arbolado" }
+    ]
+  },
+  {
+    title: "5. Entorno y Comunidad",
+    icon: MessageSquare,
+    items: [
+      { id: "comunidad_accesos", label: "Mantenimiento de accesos vehiculares/peatonales" },
+      { id: "comunidad_limpieza", label: "Limpieza de calles periféricas al frente" },
+      { id: "comunidad_reclamos", label: "Gestión / Atención de reclamos de vecinos" }
     ]
   }
 ];
@@ -83,8 +108,8 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
         let foundMetadata = { timestamp: null };
         let foundDeferred = false;
 
-        snapshot.docs.forEach(doc => {
-          const data = doc.data();
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
           if (data.parameterType === "Fotografía") return;
 
           newFormData[data.analyte] = { value: data.value, capturedAt: null, userEmail: data.userEmail };
@@ -128,7 +153,6 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
       try {
         const location = await getCurrentGPSLocation();
         const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
-        const deltaMs = Date.now() - t1;
 
         const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
         const docId = `${reportId}_${formId}_${safeAnalyte}`;
@@ -144,7 +168,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
           value: `${value}`,
           latitude: location?.latitude || null,
           longitude: location?.longitude || null,
-          retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+          retrasoSincronizacionMs: isDeferred ? 0 : Date.now() - t1,
           fechaServidor: serverTimestamp(),
           timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
           isDeferred,
@@ -223,7 +247,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
             </div>
           ) : (
             <div className="flex flex-col">
-              <Label className="text-[13px] font-normal text-black leading-tight flex-1">{item.label}</Label>
+              <Label className="text-[13px] font-normal text-black leading-tight flex-1 uppercase tracking-tight">{item.label}</Label>
               {isItemSaved && formData[`${labelToUse}:cumple`]?.userEmail && (
                 <div className="flex items-center gap-1 mt-0.5">
                   <User className="h-2 w-2 text-neutral-300" />
@@ -242,12 +266,12 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
                   saveParam(`${labelToUse}:cumple`, "Inspección", val);
                 }}
               >
-                <SelectTrigger className="h-8 w-24 border-none bg-transparent shadow-none p-0 text-[11px] uppercase font-normal text-black focus:ring-0">
+                <SelectTrigger className="h-8 w-24 border-none bg-neutral-50 shadow-none px-2 text-[10px] uppercase font-bold text-black focus:ring-0 rounded-sm">
                   <SelectValue placeholder="CUMPLE" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SI" className="text-xs">SÍ</SelectItem>
-                  <SelectItem value="NO" className="text-xs">NO</SelectItem>
+                  <SelectItem value="SI" className="text-xs font-bold">SÍ</SelectItem>
+                  <SelectItem value="NO" className="text-xs font-bold text-destructive">NO</SelectItem>
                   <SelectItem value="N/A" className="text-xs">N/A</SelectItem>
                 </SelectContent>
               </Select>
@@ -257,13 +281,13 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
               <div className="relative flex-1">
                 <Input 
                   placeholder="Observaciones..."
-                  className="h-8 text-[12px] border-none bg-transparent focus-visible:ring-0 p-0 font-body placeholder:text-neutral-400"
+                  className="h-8 text-[12px] border-none bg-neutral-50 focus-visible:ring-0 px-2 font-body placeholder:text-neutral-400 rounded-sm"
                   value={formData[`${labelToUse}:obs`]?.value ?? ""}
                   onChange={(e) => handleInputChange(`${labelToUse}:obs`, e.target.value)}
                 />
                 <button 
                   onClick={() => saveParam(`${labelToUse}:obs`, "Observación")} 
-                  className={cn("absolute right-0 top-1/2 -translate-y-1/2 p-1", savedFields[`${labelToUse}:obs`] ? "text-green-600" : "text-neutral-400 hover:text-black")}
+                  className={cn("absolute right-1 top-1/2 -translate-y-1/2 p-1", savedFields[`${labelToUse}:obs`] ? "text-green-600" : "text-neutral-400 hover:text-black")}
                 >
                   {savingFields[`${labelToUse}:obs`] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                 </button>
@@ -338,14 +362,17 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
 
       <div className="p-0 border-b border-black">
         <div className="bg-neutral-50 px-4 py-2 border-b border-neutral-200">
-           <span className="text-[9px] font-black uppercase tracking-wider text-neutral-400">Datos de la Inspección</span>
+           <span className="text-[9px] font-black uppercase tracking-wider text-neutral-400">Encabezado y Contexto</span>
         </div>
         {[
-          { id: "personal_afectado", label: "Personal afectado a obra" }
+          { id: "contratista", label: "Empresa Contratista", cat: "General" },
+          { id: "avance_obra", label: "% Avance Aproximado", cat: "General" },
+          { id: "personal_afectado", label: "Personal en Obra", cat: "General" },
+          { id: "estado_clima", label: "Condiciones Climáticas", cat: "General" }
         ].map(item => (
-          <div key={item.id} className="flex items-center justify-between py-3 px-4 border-b border-neutral-100 group/personal">
+          <div key={item.id} className="flex items-center justify-between py-2.5 px-4 border-b border-neutral-100 group/header">
             <div className="flex flex-col flex-1">
-              <label className="text-[13px] font-normal text-black uppercase">{item.label}</label>
+              <label className="text-[11px] font-normal text-black uppercase tracking-tight">{item.label}</label>
               {savedFields[item.label] && formData[item.label]?.userEmail && (
                 <div className="flex items-center gap-1 mt-0.5">
                   <User className="h-2 w-2 text-neutral-300" />
@@ -356,13 +383,13 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
             <div className="flex items-center gap-2">
               <input 
                 type="text" 
-                className="h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right focus:ring-0 outline-none" 
+                className="h-7 w-32 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right focus:ring-0 outline-none rounded-sm" 
                 value={formData[item.label]?.value ?? ""}
                 onChange={(e) => handleInputChange(item.label, e.target.value)}
                 placeholder="---"
               />
               <button 
-                onClick={() => saveParam(item.label, "General")} 
+                onClick={() => saveParam(item.label, item.cat)} 
                 className={cn("p-1", savedFields[item.label] ? "text-green-600" : "text-neutral-400")}
               >
                 {savingFields[item.label] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -376,7 +403,7 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
         {SECTIONS.map((section) => (
           <div key={section.title}>
             <div className="bg-black text-white px-4 py-2 flex items-center gap-2 sticky top-0 z-10">
-              <ClipboardCheck className="h-4 w-4" />
+              <section.icon className="h-4 w-4" />
               <span className="text-[10px] font-normal uppercase tracking-widest">{section.title}</span>
             </div>
             <div className="divide-y divide-neutral-100">
@@ -392,19 +419,19 @@ export function PgaysChecklistForm({ reportId, formId, stationId, onClose }: Pro
           <span className="text-[10px] font-normal uppercase tracking-widest">Registro de Firmas</span>
         </div>
         <div className="p-6 bg-neutral-50">
-          <p className="text-[11px] text-neutral-600 mb-4 italic leading-relaxed">Capture fotografía del acta original con firmas.</p>
+          <p className="text-[11px] text-neutral-600 mb-4 italic leading-relaxed">Capture fotografía del acta original firmada por el inspector y el responsable de obra.</p>
           <PhotoRegistry 
             reportId={reportId} 
             formId={formId} 
             stationId={stationId} 
             medium="sedimentos" 
-            analyteTag="Firmas de Intervinientes"
+            analyteTag="Acta Firmada (PGAyS)"
           />
         </div>
       </div>
 
       <div className="p-4 bg-white border-t border-black">
-        <Button onClick={onClose} className="w-full h-14 bg-black hover:bg-neutral-900 text-white font-normal uppercase tracking-widest text-[11px] rounded-none shadow-xl">Finalizar Inspección</Button>
+        <Button onClick={onClose} className="w-full h-14 bg-black hover:bg-neutral-900 text-white font-normal uppercase tracking-widest text-[11px] rounded-none shadow-xl transition-all active:scale-[0.98]">Finalizar Inspección y Cerrar Acta</Button>
       </div>
     </div>
   );
