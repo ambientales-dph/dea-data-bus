@@ -104,7 +104,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
     const entry = formData[name];
     if (!entry || entry.value === null || entry.value === undefined || entry.value === "") return;
 
-    // FEEDBACK INSTANTÁNEO (Escritura Optimista)
+    // FEEDBACK INSTANTÁNEO
     setSavedFields(prev => ({ ...prev, [name]: true }));
     setSavingFields(prev => ({ ...prev, [name]: false }));
     
@@ -220,6 +220,10 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
           <div key={param.name} className={rowClass}>
             <div className="flex flex-col flex-1 mr-4">
               <label className={labelClass}>{param.name} <span className="text-[10px] opacity-60 ml-1">({param.unit})</span></label>
+              <div className="flex items-center gap-1 mt-1">
+                <User className="h-2 w-2 text-neutral-300" />
+                <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+              </div>
               <span className={subLabelClass}>{param.desc}</span>
             </div>
             <div className="flex items-center gap-3">

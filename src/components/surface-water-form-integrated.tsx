@@ -179,6 +179,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
       };
       return { 
         ...prev, 
+        ...prev, 
         [analyteName]: { 
           ...analyte, 
           readings: [...analyte.readings, newReading],
@@ -367,19 +368,18 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                     {state.isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
                     <div className="flex flex-col">
                       <span className="text-[12px] font-normal text-black uppercase tracking-tight">{analyte.name}</span>
-                      {stats && (
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean}</span>
-                          <span className="text-[8px] text-neutral-400 uppercase">n={stats.n} lecturas</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <User className="h-2.5 w-2.5 text-neutral-300" />
+                        <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+                      </div>
                     </div>
                   </button>
 
                   <div className="flex items-center gap-3">
                     {stats && (
-                       <div className="bg-neutral-100 px-2 py-0.5 rounded-sm border border-neutral-200" title="Error Estándar (SE)">
-                          <span className="text-[9px] font-code text-neutral-600">± {stats.error}</span>
+                       <div className="bg-neutral-100 px-3 py-1 rounded-sm border border-neutral-200 flex items-center gap-1.5" title="Media ± SE">
+                          <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean}</span>
+                          <span className="text-[10px] font-code text-neutral-400">± {stats.error}</span>
                        </div>
                     )}
                     <select 
@@ -451,7 +451,10 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
               <div key={param.name} className="flex items-center justify-between py-3 px-4 hover:bg-neutral-50 transition-colors">
                 <div className="flex flex-col">
                   <label className="text-[11px] font-normal text-black uppercase tracking-tight">{param.name}</label>
-                  <span className="text-[8px] text-neutral-400 uppercase font-normal">{param.cat}</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <User className="h-2.5 w-2.5 text-neutral-300" />
+                    <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+                  </div>
                 </div>
                 
                 <div className="flex items-center gap-2">

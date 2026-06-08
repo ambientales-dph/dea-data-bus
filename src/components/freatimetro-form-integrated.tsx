@@ -167,7 +167,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
     const entry = key === 'cotaAgua' ? { value: cotaAgua, capturedAt: Date.now() } : formData[key as keyof FreatimetroData];
     if (entry.value === null || entry.value === undefined || entry.value === "") return;
 
-    // FEEDBACK INSTANTÁNEO (Escritura Optimista)
+    // FEEDBACK INSTANTÁNEO
     setSavedFields(prev => ({ ...prev, [key]: true }));
     setSavingFields(prev => ({ ...prev, [key]: false }));
     
@@ -276,12 +276,23 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         <div className={sectionHeaderClass}><span className="text-[10px] font-normal uppercase tracking-wider text-black">1. Identificación y Geometría</span></div>
         <div className="p-0">
           <div className={rowClass}>
-            <div className="flex flex-col flex-1"><label className={labelClass}>ID Pozo</label><span className={subLabelClass}>Identificación técnica del freatímetro.</span></div>
+            <div className="flex flex-col flex-1">
+              <label className={labelClass}>ID Pozo</label>
+              <div className="flex items-center gap-1 mt-1">
+                <User className="h-2 w-2 text-neutral-300" />
+                <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+              </div>
+              <span className={subLabelClass}>Identificación técnica del freatímetro.</span>
+            </div>
             <input type="text" className={inputClass} value={formData.idPozo.value ?? ""} onChange={(e) => handleInputChange("idPozo", e.target.value)} />
           </div>
           <div className={rowClass}>
             <div className="flex flex-col flex-1">
               <label className={labelClass}>Cota Brocal (m s.n.m.)</label>
+              <div className="flex items-center gap-1 mt-1">
+                <User className="h-2 w-2 text-neutral-300" />
+                <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+              </div>
               <span className={subLabelClass}>Elevación del terreno. Referencia: IGM/IGN.</span>
             </div>
             <div className="flex items-center gap-2">
@@ -310,6 +321,10 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
             <div key={field.key} className={rowClass}>
               <div className="flex flex-col flex-1">
                 <label className={labelClass}>{field.name} ({field.unit})</label>
+                <div className="flex items-center gap-1 mt-1">
+                  <User className="h-2 w-2 text-neutral-300" />
+                  <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+                </div>
                 <span className={subLabelClass}>{field.desc}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -339,6 +354,10 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
             <div key={field.key} className={rowClass}>
               <div className="flex flex-col flex-1">
                 <label className={labelClass}>{field.name}</label>
+                <div className="flex items-center gap-1 mt-1">
+                  <User className="h-2 w-2 text-neutral-300" />
+                  <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+                </div>
                 <span className={subLabelClass}>{field.desc}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -360,7 +379,11 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
         <div className="bg-black px-6 py-5 flex items-center justify-between mt-4">
           <div className="flex flex-col">
             <span className="text-[11px] font-normal uppercase text-white tracking-widest">Cota de Agua Estimada</span>
-            <span className="text-[9px] font-normal text-neutral-400">Cálculo: CB - NE (m s.n.m.)</span>
+            <div className="flex items-center gap-1 mt-1">
+              <User className="h-2 w-2 text-neutral-500" />
+              <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-500 font-normal hover:text-white transition-colors" />
+            </div>
+            <span className="text-[9px] font-normal text-neutral-400 mt-1">Cálculo: CB - NE (m s.n.m.)</span>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-2xl font-normal text-white font-code">{cotaAgua !== null ? `${cotaAgua} m` : "—"}</span>
