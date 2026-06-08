@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { collection, query, where, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDoc, getDocs, Timestamp } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useDoc } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -19,6 +16,8 @@ import { AirQualityFormIntegrated } from './air-quality-form-integrated';
 import { PlanillaEdafologicaForm } from './planilla-edafologica-form';
 import { SuelosGeotecniaFormIntegrated } from './suelos-geotecnia-form';
 import { PgaysChecklistForm } from './pgays-checklist-form';
+import { CustomTemplateBuilder } from './custom-template-builder';
+import { CustomTemplateFormIntegrated } from './custom-template-form-integrated';
 import { MONITORING_TEMPLATES } from '@/app/lib/monitoring-constants';
 import { TechnicianLink } from './technician-link';
 import { getCurrentGPSLocation } from '@/lib/geo-utils';
@@ -41,6 +40,8 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
   const db = useFirestore();
   const { user } = useUser();
   const [template, setTemplate] = useState<any>(null);
+  const [isBuildingTemplate, setIsBuildingTemplate] = useState(templateId === 'personalizada');
+  const [currentTemplateId, setCurrentTemplateId] = useState<string | undefined>(templateId);
   const [planillaValues, setPlanillaValues] = useState<Record<string, ManualEntry>>({});
   const [isSavingPlanilla, setIsSavingPlanilla] = useState(false);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
@@ -83,23 +84,35 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
       setPlanillaValues(existingValues);
       setMetadata(foundMetadata);
       setIsDeferred(foundDeferred);
-    } else {
-      setPlanillaValues({});
-      setMetadata({ user: user?.email || '', timestamp: null });
     }
   }, [samplesData, user]);
 
   useEffect(() => {
-    if (!templateId || !db) return;
-    if (templateId === 'personalizada') setTemplate({ id: 'personalizada', nombre: 'Nueva Planilla Personalizada', parametros: [] });
-    else if (templateId.startsWith('custom_')) {
-      const customId = templateId.replace('custom_', '');
-      getDoc(doc(db, 'custom_templates', customId)).then(snap => { if (snap.exists()) setTemplate(snap.data()); });
-    } else if (templateId !== 'manual') {
-      const found = MONITORING_TEMPLATES.find((m: any) => m.id === templateId);
+    if (!currentTemplateId || !db) return;
+    if (currentTemplateId === 'personalizada') {
+      setIsBuildingTemplate(true);
+      return;
+    }
+    
+    if (currentTemplateId.startsWith('custom_')) {
+      const customId = currentTemplateId.replace('custom_', '');
+      getDoc(doc(db, 'custom_templates', customId)).then(snap => { 
+        if (snap.exists()) setTemplate(snap.data()); 
+      });
+    } else {
+      const found = MONITORING_TEMPLATES.find((m: any) => m.id === currentTemplateId);
       if (found) setTemplate(found);
     }
-  }, [templateId, db]);
+  }, [currentTemplateId, db]);
+
+  const handleTemplateCreated = (id: string) => {
+    setCurrentTemplateId(`custom_${id}`);
+    setIsBuildingTemplate(false);
+  };
+
+  if (isBuildingTemplate) {
+    return <CustomTemplateBuilder onTemplateCreated={handleTemplateCreated} onCancel={onClose} />;
+  }
 
   const handleValueChange = (name: string, value: string) => { setPlanillaValues(prev => ({ ...prev, [name]: { value, capturedAt: Date.now() } })); };
 
@@ -108,73 +121,56 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
     setIsSavingPlanilla(true);
     const activeParams = template.parametros || template.parameters || [];
     
-    // FEEDBACK INSTANTÁNEO AL USUARIO
-    toast({ title: "Sincronizando localmente", description: "Cerrando planilla mientras se guardan los datos..." });
+    toast({ title: "Sincronizando localmente", description: "Guardando datos..." });
     onClose();
 
-    // Proceso asíncrono real en segundo plano
     (async () => {
       try {
         const location = await getCurrentGPSLocation();
-        
         for (const param of activeParams) {
           const entry = planillaValues[param.nombre];
-          if (entry && entry.value !== undefined && entry.value !== null && entry.value.trim() !== '') {
+          if (entry && entry.value.trim() !== '') {
             const medium = template.medium || param.mediumKey || 'agua_superficial';
             const t1 = entry.capturedAt || Date.now();
-            const deltaMs = Date.now() - t1;
-            
             const safeAnalyte = param.nombre.replace(/[^a-zA-Z0-9]/g, '_');
             const docId = `${reportId}_${formId}_${safeAnalyte}`;
-            const sampleRef = doc(db, 'samples', docId);
-
             const payload = { 
-              medium,
-              parameterType: param.categoria,
-              analyte: param.nombre,
-              reportId,
-              formId,
-              stationId,
-              value: entry.value, 
-              latitude: location?.latitude ?? null, 
-              longitude: location?.longitude ?? null, 
-              retrasoSincronizacionMs: isDeferred ? 0 : deltaMs, 
-              fechaServidor: serverTimestamp(), 
-              timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(), 
-              isDeferred, 
-              userId: user.uid, 
-              userEmail: user.email 
+              medium, parameterType: param.categoria, analyte: param.nombre, reportId, formId, stationId, value: entry.value, 
+              latitude: location?.latitude ?? null, longitude: location?.longitude ?? null, 
+              retrasoSincronizacionMs: isDeferred ? 0 : Date.now() - t1, 
+              fechaServidor: serverTimestamp(), timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(), 
+              isDeferred, userId: user.uid, userEmail: user.email 
             };
-            
-            setDoc(sampleRef, payload, { merge: true }).catch(console.error);
+            setDoc(doc(db, 'samples', docId), payload, { merge: true });
           }
         }
-        
         if (user.email && reportRef) {
-          updateDoc(reportRef, { editors: arrayUnion(user.email) }).catch(console.error);
+          updateDoc(reportRef, { editors: arrayUnion(user.email) });
         }
-      } catch (e) {
-        console.error("Falla en guardado masivo:", e);
-      }
+      } catch (e) { console.error(e); }
     })();
   };
 
   const formatTimestamp = (ts: any) => {
-    if (!ts) return new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    if (!ts) return new Date().toLocaleString();
     const date = ts.toDate ? ts.toDate() : new Date(ts);
-    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleString();
   };
 
   const isDeferredLocked = samplesData && samplesData.length > 0;
-  const lowerTemplateId = templateId?.toLowerCase() || '';
-  const lowerTemplateName = template?.nombre?.toLowerCase() || template?.name?.toLowerCase() || '';
+  const lowerTemplateId = currentTemplateId?.toLowerCase() || '';
+  const isCustomTemplate = lowerTemplateId.startsWith('custom_');
 
-  if (lowerTemplateId.includes('subterranea') || lowerTemplateId.includes('freatimetro') || lowerTemplateName.includes('subterránea') || lowerTemplateName.includes('freatímetro')) return <FreatimetroFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
-  if (lowerTemplateId.includes('superficial') || lowerTemplateName.includes('superficial')) return <SurfaceWaterFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
-  if (lowerTemplateId === 'calidad_aire' || lowerTemplateName.includes('aire')) return <AirQualityFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
-  if (lowerTemplateId === 'suelo_edafologico' || (lowerTemplateId.includes('suelo') && lowerTemplateId.includes('pe-001'))) return <PlanillaEdafologicaForm reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
-  if (lowerTemplateId === 'suelo_geotecnia' || lowerTemplateId.includes('gt-001') || lowerTemplateId.includes('ms-001')) return <SuelosGeotecniaFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
+  // Ruteo a formularios especializados
+  if (lowerTemplateId.includes('subterranea') || lowerTemplateId.includes('freatimetro')) return <FreatimetroFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
+  if (lowerTemplateId.includes('superficial')) return <SurfaceWaterFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
+  if (lowerTemplateId === 'calidad_aire') return <AirQualityFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
+  if (lowerTemplateId === 'suelo_edafologico') return <PlanillaEdafologicaForm reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
+  if (lowerTemplateId === 'suelo_geotecnia') return <SuelosGeotecniaFormIntegrated reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
   if (lowerTemplateId.includes('pgays')) return <PgaysChecklistForm reportId={reportId} formId={formId} stationId={stationId} onClose={onClose} />;
+  
+  // Ruteo al nuevo formulario personalizado PP-001
+  if (isCustomTemplate) return <CustomTemplateFormIntegrated reportId={reportId} formId={formId} stationId={stationId} templateData={template} templateId={lowerTemplateId.replace('custom_', '')} onClose={onClose} />;
 
   return (
     <div className="space-y-4">
