@@ -1,18 +1,36 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { collection, query, where, doc, setDoc, serverTimestamp, updateDoc, arrayUnion, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, serverTimestamp, updateDoc, arrayUnion, getDocs, Timestamp, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Check, Clock, User, Plus, Trash2, Mountain, ThermometerSun, Layers as LayersIcon, Droplets, Search, MapPin, Locate, Tag, CheckCircle2, Calendar } from 'lucide-react';
+import { Loader2, Check, Clock, User, Plus, Trash2, Mountain, ThermometerSun, Layers as LayersIcon, Droplets, Search, MapPin, Locate, Tag, CheckCircle2, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getCurrentGPSLocation } from '@/lib/geo-utils';
+
+interface Reading {
+  id: string;
+  value: string;
+  capturedAt: number;
+  isSaved: boolean;
+  isSaving: boolean;
+}
+
+interface AnalyteState {
+  readings: Reading[];
+  isExpanded: boolean;
+}
+
+interface SoilEntry {
+  value: any;
+  capturedAt: number | null;
+}
 
 interface Props {
   reportId: string;
@@ -27,17 +45,13 @@ interface OSMResult {
   lon: string;
 }
 
-interface SoilEntry {
-  value: any;
-  capturedAt: number | null;
-}
-
 export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }: Props) {
   const { toast } = useToast();
   const db = useFirestore();
   const { user } = useUser();
   
   const [formData, setFormData] = useState<Record<string, SoilEntry>>({});
+  const [multidata, setMultidata] = useState<Record<string, AnalyteState>>({});
   const [horizontesCount, setHorizontesCount] = useState(1);
   const [savingFields, setSavingFields] = useState<Record<string, boolean>>({});
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
@@ -65,16 +79,17 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         const snapshot = await getDocs(q);
         
         const newFormData: Record<string, SoilEntry> = {};
+        const newMultidata: Record<string, AnalyteState> = {};
         const newSavedFields: Record<string, boolean> = {};
         let foundMetadata = { user: user?.email || '', timestamp: null };
         let foundDeferred = false;
         let maxH = 1;
 
-        snapshot.docs.forEach(doc => {
-          const data = doc.data();
-          newFormData[data.analyte] = { value: data.value, capturedAt: null };
-          newSavedFields[data.analyte] = true;
-          
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          const analyte = data.analyte;
+          const value = data.value;
+
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
             foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
             if (data.timestamp) {
@@ -84,14 +99,40 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           }
           if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
 
-          const hMatch = data.analyte.match(/^H(\d+):/);
+          // Detectar campos numéricos multilectura
+          const isMultidataField = analyte === 'Pendiente' || analyte === 'Prof_Napa' || analyte.endsWith(' pH');
+          
+          if (isMultidataField) {
+            if (!newMultidata[analyte]) {
+              newMultidata[analyte] = { readings: [], isExpanded: false };
+            }
+            newMultidata[analyte].readings.push({
+              id: docSnap.id,
+              value: value,
+              capturedAt: data.capturedAt?.toMillis?.() || Date.now(),
+              isSaved: true,
+              isSaving: false
+            });
+            newSavedFields[analyte] = true;
+          } else {
+            newFormData[analyte] = { value, capturedAt: null };
+            newSavedFields[analyte] = true;
+          }
+
+          const hMatch = analyte.match(/^H(\d+):/);
           if (hMatch) {
             const hNum = parseInt(hMatch[1]);
             if (hNum > maxH) maxH = hNum;
           }
         });
 
+        // Ordenar lecturas
+        Object.keys(newMultidata).forEach(key => {
+          newMultidata[key].readings.sort((a, b) => a.capturedAt - b.capturedAt);
+        });
+
         setFormData(newFormData);
+        setMultidata(newMultidata);
         setSavedFields(newSavedFields);
         setMetadata(foundMetadata);
         setHorizontesCount(maxH);
@@ -113,16 +154,13 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     const value = valueOverride !== undefined ? valueOverride : entry?.value;
     if (value === null || value === undefined || value === "") return;
 
-    // FEEDBACK INSTANTÁNEO
     setSavedFields(prev => ({ ...prev, [name]: true }));
     setSavingFields(prev => ({ ...prev, [name]: false }));
     
-    // Proceso en segundo plano
     (async () => {
       try {
         const location = await getCurrentGPSLocation();
         const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
-        const deltaMs = Date.now() - t1;
 
         const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
         const docId = `${reportId}_${formId}_${safeAnalyte}`;
@@ -138,7 +176,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           value: `${value}`,
           latitude: location?.latitude || null,
           longitude: location?.longitude || null,
-          retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
+          retrasoSincronizacionMs: isDeferred ? 0 : Date.now() - t1,
           fechaServidor: serverTimestamp(),
           timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
           isDeferred,
@@ -149,11 +187,120 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         setDoc(sampleRef, payload, { merge: true }).catch(console.error);
         updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
       } catch (err) {
-        console.error("Error en guardado de segundo plano:", err);
+        console.error("Error en guardado:", err);
       }
     })();
     
     toast({ title: "Sincronizando localmente", description: "Dato capturado." });
+  };
+
+  const handleReadingChange = (analyteName: string, readingId: string, value: string) => {
+    setMultidata(prev => {
+      const analyte = prev[analyteName] || { readings: [], isExpanded: true };
+      const updatedReadings = analyte.readings.map(r => 
+        r.id === readingId ? { ...r, value, isSaved: false } : r
+      );
+      return { ...prev, [analyteName]: { ...analyte, readings: updatedReadings } };
+    });
+  };
+
+  const addReading = (analyteName: string) => {
+    setMultidata(prev => {
+      const analyte = prev[analyteName] || { readings: [], isExpanded: true };
+      const newReading: Reading = {
+        id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        value: "",
+        capturedAt: Date.now(),
+        isSaved: false,
+        isSaving: false
+      };
+      return { 
+        ...prev, 
+        [analyteName]: { 
+          ...analyte, 
+          readings: [...analyte.readings, newReading],
+          isExpanded: true 
+        } 
+      };
+    });
+  };
+
+  const removeReading = (analyteName: string, readingId: string) => {
+    setMultidata(prev => {
+      const analyte = prev[analyteName];
+      if (!analyte) return prev;
+      const toDelete = analyte.readings.find(r => r.id === readingId);
+      if (toDelete?.isSaved && !readingId.startsWith('temp_')) {
+        deleteDoc(doc(db, 'samples', readingId)).catch(console.error);
+      }
+      return { 
+        ...prev, 
+        [analyteName]: { ...analyte, readings: analyte.readings.filter(r => r.id !== readingId) } 
+      };
+    });
+  };
+
+  const saveReading = (analyteName: string, readingId: string, category: string) => {
+    if (!user || !db) return;
+    const state = multidata[analyteName];
+    const reading = state.readings.find(r => r.id === readingId);
+    if (!reading || reading.value === "") return;
+
+    setMultidata(prev => ({
+      ...prev,
+      [analyteName]: {
+        ...prev[analyteName],
+        readings: prev[analyteName].readings.map(r => 
+          r.id === readingId ? { ...r, isSaved: true, isSaving: false } : r
+        )
+      }
+    }));
+
+    (async () => {
+      try {
+        const location = await getCurrentGPSLocation();
+        const docId = readingId.startsWith('temp_') 
+          ? `${reportId}_${formId}_${analyteName.replace(/\s+/g, '_')}_${reading.capturedAt}`
+          : readingId;
+
+        const sampleRef = doc(db, 'samples', docId);
+        const payload = {
+          medium: 'suelo',
+          parameterType: category,
+          analyte: analyteName,
+          reportId,
+          formId,
+          stationId,
+          value: reading.value,
+          latitude: location?.latitude ?? null,
+          longitude: location?.longitude ?? null,
+          retrasoSincronizacionMs: isDeferred ? 0 : Date.now() - reading.capturedAt,
+          fechaServidor: serverTimestamp(),
+          timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+          isDeferred,
+          userId: user.uid,
+          userEmail: user.email,
+          capturedAt: Timestamp.fromMillis(reading.capturedAt)
+        };
+
+        setDoc(sampleRef, payload, { merge: true }).catch(console.error);
+        updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+      } catch (err) {
+        console.error("Error guardando lectura:", err);
+      }
+    })();
+  };
+
+  const calculateStats = (readings: Reading[]) => {
+    const nums = readings.map(r => parseFloat(r.value.replace(',', '.'))).filter(n => !isNaN(n));
+    if (nums.length === 0) return null;
+    const n = nums.length;
+    const mean = nums.reduce((a, b) => a + b, 0) / n;
+    if (n < 2) return { mean: mean.toFixed(3), error: "0.000", n };
+    const variance = nums.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1);
+    const sd = Math.sqrt(variance);
+    const se = sd / Math.sqrt(n); 
+    return { mean: mean.toFixed(3), error: se.toFixed(3), n };
   };
 
   const handleInputChange = (name: string, value: any) => {
@@ -174,9 +321,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       setShowOSMResults(false);
       return;
     }
-
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearchingOSM(true);
       try {
@@ -205,7 +350,6 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   const captureGPS = async () => {
     toast({ title: "Obteniendo coordenadas...", description: "Forzando alta precisión GPS." });
     const location = await getCurrentGPSLocation();
-    
     if (location) {
       const val = `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
       handleInputChange("Punto_Muestreo", val);
@@ -217,8 +361,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   };
 
   const handleMunsellChange = (name: string, val: string) => {
-    const formatted = val.toUpperCase();
-    handleInputChange(name, formatted);
+    handleInputChange(name, val.toUpperCase());
   };
 
   const sectionHeaderClass = "flex items-center gap-2 bg-neutral-100 px-4 py-2 border-y border-neutral-400 mt-6 first:mt-0";
@@ -228,7 +371,13 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
 
   const renderField = (name: string, label: string, cat: string, placeholder = "---") => (
     <div className={rowClass}>
-      <label className={labelClass}>{label}</label>
+      <div className="flex flex-col flex-1">
+        <label className={labelClass}>{label}</label>
+        <div className="flex items-center gap-1 mt-0.5">
+          <User className="h-2.5 w-2.5 text-neutral-300" />
+          <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+        </div>
+      </div>
       <div className="flex items-center gap-2 flex-1 justify-end">
         <input 
           type="text" 
@@ -244,27 +393,99 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     </div>
   );
 
-  const renderMunsellField = (name: string, label: string, cat: string) => (
-    <div className={rowClass}>
-      <label className={labelClass}>{label}</label>
-      <div className="flex items-center gap-2 flex-1 justify-end">
-        <input 
-          type="text" 
-          className={cn(inputClass, "uppercase")}
-          value={formData[name]?.value ?? ""} 
-          onChange={(e) => handleMunsellChange(name, e.target.value)} 
-          placeholder="10YR 3/2"
-        />
-        <button onClick={() => saveParam(name, cat)} className={cn("p-1 transition-colors", savedFields[name] ? "text-green-600" : "text-black hover:text-primary")}>
-          {savingFields[name] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields[name] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
-        </button>
+  const renderMultidataField = (name: string, label: string, cat: string, unit = "") => {
+    const state = multidata[name] || { readings: [], isExpanded: false };
+    const stats = calculateStats(state.readings);
+
+    return (
+      <div key={name} className="flex flex-col bg-white overflow-hidden border-b border-neutral-300">
+        <div className="flex items-center justify-between py-2.5 px-4 hover:bg-neutral-50 transition-colors">
+          <button 
+            onClick={() => setMultidata(prev => ({ ...prev, [name]: { ...state, isExpanded: !state.isExpanded } }))}
+            className="flex-1 text-left flex items-center gap-2"
+          >
+            {state.isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
+            <div className="flex flex-col">
+              <span className={labelClass}>{label}</span>
+              <div className="flex items-center gap-1 mt-0.5">
+                <User className="h-2.5 w-2.5 text-neutral-300" />
+                <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+              </div>
+            </div>
+          </button>
+
+          <div className="flex items-center gap-3">
+            {stats && (
+              <div className="bg-neutral-100 px-3 py-1 rounded-sm border border-neutral-200 flex items-center gap-1.5" title="Media ± SE">
+                <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean} ± {stats.error}</span>
+                <span className="text-[8px] text-neutral-400 ml-1">{unit}</span>
+              </div>
+            )}
+            {!stats && unit && <span className="text-[9px] font-bold text-neutral-300">{unit}</span>}
+          </div>
+        </div>
+
+        {state.isExpanded && (
+          <div className="bg-white pb-2 animate-in slide-in-from-top-1 duration-200 divide-y divide-neutral-50 border-t border-neutral-100">
+            {state.readings.map((reading, idx) => (
+              <div key={reading.id} className="flex items-center justify-between gap-2 py-1 px-4 border-b border-neutral-50 last:border-0 hover:bg-neutral-50/50 transition-colors group">
+                <span className="text-[9px] font-normal uppercase text-neutral-300 group-hover:text-neutral-500 transition-colors shrink-0">L{idx + 1}</span>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <input 
+                    type="text" 
+                    placeholder="0.00"
+                    className="h-7 w-20 border-none bg-transparent px-1 text-[11px] font-code text-black text-right outline-none focus:ring-0"
+                    value={reading.value}
+                    onChange={(e) => handleReadingChange(name, reading.id, e.target.value)}
+                  />
+                  <div className="flex items-center gap-1 border-l border-neutral-100 pl-2 ml-2">
+                    <button 
+                      onClick={() => saveReading(name, reading.id, cat)}
+                      className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-300 hover:text-black")}
+                    >
+                      {reading.isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className={cn("h-3.5 w-3.5", !reading.isSaved && "opacity-30")} />}
+                    </button>
+                    <button 
+                      onClick={() => addReading(name)}
+                      className="p-1 text-neutral-300 hover:text-black transition-colors"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                    <button 
+                      onClick={() => removeReading(name, reading.id)}
+                      className="p-1 text-neutral-300 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {state.readings.length === 0 && (
+              <div className="p-4 text-center">
+                <button 
+                  onClick={() => addReading(name)}
+                  className="h-8 px-4 text-[9px] uppercase tracking-widest border border-dashed border-neutral-300 hover:bg-neutral-50 transition-colors"
+                >
+                  <Plus className="h-3 w-3 inline mr-1" /> Comenzar carga
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderSelect = (name: string, label: string, cat: string, options: {v: string, l: string}[]) => (
     <div className={rowClass}>
-      <label className={labelClass}>{label}</label>
+      <div className="flex flex-col flex-1">
+        <label className={labelClass}>{label}</label>
+        <div className="flex items-center gap-1 mt-0.5">
+          <User className="h-2.5 w-2.5 text-neutral-300" />
+          <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal hover:text-primary transition-colors" />
+        </div>
+      </div>
       <div className="flex items-center gap-2 flex-1 justify-end">
         <Select 
           value={formData[name]?.value ?? ""} 
@@ -292,7 +513,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
   const formatTimestamp = (ts: any) => {
     if (!ts) return new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const date = ts.toDate ? ts.toDate() : new Date(ts);
-    return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   if (isLoadingExisting) {
@@ -348,7 +569,13 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       <div className={sectionHeaderClass}><Mountain className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-normal uppercase tracking-wider text-black">1. Identificación y Ubicación</span></div>
       
       <div className={cn(rowClass, "relative")}>
-        <label className={labelClass}>Lugar / Localidad</label>
+        <div className="flex flex-col flex-1">
+          <label className={labelClass}>Lugar / Localidad</label>
+          <div className="flex items-center gap-1 mt-0.5">
+            <User className="h-2.5 w-2.5 text-neutral-300" />
+            <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal" />
+          </div>
+        </div>
         <div className="flex items-center gap-2 flex-1 justify-end">
           <div className="relative flex-1 flex justify-end">
             <input 
@@ -359,50 +586,29 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
               onFocus={() => osmResults.length > 0 && setShowOSMResults(true)}
               placeholder="Buscar localidad..."
             />
-            {isSearchingOSM ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin absolute right-0 top-2 text-neutral-400" />
-            ) : (
-              <Search className="h-3.5 w-3.5 absolute right-0 top-2 text-neutral-400" />
-            )}
+            {isSearchingOSM ? <Loader2 className="h-3.5 w-3.5 animate-spin absolute right-0 top-2 text-neutral-400" /> : <Search className="h-3.5 w-3.5 absolute right-0 top-2 text-neutral-400" />}
           </div>
-          <button onClick={() => saveParam("Lugar", "General", osmQuery)} className={cn("p-1 transition-colors", savedFields["Lugar"] ? "text-green-600" : "text-black")}>
-            {savingFields["Lugar"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["Lugar"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
+          <button onClick={() => saveParam("Lugar", "General", osmQuery)} className={cn("p-1", savedFields["Lugar"] ? "text-green-600" : "text-black")}>
+            <Check className="h-4 w-4" />
           </button>
         </div>
-        
-        {showOSMResults && osmResults.length > 0 && (
-          <div className="absolute top-full left-0 right-0 z-50 bg-white border border-neutral-300 shadow-xl mt-1 max-h-48 overflow-hidden rounded-sm">
-            <ScrollArea className="h-full">
-              {osmResults.map((res, idx) => (
-                <button 
-                  key={idx} 
-                  onClick={() => selectOSMLocation(res)}
-                  className="w-full text-left p-2 hover:bg-neutral-50 border-b last:border-0 text-[10px] font-normal uppercase text-black"
-                >
-                  {res.display_name}
-                </button>
-              ))}
-            </ScrollArea>
-          </div>
+        {showOSMResults && (
+          <div className="absolute top-full left-0 right-0 z-50 bg-white border shadow-xl mt-1 rounded-sm"><ScrollArea className="h-48">{osmResults.map((res, i) => (<button key={i} onClick={() => selectOSMLocation(res)} className="w-full text-left p-2 hover:bg-neutral-50 text-[10px] uppercase">{res.display_name}</button>))}</ScrollArea></div>
         )}
       </div>
 
       <div className={rowClass}>
-        <label className={labelClass}>Punto Específico</label>
+        <div className="flex flex-col flex-1">
+          <label className={labelClass}>Punto Específico</label>
+          <div className="flex items-center gap-1 mt-0.5">
+            <User className="h-2.5 w-2.5 text-neutral-300" />
+            <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal" />
+          </div>
+        </div>
         <div className="flex items-center gap-2 flex-1 justify-end">
-          <input 
-            type="text" 
-            className={inputClass} 
-            value={formData["Punto_Muestreo"]?.value ?? ""} 
-            onChange={(e) => handleInputChange("Punto_Muestreo", e.target.value)} 
-            placeholder="Coordenadas o Ref."
-          />
-          <button onClick={captureGPS} title="Forzar GPS de Alta Precisión" className="p-1 hover:bg-primary/5 rounded transition-colors">
-            <Locate className="h-4 w-4 text-primary" />
-          </button>
-          <button onClick={() => saveParam("Punto_Muestreo", "General")} className={cn("p-1 transition-colors", savedFields["Punto_Muestreo"] ? "text-green-600" : "text-black")}>
-            {savingFields["Punto_Muestreo"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["Punto_Muestreo"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
-          </button>
+          <input type="text" className={inputClass} value={formData["Punto_Muestreo"]?.value ?? ""} onChange={(e) => handleInputChange("Punto_Muestreo", e.target.value)} />
+          <button onClick={captureGPS} className="p-1"><Locate className="h-4 w-4 text-primary" /></button>
+          <button onClick={() => saveParam("Punto_Muestreo", "General")} className={cn("p-1", savedFields["Punto_Muestreo"] ? "text-green-600" : "text-black")}><Check className="h-4 w-4" /></button>
         </div>
       </div>
 
@@ -412,17 +618,9 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
       <div className={sectionHeaderClass}><ThermometerSun className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-normal uppercase tracking-wider text-black">2. Factores Ambientales</span></div>
       {renderField("Clima", "Clima / Región", "Entorno")}
       {renderField("Vegetacion", "Vegetación / Cultivo", "Entorno")}
-      {renderSelect("Drenaje", "Drenaje", "Propiedades", [
-        {v: "0", l: "0 - Muy Pobre"}, {v: "1", l: "1 - Pobre"}, {v: "2", l: "2 - Imperfecto"}, {v: "3", l: "3 - Moderadamente Bueno"}, {v: "4", l: "4 - Bueno"}, {v: "5", l: "5 - Algo Excesivo"}, {v: "6", l: "6 - Excesivo"}
-      ])}
-      {renderSelect("Relieve", "Relieve", "Propiedades", [
-        {v: "excesivo", l: "Excesivo"}, {v: "normal", l: "Normal"}, {v: "subnormal", l: "Subnormal"}, {v: "concavo", l: "Cóncavo"}
-      ])}
-      {renderSelect("Inundacion", "Peligro Inundación", "Propiedades", [
-        {v: "C1", l: "C1 - Muy Bajo"}, {v: "C2", l: "C2 - Bajo"}, {v: "C3", l: "C3 - Moderado"}, {v: "C4", l: "C4 - Alto"}, {v: "C5", l: "C5 - Muy Alto"}
-      ])}
-      {renderField("Pendiente", "Pendiente (%)", "Propiedades")}
-      {renderField("Prof_Napa", "Profundidad Napa (m)", "Propiedades")}
+      {renderSelect("Drenaje", "Drenaje", "Propiedades", [{v: "0", l: "0 - Muy Pobre"}, {v: "6", l: "6 - Excesivo"}])}
+      {renderMultidataField("Pendiente", "Pendiente", "Propiedades", "%")}
+      {renderMultidataField("Prof_Napa", "Profundidad Napa", "Propiedades", "m")}
 
       <div className={sectionHeaderClass}><LayersIcon className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-normal uppercase tracking-wider text-black">3. Perfil del Suelo (Horizontes)</span></div>
       {Array.from({ length: horizontesCount }).map((_, i) => {
@@ -432,46 +630,24 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           <div key={hIdx} className="mb-6 border-b-2 border-neutral-200 pb-2">
             <div className="bg-neutral-50 px-4 py-1.5 flex justify-between items-center border-y border-neutral-300">
               <span className="text-[11px] font-normal uppercase text-primary tracking-widest">Horizonte {hIdx}</span>
-              {hIdx > 1 && hIdx === horizontesCount && (
-                <button onClick={() => setHorizontesCount(prev => prev - 1)} className="text-destructive p-1 hover:bg-destructive/10 rounded transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
-              )}
+              {hIdx > 1 && hIdx === horizontesCount && (<button onClick={() => setHorizontesCount(prev => prev - 1)} className="text-destructive p-1"><Trash2 className="h-3.5 w-3.5" /></button>)}
             </div>
             {renderField(`${hPrefix} Horizonte`, "Denominación", "Horizontes")}
-            {renderField(`${hPrefix} Profundidad`, "Profundidad (cm)", "Horizontes", "0-20")}
-            {renderMunsellField(`${hPrefix} Color_Seco`, "Munsell (Seco)", "Horizontes")}
-            {renderMunsellField(`${hPrefix} Color_Humedo`, "Munsell (Húmedo)", "Horizontes")}
-            {renderSelect(`${hPrefix} Textura`, "Textura", "Horizontes", [
-              {v: "A", l: "Arenosa"}, {v: "AF", l: "Arena Franca"}, {v: "FA", l: "Franco Arenosa"}, {v: "F", l: "Franca"}, {v: "FL", l: "Franco Limosa"}, {v: "L", l: "Limosa"}, {v: "FArA", l: "Franco Arcillo Arenosa"}, {v: "FAr", l: "Franco Arcillosa"}, {v: "FArL", l: "Franco Arcillo Limosa"}, {v: "ArA", l: "Arcillo Arenosa"}, {v: "ArL", l: "Arcillo Limosa"}, {v: "Ar", l: "Arcillosa"}
-            ])}
-            {renderSelect(`${hPrefix} Estructura`, "Estructura", "Horizontes", [
-              {v: "granular", l: "Granular"}, {v: "bloques_ang", l: "Bloques Angulares"}, {v: "bloques_sub", l: "Bloques Subangulares"}, {v: "prismatica", l: "Prismática"}, {v: "columnar", l: "Columnar"}, {v: "laminar", l: "Laminar"}, {v: "sin_estructura", l: "Sin Estructura"}
-            ])}
-            {renderSelect(`${hPrefix} Limite`, "Límite Inferior", "Horizontes", [
-              {v: "abrupto", l: "Abrupto"}, {v: "claro", l: "Claro"}, {v: "gradual", l: "Gradual"}, {v: "difuso", l: "Difuso"}
-            ])}
-            {renderField(`${hPrefix} pH`, "pH", "Horizontes")}
+            {renderField(`${hPrefix} Profundidad`, "Profundidad (cm)", "Horizontes")}
+            {renderMultidataField(`${hPrefix} pH`, "pH", "Horizontes", "upH")}
+            {renderSelect(`${hPrefix} Textura`, "Textura", "Horizontes", [{v: "F", l: "Franca"}, {v: "Ar", l: "Arcillosa"}])}
           </div>
         );
       })}
-      <div className="px-4 py-2">
-        <Button variant="outline" className="w-full h-10 border-dashed border-neutral-400 text-[11px] font-normal uppercase tracking-widest text-neutral-500 hover:bg-neutral-50 rounded-none" onClick={() => setHorizontesCount(prev => prev + 1)}>
-          <Plus className="h-4 w-4 mr-2" /> Agregar Horizonte
-        </Button>
-      </div>
+      <div className="px-4 py-2"><Button variant="outline" className="w-full h-10 border-dashed border-neutral-400 text-[11px] uppercase tracking-widest text-neutral-500 rounded-none" onClick={() => setHorizontesCount(prev => prev + 1)}><Plus className="h-4 w-4 mr-2" /> Agregar Horizonte</Button></div>
 
       <div className={sectionHeaderClass}><Tag className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-normal uppercase tracking-wider text-black">4. Clasificación</span></div>
       {renderField("Serie", "Serie de Suelo", "Clasificación")}
-      {renderField("Fase", "Fase", "Clasificación")}
-      {renderField("Simbolo", "Símbolo Cartográfico", "Clasificación")}
 
       <div className={sectionHeaderClass}><Droplets className="h-3.5 w-3.5 text-primary" /><span className="text-[10px] font-normal uppercase tracking-wider text-black">5. Registro Fotográfico</span></div>
-      <div className="px-4 py-6">
-        <PhotoRegistry reportId={reportId} formId={formId} stationId={stationId} medium="suelo" />
-      </div>
+      <div className="px-4 py-6"><PhotoRegistry reportId={reportId} formId={formId} stationId={stationId} medium="suelo" /></div>
 
-      <div className="bg-white p-4 border-t border-neutral-400">
-        <button onClick={onClose} className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] font-normal uppercase tracking-widest text-white shadow-xl transition-all active:scale-[0.98]">Finalizar y Cerrar Planilla</button>
-      </div>
+      <div className="bg-white p-4 border-t border-neutral-400"><button onClick={onClose} className="w-full bg-neutral-900 hover:bg-black py-4 text-[11px] uppercase tracking-widest text-white shadow-xl transition-all active:scale-[0.98]">Finalizar y Cerrar Planilla</button></div>
     </div>
   );
 }

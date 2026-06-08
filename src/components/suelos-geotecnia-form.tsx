@@ -1,33 +1,41 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { collection, query, where, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, Timestamp } from 'firebase/firestore'
+import { collection, query, where, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, getDocs, Timestamp, deleteDoc } from 'firebase/firestore'
 import { useFirestore, useUser, useDoc } from '@/firebase'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Trash2, Printer, Check, Loader2, Clock, User, Locate, MapPin, CheckCircle2, Calendar } from "lucide-react"
+import { Plus, Trash2, Printer, Check, Loader2, Clock, User, Locate, MapPin, CheckCircle2, Calendar, ChevronDown, ChevronUp } from "lucide-react"
 import { cn } from '@/lib/utils'
 import { PhotoRegistry } from './photo-registry'
 import { TechnicianLink } from './technician-link'
 import { getCurrentGPSLocation } from '@/lib/geo-utils'
 
+interface Reading {
+  id: string;
+  value: string;
+  capturedAt: number;
+  isSaved: boolean;
+  isSaving: boolean;
+}
+
+interface AnalyteState {
+  readings: Reading[];
+  isExpanded: boolean;
+}
+
 interface CapaSuelo {
   id: string
   profundidadInicio: string
   profundidadFin: string
-  longitudTramo: string
   nivelFreatico: boolean
   colorColumna: string
   patron: string
   descripcion: string
-  muestras: string
-  golpesSPT: string
-  limiteLL: string
-  limiteIP: string
-  humedad: string
   clasificacionUSCS: string
+  multidata: Record<string, AnalyteState>
   capturedAt: Record<string, number | null>
 }
 
@@ -55,40 +63,15 @@ const coloresDisponibles = [
 
 function PatronSVG({ patron, color }: { patron: string; color: string }) {
   const patternId = `pattern-${patron}-${color.replace("#", "")}`
-  
   return (
     <svg width="100%" height="100%" className="absolute inset-0">
       <defs>
-        {patron === "dots" && (
-          <pattern id={patternId} patternUnits="userSpaceOnUse" width="8" height="8">
-            <rect width="8" height="8" fill={color} />
-            <circle cx="4" cy="4" r="1.5" fill="#333" />
-          </pattern>
-        )}
-        {patron === "diagonal" && (
-          <pattern id={patternId} patternUnits="userSpaceOnUse" width="8" height="8">
-            <rect width="8" height="8" fill={color} />
-            <path d="M-2,2 l4,-4 M0,8 l8,-8 M6,10 l4,-4" stroke="#333" strokeWidth="1" />
-          </pattern>
-        )}
-        {patron === "horizontal" && (
-          <pattern id={patternId} patternUnits="userSpaceOnUse" width="8" height="4">
-            <rect width="8" height="4" fill={color} />
-            <line x1="0" y1="2" x2="8" y2="2" stroke="#333" strokeWidth="0.5" />
-          </pattern>
-        )}
-        {patron === "cross-hatch" && (
-          <pattern id={patternId} patternUnits="userSpaceOnUse" width="8" height="8">
-            <rect width="8" height="8" fill={color} />
-            <path d="M0,0 l8,8 M8,0 l-8,8" stroke="#333" strokeWidth="0.5" />
-          </pattern>
-        )}
+        {patron === "dots" && (<pattern id={patternId} patternUnits="userSpaceOnUse" width="8" height="8"><rect width="8" height="8" fill={color} /><circle cx="4" cy="4" r="1.5" fill="#333" /></pattern>)}
+        {patron === "diagonal" && (<pattern id={patternId} patternUnits="userSpaceOnUse" width="8" height="8"><rect width="8" height="8" fill={color} /><path d="M-2,2 l4,-4 M0,8 l8,-8 M6,10 l4,-4" stroke="#333" strokeWidth="1" /></pattern>)}
+        {patron === "horizontal" && (<pattern id={patternId} patternUnits="userSpaceOnUse" width="8" height="4"><rect width="8" height="4" fill={color} /><line x1="0" y1="2" x2="8" y2="2" stroke="#333" strokeWidth="0.5" /></pattern>)}
+        {patron === "cross-hatch" && (<pattern id={patternId} patternUnits="userSpaceOnUse" width="8" height="8"><rect width="8" height="8" fill={color} /><path d="M0,0 l8,8 M8,0 l-8,8" stroke="#333" strokeWidth="0.5" /></pattern>)}
       </defs>
-      {patron !== "none" ? (
-        <rect width="100%" height="100%" fill={`url(#${patternId})`} />
-      ) : (
-        <rect width="100%" height="100%" fill={color} />
-      )}
+      {patron !== "none" ? <rect width="100%" height="100%" fill={`url(#${patternId})`} /> : <rect width="100%" height="100%" fill={color} />}
     </svg>
   )
 }
@@ -113,7 +96,6 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
   });
 
   const [capas, setCapas] = useState<CapaSuelo[]>([]);
-  const [savingFields, setSavingFields] = useState<Record<string, boolean>>({});
   const [savedFields, setSavedFields] = useState<Record<string, boolean>>({});
   const [isLoadingExisting, setIsLoadingExisting] = useState(true);
   const [metadata, setMetadata] = useState<{ user?: string, timestamp?: any }>({});
@@ -125,11 +107,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
       if (!reportId || !formId || !db) return;
       setIsLoadingExisting(true);
       try {
-        const q = query(
-          collection(db, 'samples'),
-          where('reportId', '==', reportId),
-          where('formId', '==', formId)
-        );
+        const q = query(collection(db, 'samples'), where('reportId', '==', reportId), where('formId', '==', formId));
         const snapshot = await getDocs(q);
         
         const newFormData: Record<string, any> = {};
@@ -138,30 +116,33 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         let foundMetadata = { user: user?.email || '', timestamp: null };
         let foundDeferred = false;
 
-        snapshot.docs.forEach(doc => {
-          const data = doc.data();
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
           const analyte = data.analyte;
           const value = data.value;
 
           if (!foundMetadata.timestamp || (data.timestamp && data.timestamp.toMillis() < foundMetadata.timestamp.toMillis())) {
             foundMetadata = { user: data.userEmail || user?.email || '', timestamp: data.fechaServidor || data.timestamp };
-            if (data.timestamp) {
-               const date = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
-               setManualDate(date.toISOString().slice(0, 16));
-            }
+            if (data.timestamp) { setManualDate(data.timestamp.toDate().toISOString().slice(0, 16)); }
           }
           if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
 
           const layerMatch = analyte.match(/^L(\d+): (.*)/);
           if (layerMatch) {
             const lId = layerMatch[1];
-            const field = layerMatch[2] as keyof CapaSuelo;
-            if (!layersMap[lId]) layersMap[lId] = { id: lId, capturedAt: {} };
+            const fieldName = layerMatch[2];
+            if (!layersMap[lId]) layersMap[lId] = { id: lId, multidata: {}, capturedAt: {} };
             
-            if (field === 'nivelFreatico') {
-              layersMap[lId][field] = value === 'true';
+            const numericFields = ['golpesSPT', 'limiteLL', 'limiteIP', 'humedad'];
+            if (numericFields.includes(fieldName)) {
+              if (!layersMap[lId]!.multidata![fieldName]) layersMap[lId]!.multidata![fieldName] = { readings: [], isExpanded: false };
+              layersMap[lId]!.multidata![fieldName].readings.push({
+                id: docSnap.id, value, capturedAt: data.capturedAt?.toMillis() || Date.now(), isSaved: true, isSaving: false
+              });
+            } else if (fieldName === 'nivelFreatico') {
+              layersMap[lId][fieldName] = value === 'true';
             } else {
-              (layersMap[lId] as any)[field] = value;
+              (layersMap[lId] as any)[fieldName] = value;
             }
             newSavedFields[analyte] = true;
           } else {
@@ -174,441 +155,288 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
           id: l.id!,
           profundidadInicio: l.profundidadInicio || "",
           profundidadFin: l.profundidadFin || "",
-          longitudTramo: l.longitudTramo || "",
           nivelFreatico: l.nivelFreatico || false,
           colorColumna: l.colorColumna || "#F5F5DC",
           patron: l.patron || "none",
           descripcion: l.descripcion || "",
-          muestras: l.muestras || "",
-          golpesSPT: l.golpesSPT || "",
-          limiteLL: l.limiteLL || "",
-          limiteIP: l.limiteIP || "",
-          humedad: l.humedad || "",
           clasificacionUSCS: l.clasificacionUSCS || "",
+          multidata: l.multidata || {},
           capturedAt: l.capturedAt || {}
         } as CapaSuelo)).sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
-        if (initialCapas.length === 0) {
-          initialCapas.push({
-            id: Date.now().toString(),
-            profundidadInicio: "0.00",
-            profundidadFin: "",
-            longitudTramo: "",
-            nivelFreatico: false,
-            colorColumna: "#F5F5DC",
-            patron: "none",
-            descripcion: "",
-            muestras: "",
-            golpesSPT: "",
-            limiteLL: "",
-            limiteIP: "",
-            humedad: "",
-            clasificacionUSCS: "",
-            capturedAt: {}
-          });
-        }
+        if (initialCapas.length === 0) initialCapas.push(createEmptyLayer(Date.now().toString(), "0.00"));
 
         setFormData(prev => ({ ...prev, ...newFormData }));
         setCapas(initialCapas);
         setSavedFields(newSavedFields);
         setMetadata(foundMetadata);
         setIsDeferred(foundDeferred);
-      } catch (e) {
-        console.error("Error fetching geotech data", e);
-      } finally {
-        setIsLoadingExisting(false);
-      }
+      } catch (e) { console.error(e); } finally { setIsLoadingExisting(false); }
     };
-
     fetchExistingData();
   }, [db, reportId, formId, user?.email]);
 
-  const saveParam = (name: string, category: string, valueOverride?: any) => {
-    if (!user || !db) return;
-    const entry = formData[name];
-    const value = valueOverride !== undefined ? valueOverride : entry?.value;
-    if (value === null || value === undefined || value === "") return;
+  const createEmptyLayer = (id: string, start: string): CapaSuelo => ({
+    id, profundidadInicio: start, profundidadFin: "", nivelFreatico: false, colorColumna: "#F5F5DC", patron: "none", descripcion: "", clasificacionUSCS: "", multidata: {}, capturedAt: {}
+  });
 
-    // FEEDBACK INSTANTÁNEO
-    setSavedFields(prev => ({ ...prev, [name]: true }));
-    setSavingFields(prev => ({ ...prev, [name]: false }));
-    
-    // Segundo plano
+  const calculateStats = (readings: Reading[]) => {
+    const nums = readings.map(r => parseFloat(r.value.replace(',', '.'))).filter(n => !isNaN(n));
+    if (nums.length === 0) return null;
+    const n = nums.length;
+    const mean = nums.reduce((a, b) => a + b, 0) / n;
+    if (n < 2) return { mean: mean.toFixed(2), error: "0.00", n };
+    const variance = nums.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1);
+    const sd = Math.sqrt(variance);
+    const se = sd / Math.sqrt(n); 
+    return { mean: mean.toFixed(2), error: se.toFixed(2), n };
+  };
+
+  const handleReadingChange = (layerId: string, field: string, readingId: string, value: string) => {
+    setCapas(prev => prev.map(c => {
+      if (c.id !== layerId) return c;
+      const state = c.multidata[field] || { readings: [], isExpanded: true };
+      const readings = state.readings.map(r => r.id === readingId ? { ...r, value, isSaved: false } : r);
+      return { ...c, multidata: { ...c.multidata, [field]: { ...state, readings } } };
+    }));
+  };
+
+  const addReading = (layerId: string, field: string) => {
+    setCapas(prev => prev.map(c => {
+      if (c.id !== layerId) return c;
+      const state = c.multidata[field] || { readings: [], isExpanded: true };
+      const newR = { id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, value: "", capturedAt: Date.now(), isSaved: false, isSaving: false };
+      return { ...c, multidata: { ...c.multidata, [field]: { ...state, readings: [...state.readings, newR], isExpanded: true } } };
+    }));
+  };
+
+  const saveReading = (layerId: string, field: string, readingId: string) => {
+    if (!user || !db) return;
+    const capa = capas.find(c => c.id === layerId);
+    const state = capa?.multidata[field];
+    const reading = state?.readings.find(r => r.id === readingId);
+    if (!reading || reading.value === "") return;
+
+    setCapas(prev => prev.map(c => {
+      if (c.id !== layerId) return c;
+      const readings = c.multidata[field].readings.map(r => r.id === readingId ? { ...r, isSaved: true } : r);
+      return { ...c, multidata: { ...c.multidata, [field]: { ...c.multidata[field], readings } } };
+    }));
+
     (async () => {
-      try {
-        const location = await getCurrentGPSLocation();
-        const t1 = (valueOverride !== undefined ? Date.now() : entry?.capturedAt) || Date.now();
-        const deltaMs = Date.now() - t1;
-
-        const safeAnalyte = name.replace(/[^a-zA-Z0-9]/g, '_');
-        const docId = `${reportId}_${formId}_${safeAnalyte}`;
-        const sampleRef = doc(db, 'samples', docId);
-
-        const payload = {
-          medium: 'suelo',
-          parameterType: category,
-          analyte: name,
-          reportId,
-          formId,
-          stationId,
-          value: `${value}`,
-          latitude: location?.latitude || null,
-          longitude: location?.longitude || null,
-          retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-          fechaServidor: serverTimestamp(),
-          timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-          isDeferred,
-          userId: user.uid,
-          userEmail: user.email
-        };
-
-        setDoc(sampleRef, payload, { merge: true }).catch(console.error);
-        updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
-      } catch (err) {
-        console.error("Error en guardado de segundo plano:", err);
-      }
-    })();
-    
-    toast({ title: "Sincronizando localmente", description: "Dato capturado." });
-  };
-
-  const handleCerrarPlanilla = async () => {
-    if (!user || !db) return;
-    const fechaCierre = new Date().toLocaleString('es-AR');
-    saveParam("Fecha Cierre de Sondeo", "Control", fechaCierre);
-    onClose?.();
-  };
-
-  const handleFormChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: { value, capturedAt: Date.now() } }));
-    if (savedFields[field]) {
-      setSavedFields(prev => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
-
-  const captureGPS = async () => {
-    toast({ title: "Obteniendo coordenadas...", description: "Forzando alta precisión GPS." });
-    const location = await getCurrentGPSLocation();
-    
-    if (location) {
-      const val = `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
-      handleFormChange("ubicacion", val);
-      saveParam("ubicacion", "Encabezado", val);
-      toast({ title: "Ubicación capturada", description: val });
-    } else {
-      toast({ variant: "destructive", title: "Falla de GPS", description: "No se pudo obtener la ubicación física." });
-    }
-  };
-
-  const saveLayerField = (layerId: string, field: keyof CapaSuelo, value: any) => {
-    if (!user || !db) return;
-    const analyteName = `L${layerId}: ${field}`;
-    
-    // FEEDBACK INSTANTÁNEO
-    setSavedFields(prev => ({ ...prev, [analyteName]: true }));
-    setSavingFields(prev => ({ ...prev, [analyteName]: false }));
-
-    // Segundo plano
-    (async () => {
-      try {
-        const location = await getCurrentGPSLocation();
-        const layer = capas.find(c => c.id === layerId);
-        const t1 = layer?.capturedAt[field as string] || Date.now();
-        const deltaMs = Date.now() - t1;
-
-        const safeAnalyte = analyteName.replace(/[^a-zA-Z0-9]/g, '_');
-        const docId = `${reportId}_${formId}_${safeAnalyte}`;
-        const sampleRef = doc(db, 'samples', docId);
-
-        const payload = {
-          medium: 'suelo',
-          parameterType: 'Estratigrafía',
-          analyte: analyteName,
-          reportId,
-          formId,
-          stationId,
-          value: `${value}`,
-          latitude: location?.latitude || null,
-          longitude: location?.longitude || null,
-          retrasoSincronizacionMs: isDeferred ? 0 : deltaMs,
-          fechaServidor: serverTimestamp(),
-          timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
-          isDeferred,
-          userId: user.uid,
-          userEmail: user.email
-        };
-
-        setDoc(sampleRef, payload, { merge: true }).catch(console.error);
-      } catch (err) {
-        console.error("Error en guardado de estrato:", err);
-      }
+      const location = await getCurrentGPSLocation();
+      const analyte = `L${layerId}: ${field}`;
+      const docId = readingId.startsWith('temp_') ? `${reportId}_${formId}_${analyte.replace(/[: ]/g, '_')}_${reading.capturedAt}` : readingId;
+      const payload = {
+        medium: 'suelo', parameterType: 'Estratigrafía', analyte, reportId, formId, stationId, value: reading.value,
+        latitude: location?.latitude || null, longitude: location?.longitude || null, 
+        retrasoSincronizacionMs: isDeferred ? 0 : Date.now() - reading.capturedAt,
+        fechaServidor: serverTimestamp(), timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+        isDeferred, userId: user.uid, userEmail: user.email, capturedAt: Timestamp.fromMillis(reading.capturedAt)
+      };
+      setDoc(doc(db, 'samples', docId), payload, { merge: true });
+      updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) });
     })();
   };
 
-  const saveWholeLayer = (capa: CapaSuelo) => {
-    const fieldsToSave: (keyof CapaSuelo)[] = [
-      "profundidadInicio", "profundidadFin", "nivelFreatico", "colorColumna", 
-      "patron", "descripcion", "golpesSPT", "limiteLL", "limiteIP", "humedad", "clasificacionUSCS"
-    ];
-    
-    fieldsToSave.forEach(field => {
-      saveLayerField(capa.id, field, capa[field]);
-    });
-    toast({ title: "Sincronizando localmente", description: "Estrato capturado." });
+  const removeReading = (layerId: string, field: string, readingId: string) => {
+    setCapas(prev => prev.map(c => {
+      if (c.id !== layerId) return c;
+      const state = c.multidata[field];
+      if (readingId.startsWith('temp_')) {
+        return { ...c, multidata: { ...c.multidata, [field]: { ...state, readings: state.readings.filter(r => r.id !== readingId) } } };
+      }
+      deleteDoc(doc(db, 'samples', readingId));
+      return { ...c, multidata: { ...c.multidata, [field]: { ...state, readings: state.readings.filter(r => r.id !== readingId) } } };
+    }));
   };
 
-  const isLayerSaved = (id: string) => {
-    const fields: (keyof CapaSuelo)[] = ["profundidadInicio", "profundidadFin", "descripcion", "golpesSPT", "clasificacionUSCS"];
-    return fields.every(f => savedFields[`L${id}: ${f}`]);
+  const handleSimpleFieldSave = (analyte: string, category: string, value: any) => {
+    if (!user || !db || value === "") return;
+    setSavedFields(prev => ({ ...prev, [analyte]: true }));
+    (async () => {
+      const location = await getCurrentGPSLocation();
+      const docId = `${reportId}_${formId}_${analyte.replace(/[: ]/g, '_')}`;
+      setDoc(doc(db, 'samples', docId), {
+        medium: 'suelo', parameterType: category, analyte, reportId, formId, stationId, value: `${value}`,
+        latitude: location?.latitude || null, longitude: location?.longitude || null,
+        fechaServidor: serverTimestamp(), timestamp: isDeferred ? Timestamp.fromDate(new Date(manualDate)) : serverTimestamp(),
+        isDeferred, userId: user.uid, userEmail: user.email
+      }, { merge: true });
+    })();
   };
 
-  const isLayerSaving = (id: string) => {
-    return Object.keys(savingFields).some(k => k.startsWith(`L${id}:`) && savingFields[k]);
+  const renderMultidataCell = (layerId: string, field: string, unit = "") => {
+    const capa = capas.find(c => c.id === layerId);
+    const state = capa?.multidata[field] || { readings: [], isExpanded: false };
+    const stats = calculateStats(state.readings);
+
+    return (
+      <div className="flex flex-col gap-1 py-1">
+        <button 
+          onClick={() => setCapas(prev => prev.map(c => c.id === layerId ? { ...c, multidata: { ...c.multidata, [field]: { ...state, isExpanded: !state.isExpanded } } } : c))}
+          className="w-full text-center hover:bg-neutral-100 transition-colors py-0.5 rounded"
+        >
+          {stats ? (
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-code font-black text-primary leading-none">{stats.mean}</span>
+              <span className="text-[7px] text-neutral-400 font-code leading-tight">±{stats.error}</span>
+            </div>
+          ) : (
+            <span className="text-neutral-300 italic text-[9px]">---</span>
+          )}
+        </button>
+
+        {state.isExpanded && (
+          <div className="absolute z-[60] bg-white border border-neutral-300 shadow-2xl p-2 rounded-sm w-40 animate-in fade-in zoom-in-95 duration-200">
+             <div className="flex items-center justify-between mb-1.5 border-b pb-1">
+                <span className="text-[8px] font-black uppercase text-neutral-400">{field} ({unit})</span>
+                <button onClick={() => setCapas(prev => prev.map(c => c.id === layerId ? { ...c, multidata: { ...c.multidata, [field]: { ...state, isExpanded: false } } } : c))}>
+                   <ChevronUp className="h-3 w-3 text-neutral-300" />
+                </button>
+             </div>
+             <div className="space-y-1">
+                {state.readings.map((r, i) => (
+                  <div key={r.id} className="flex items-center gap-1">
+                    <span className="text-[8px] text-neutral-300">L{i+1}</span>
+                    <input 
+                      className="h-6 w-12 text-[10px] font-code border border-neutral-100 px-1 focus:ring-0 outline-none" 
+                      value={r.value} 
+                      onChange={(e) => handleReadingChange(layerId, field, r.id, e.target.value)} 
+                    />
+                    <button onClick={() => saveReading(layerId, field, r.id)} className={cn("p-0.5", r.isSaved ? "text-green-600" : "text-neutral-300")}>
+                      <Check className="h-3 w-3" />
+                    </button>
+                    <button onClick={() => addReading(layerId, field)} className="p-0.5 text-neutral-300 hover:text-black">
+                      <Plus className="h-3 w-3" />
+                    </button>
+                    <button onClick={() => removeReading(layerId, field, r.id)} className="p-0.5 text-neutral-300 hover:text-red-600">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {state.readings.length === 0 && (
+                   <button onClick={() => addReading(layerId, field)} className="w-full h-7 text-[8px] uppercase border border-dashed border-neutral-300">Cargar</button>
+                )}
+             </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const agregarCapa = () => {
-    const ultimaCapa = capas[capas.length - 1];
-    const nuevaProfundidadInicio = ultimaCapa ? ultimaCapa.profundidadFin : "0.00";
-    
-    setCapas((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        profundidadInicio: nuevaProfundidadInicio,
-        profundidadFin: "",
-        longitudTramo: "",
-        nivelFreatico: false,
-        colorColumna: "#F5F5DC",
-        patron: "none",
-        descripcion: "",
-        muestras: "",
-        golpesSPT: "",
-        limiteLL: "",
-        limiteIP: "",
-        humedad: "",
-        clasificacionUSCS: "",
-        capturedAt: {}
-      },
-    ]);
+    const last = capas[capas.length - 1];
+    setCapas(prev => [...prev, createEmptyLayer(Date.now().toString(), last?.profundidadFin || "0.00")]);
   };
 
-  const eliminarCapa = async (id: string) => {
-    if (capas.length > 1) {
-      setCapas((prev) => prev.filter((capa) => capa.id !== id));
-    }
-  };
-
-  const formatTimestamp = (ts: any) => {
-    if (!ts) return new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const date = ts.toDate ? ts.toDate() : new Date(ts);
-    return date.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  if (isLoadingExisting) {
-    return <div className="p-12 text-center text-xs animate-pulse font-normal uppercase text-black">Cargando Registro de Sondeo...</div>;
-  }
-
-  const rowClass = "flex items-center justify-between py-2.5 border-b border-neutral-300 hover:bg-neutral-50 transition-colors group px-4";
-  const labelClass = "text-[11px] font-normal text-black tracking-tight font-headline leading-none w-1/3 shrink-0 uppercase";
-  const inputClass = "h-7 flex-1 border-none bg-transparent px-2 text-[12px] font-code text-black font-normal text-right rounded-none focus:ring-0 outline-none placeholder:text-neutral-300";
-
-  const isDeferredLocked = Object.keys(savedFields).length > 0;
+  if (isLoadingExisting) return <div className="p-12 text-center text-xs animate-pulse font-normal uppercase text-black">Cargando Registro Geotécnico...</div>;
 
   return (
-    <div className="mx-auto w-full border border-black bg-white font-body shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20 overflow-hidden">
-      <div className="border-b-2 border-black bg-neutral-100 px-4 py-3 flex justify-between items-center print:hidden">
+    <div className="mx-auto w-full border border-black bg-white font-body shadow-sm rounded-none overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
+      <div className="border-b-2 border-black bg-neutral-100 px-4 py-4 flex justify-between items-center print:hidden">
         <div>
           <h1 className="text-sm font-normal uppercase tracking-tight text-black font-headline">Mecánica de suelos • MS-001</h1>
-          <div className="flex flex-col gap-0.5 mt-1">
-            <p className="text-[10px] text-black font-normal uppercase leading-none tracking-tight">ID Planilla: {formId}</p>
-            <div className="flex flex-wrap items-center gap-3 text-[9px] text-black font-normal uppercase tracking-tighter mt-1">
+          <div className="flex flex-col gap-0.5 mt-2">
+            <p className="text-[10px] text-neutral-600 font-normal uppercase">Planilla ID: {formId}</p>
+            <div className="flex flex-wrap items-center gap-3 text-[9px] text-black font-normal uppercase mt-1">
               {isDeferred ? (
                 <div className="flex items-center gap-1.5 bg-white border border-black px-2 py-0.5 rounded-sm">
                   <Calendar className="h-3 w-3 text-red-600" />
-                  <input 
-                    type="datetime-local" 
-                    value={manualDate} 
-                    onChange={(e) => setManualDate(e.target.value)}
-                    disabled={isDeferredLocked}
-                    className="bg-transparent border-none p-0 text-[9px] font-black uppercase outline-none focus:ring-0 w-32"
-                  />
+                  <input type="datetime-local" value={manualDate} onChange={(e) => setManualDate(e.target.value)} className="bg-transparent border-none p-0 text-[9px] font-black outline-none w-32" />
                 </div>
-              ) : (
-                <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {formatTimestamp(metadata.timestamp)}</span>
-              )}
-              
-              <button 
-                onClick={() => !isDeferredLocked && setIsDeferred(!isDeferred)}
-                disabled={isDeferredLocked}
-                className={cn(
-                  "flex items-center gap-1 px-1.5 py-0.5 rounded-full border transition-all",
-                  isDeferred 
-                    ? "bg-red-50 border-red-200 text-red-600" 
-                    : "bg-green-50 border-green-200 text-green-600",
-                  isDeferredLocked ? "opacity-100 cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"
-                )}
-              >
-                <CheckCircle2 className="h-2.5 w-2.5" />
-                <span className="text-[7px] font-normal">{isDeferred ? "DIFERIDA" : "REAL"}</span>
-              </button>
-
+              ) : <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-primary" /> {new Date().toLocaleString()}</span>}
               <span className="flex items-center gap-1"><User className="h-2.5 w-2.5 text-primary" /> <TechnicianLink email={metadata.user || user?.email || null} /></span>
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="h-8 text-[10px] font-normal uppercase rounded-none border-black text-black"><Printer className="h-3 w-3 mr-1.5" />Imprimir</Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={() => window.print()} className="h-8 text-[10px] uppercase rounded-none border-black"><Printer className="h-3 w-3 mr-1.5" />Imprimir</Button>
       </div>
 
       <div className="p-0 border-b border-black">
-        <div className={rowClass}>
-          <label className={labelClass}>Sondeo Nº</label>
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <input
-              value={formData.sondeoNumero.value ?? ""}
-              onChange={(e) => handleFormChange("sondeoNumero", e.target.value)}
-              className={inputClass}
-              placeholder="Ej: S-01"
-            />
-            <button onClick={() => saveParam("sondeoNumero", 'Encabezado')} className={cn("p-1 transition-colors", savedFields["sondeoNumero"] ? "text-green-600" : "text-black hover:text-primary")}>
-              {savingFields["sondeoNumero"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["sondeoNumero"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
-            </button>
+        {[
+          { id: "sondeoNumero", label: "Sondeo Nº", cat: "Encabezado" },
+          { id: "ubicacion", label: "Ubicación", cat: "Encabezado", gps: true },
+          { id: "profundidadTotal", label: "Profundidad (m)", cat: "Encabezado" }
+        ].map(f => (
+          <div key={f.id} className="flex items-center justify-between py-2 px-4 border-b border-neutral-100 group">
+            <div className="flex flex-col">
+              <label className="text-[11px] font-normal uppercase text-black">{f.label}</label>
+              <div className="flex items-center gap-1 mt-0.5">
+                <User className="h-2 w-2 text-neutral-300" />
+                <TechnicianLink email={metadata.user || user?.email || null} className="text-[8px] uppercase text-neutral-400 font-normal" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input 
+                className="h-7 w-32 text-right border-none bg-neutral-50 px-2 text-[12px] font-code text-black focus:ring-0 outline-none"
+                value={formData[f.id].value} onChange={(e) => setFormData(p => ({...p, [f.id]: {value: e.target.value, capturedAt: Date.now()}}))}
+              />
+              {f.gps && <button onClick={captureGPS} className="p-1"><Locate className="h-4 w-4 text-primary" /></button>}
+              <button onClick={() => handleSimpleFieldSave(f.id, f.cat, formData[f.id].value)} className={cn("p-1", savedFields[f.id] ? "text-green-600" : "text-neutral-300")}><Check className="h-4 w-4" /></button>
+            </div>
           </div>
-        </div>
-
-        <div className={rowClass}>
-          <label className={labelClass}>Ubicación</label>
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <input
-              value={formData.ubicacion.value ?? ""}
-              onChange={(e) => handleFormChange("ubicacion", e.target.value)}
-              className={inputClass}
-              placeholder="Coordenadas o Ref."
-            />
-            <button onClick={captureGPS} title="Forzar GPS de Alta Precisión" className="p-1 hover:bg-primary/5 rounded transition-colors">
-              <Locate className="h-4 w-4 text-primary" />
-            </button>
-            <button onClick={() => saveParam("ubicacion", "Encabezado")} className={cn("p-1 transition-colors", savedFields["ubicacion"] ? "text-green-600" : "text-black hover:text-primary")}>
-              {savingFields["ubicacion"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["ubicacion"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
-
-        <div className={rowClass}>
-          <label className={labelClass}>Profundidad (m)</label>
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <input
-              value={formData.profundidadTotal.value ?? ""}
-              onChange={(e) => handleFormChange("profundidadTotal", e.target.value)}
-              className={inputClass}
-              placeholder="Total perforado"
-            />
-            <button onClick={() => saveParam("profundidadTotal", 'Encabezado')} className={cn("p-1 transition-colors", savedFields["profundidadTotal"] ? "text-green-600" : "text-black hover:text-primary")}>
-              {savingFields["profundidadTotal"] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedFields["profundidadTotal"] ? <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div> : <Check className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto relative">
         <table className="w-full border-collapse text-[10px]">
           <thead>
             <tr className="bg-neutral-100 font-normal uppercase text-center border-b border-black h-12 text-black">
               <th className="border-r border-black p-1 w-14">Prof. (m)</th>
-              <th className="border-r border-black p-1 w-10">N.F.</th>
-              <th className="border-r border-black p-1 w-16">Columna</th>
-              <th className="border-r border-black p-1 min-w-[150px]">Descripción</th>
-              <th className="border-r border-black p-1 w-14">SPT</th>
-              <th className="border-r border-black p-1 w-20" colSpan={2}>Lím. Atterberg</th>
-              <th className="border-r border-black p-1 w-10">Hum (%)</th>
-              <th className="border-r border-black p-1 w-14">USCS</th>
+              <th className="border-r border-black p-1 w-8">N.F.</th>
+              <th className="border-r border-black p-1 w-14">Gráfico</th>
+              <th className="border-r border-black p-1 min-w-[120px]">Descripción</th>
+              <th className="border-r border-black p-1 w-12">SPT</th>
+              <th className="border-r border-black p-1 w-10">LL</th>
+              <th className="border-r border-black p-1 w-10">IP</th>
+              <th className="border-r border-black p-1 w-10">Hum%</th>
+              <th className="border-r border-black p-1 w-12">USCS</th>
               <th className="p-1 w-8 print:hidden"></th>
-            </tr>
-            <tr className="bg-neutral-50 text-[8px] font-normal border-b border-black text-center text-black">
-              <th colSpan={5}></th>
-              <th className="border-x border-black">LL</th>
-              <th className="border-r border-black">IP</th>
-              <th colSpan={3}></th>
             </tr>
           </thead>
           <tbody>
-            {capas.map((capa) => (
-              <tr key={capa.id} className="border-b border-black hover:bg-neutral-50 group">
+            {capas.map((c) => (
+              <tr key={c.id} className="border-b border-black hover:bg-neutral-50 group h-24">
                 <td className="border-r border-black p-1 bg-white">
-                  <div className="flex flex-col gap-0.5">
-                    <input value={capa.profundidadInicio} onChange={(e) => handleCapaChange(capa.id, "profundidadInicio", e.target.value)} onBlur={() => saveLayerField(capa.id, "profundidadInicio", capa.profundidadInicio)} className="w-full text-center font-normal border-none outline-none focus:ring-0 p-0 text-black" />
-                    <div className="h-[1px] bg-neutral-200 mx-1" />
-                    <input value={capa.profundidadFin} onChange={(e) => handleCapaChange(capa.id, "profundidadFin", e.target.value)} onBlur={() => saveLayerField(capa.id, "profundidadFin", capa.profundidadFin)} className="w-full text-center font-normal border-none outline-none focus:ring-0 p-0 text-black" />
-                  </div>
+                  <input value={c.profundidadInicio} onBlur={() => handleSimpleFieldSave(`L${c.id}: profundidadInicio`, 'Estratigrafía', c.profundidadInicio)} onChange={(e) => setCapas(prev => prev.map(l => l.id === c.id ? {...l, profundidadInicio: e.target.value} : l))} className="w-full text-center border-none focus:ring-0 p-0 text-[10px] font-code" />
+                  <div className="h-[1px] bg-neutral-200 mx-1" />
+                  <input value={c.profundidadFin} onBlur={() => handleSimpleFieldSave(`L${c.id}: profundidadFin`, 'Estratigrafía', c.profundidadFin)} onChange={(e) => setCapas(prev => prev.map(l => l.id === c.id ? {...l, profundidadFin: e.target.value} : l))} className="w-full text-center border-none focus:ring-0 p-0 text-[10px] font-code" />
                 </td>
                 <td className="border-r border-black p-1 text-center bg-white">
-                  <input type="checkbox" checked={capa.nivelFreatico} onChange={(e) => { handleCapaChange(capa.id, "nivelFreatico", e.target.checked); saveLayerField(capa.id, "nivelFreatico", e.target.checked); }} className="w-4 h-4 rounded-none border-black" />
+                   <input type="checkbox" checked={c.nivelFreatico} onChange={(e) => { setCapas(prev => prev.map(l => l.id === c.id ? {...l, nivelFreatico: e.target.checked} : l)); handleSimpleFieldSave(`L${c.id}: nivelFreatico`, 'Estratigrafía', e.target.checked); }} className="w-4 h-4" />
                 </td>
-                <td className="border-r border-black p-0 relative bg-white h-20">
-                   <PatronSVG patron={capa.patron} color={capa.colorColumna} />
+                <td className="border-r border-black p-0 relative bg-white h-24">
+                   <PatronSVG patron={c.patron} color={c.colorColumna} />
                    <div className="absolute inset-0 flex flex-col justify-between p-0.5 opacity-0 group-hover:opacity-100 bg-white/80 transition-opacity">
-                      <select value={capa.colorColumna} onChange={(e) => { handleCapaChange(capa.id, "colorColumna", e.target.value); saveLayerField(capa.id, "colorColumna", e.target.value); }} className="text-[8px] border-none p-0 bg-transparent uppercase font-normal text-black">
-                        {coloresDisponibles.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      <select value={c.colorColumna} onChange={(e) => { setCapas(p => p.map(l => l.id === c.id ? {...l, colorColumna: e.target.value} : l)); handleSimpleFieldSave(`L${c.id}: colorColumna`, 'Estratigrafía', e.target.value); }} className="text-[8px] border-none p-0 bg-transparent uppercase">
+                        {coloresDisponibles.map(col => <option key={col.value} value={col.value}>{col.label}</option>)}
                       </select>
-                      <select value={capa.patron} onChange={(e) => { handleCapaChange(capa.id, "patron", e.target.value); saveLayerField(capa.id, "patron", e.target.value); }} className="text-[8px] border-none p-0 bg-transparent uppercase font-normal text-black">
-                        {patronesDisponibles.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                      <select value={c.patron} onChange={(e) => { setCapas(p => p.map(l => l.id === c.id ? {...l, patron: e.target.value} : l)); handleSimpleFieldSave(`L${c.id}: patron`, 'Estratigrafía', e.target.value); }} className="text-[8px] border-none p-0 bg-transparent uppercase">
+                        {patronesDisponibles.map(pat => <option key={pat.value} value={pat.value}>{pat.label}</option>)}
                       </select>
                    </div>
                 </td>
                 <td className="border-r border-black p-1 bg-white">
-                  <Textarea value={capa.descripcion} onChange={(e) => handleCapaChange(capa.id, "descripcion", e.target.value)} onBlur={() => saveLayerField(capa.id, "descripcion", capa.descripcion)} className="border-none text-[10px] min-h-[70px] p-1 font-normal resize-none leading-tight text-black shadow-none focus-visible:ring-0" />
+                   <textarea value={c.descripcion} onBlur={() => handleSimpleFieldSave(`L${c.id}: descripcion`, 'Estratigrafía', c.descripcion)} onChange={(e) => setCapas(p => p.map(l => l.id === c.id ? {...l, descripcion: e.target.value} : l))} className="w-full h-20 text-[9px] border-none resize-none focus:ring-0 p-0 leading-tight" />
+                </td>
+                <td className="border-r border-black p-0 bg-white relative">
+                   {renderMultidataCell(c.id, 'golpesSPT')}
+                </td>
+                <td className="border-r border-black p-0 bg-white relative">
+                   {renderMultidataCell(c.id, 'limiteLL')}
+                </td>
+                <td className="border-r border-black p-0 bg-white relative">
+                   {renderMultidataCell(c.id, 'limiteIP')}
+                </td>
+                <td className="border-r border-black p-0 bg-white relative">
+                   {renderMultidataCell(c.id, 'humedad', '%')}
                 </td>
                 <td className="border-r border-black p-1 bg-white">
-                  <input value={capa.golpesSPT} onChange={(e) => handleCapaChange(capa.id, "golpesSPT", e.target.value)} onBlur={() => saveLayerField(capa.id, "golpesSPT", capa.golpesSPT)} className="w-full text-center border-none font-normal font-code text-black focus:ring-0" placeholder="N" />
-                </td>
-                <td className="border-r border-black p-1 bg-white">
-                  <input value={capa.limiteLL} onChange={(e) => handleCapaChange(capa.id, "limiteLL", e.target.value)} onBlur={() => saveLayerField(capa.id, "limiteLL", capa.limiteLL)} className="w-full text-center border-none font-normal text-black focus:ring-0" />
-                </td>
-                <td className="border-r border-black p-1 bg-white">
-                  <input value={capa.limiteIP} onChange={(e) => handleCapaChange(capa.id, "limiteIP", e.target.value)} onBlur={() => saveLayerField(capa.id, "limiteIP", capa.limiteIP)} className="w-full text-center border-none font-normal text-black focus:ring-0" />
-                </td>
-                <td className="border-r border-black p-1 bg-white">
-                  <input value={capa.humedad} onChange={(e) => handleCapaChange(capa.id, "humedad", e.target.value)} onBlur={() => saveLayerField(capa.id, "humedad", capa.humedad)} className="w-full text-center border-none font-normal text-black focus:ring-0" />
-                </td>
-                <td className="border-r border-black p-1 bg-white">
-                  <input value={capa.clasificacionUSCS} onChange={(e) => handleCapaChange(capa.id, "clasificacionUSCS", e.target.value)} onBlur={() => saveLayerField(capa.id, "clasificacionUSCS", capa.clasificacionUSCS)} className="w-full text-center border-none uppercase font-normal text-primary focus:ring-0" placeholder="ML" />
+                   <input value={c.clasificacionUSCS} onBlur={() => handleSimpleFieldSave(`L${c.id}: clasificacionUSCS`, 'Estratigrafía', c.clasificacionUSCS)} onChange={(e) => setCapas(p => p.map(l => l.id === c.id ? {...l, clasificacionUSCS: e.target.value.toUpperCase()} : l))} className="w-full text-center border-none uppercase font-bold text-primary focus:ring-0 p-0" placeholder="ML" />
                 </td>
                 <td className="p-1 text-center print:hidden bg-white">
-                  <div className="flex flex-col items-center gap-1.5">
-                    <button 
-                      onClick={() => saveWholeLayer(capa)} 
-                      className={cn("p-1 transition-colors", isLayerSaved(capa.id) ? "text-green-600" : "text-black hover:text-primary")}
-                      title="Sincronizar Estrato localmente"
-                    >
-                      {isLayerSaving(capa.id) ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : isLayerSaved(capa.id) ? (
-                        <div className="rounded-full bg-green-100 p-0.5"><Check className="h-2.5 w-2.5 text-green-600" /></div>
-                      ) : (
-                        <Check className="h-4 w-4" />
-                      )}
-                    </button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => eliminarCapa(capa.id)} 
-                      disabled={capas.length === 1} 
-                      className="h-6 w-6 text-neutral-600 hover:bg-neutral-100"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+                   <button onClick={() => setCapas(prev => prev.filter(l => l.id !== c.id))} disabled={capas.length === 1} className="text-neutral-400 hover:text-red-600"><Trash2 className="h-3 w-3" /></button>
                 </td>
               </tr>
             ))}
@@ -620,32 +448,13 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         <Button variant="outline" size="sm" onClick={agregarCapa} className="w-full h-10 border-dashed border-neutral-400 font-normal uppercase text-[10px] tracking-widest text-black rounded-none"><Plus className="h-4 w-4 mr-2" />Agregar Estrato</Button>
       </div>
 
-      <div className="border-b border-black">
-        <div className="bg-neutral-100 p-2 border-b border-black flex items-center gap-2">
-           <span className="font-normal text-[10px] uppercase text-black">Observaciones:</span>
-        </div>
-        <div className="flex">
-          <Textarea value={formData.observaciones.value ?? ""} onChange={(e) => handleFormChange("observaciones", e.target.value)} className="border-0 font-normal text-xs min-h-[80px] p-3 resize-none rounded-none text-black shadow-none focus-visible:ring-0" />
-          <button onClick={() => saveParam("observaciones", 'General')} className={cn("p-4 bg-white border-l border-black hover:bg-neutral-50 transition-colors", savedFields["observaciones"] ? "text-green-600" : "text-black")}>
-            {savingFields["observaciones"] ? <Loader2 className="h-4 w-4 animate-spin" /> : savedFields["observaciones"] ? <div className="rounded-full bg-green-100 p-1"><Check className="h-4 w-4" /></div> : <Check className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
-
       <div className="p-4 bg-neutral-50 print:hidden">
         <PhotoRegistry reportId={reportId} formId={formId} stationId={stationId} medium="suelo" />
       </div>
 
       <div className="p-4 border-t border-black bg-white print:hidden">
-        <Button onClick={handleCerrarPlanilla} className="w-full h-12 bg-black hover:bg-neutral-900 text-white font-normal uppercase tracking-widest text-[11px] shadow-xl rounded-none">Finalizar y Cerrar Sondeo</Button>
+        <Button onClick={() => { handleSimpleFieldSave("Fecha_Cierre", "Control", new Date().toLocaleString()); onClose?.(); }} className="w-full h-12 bg-black hover:bg-neutral-900 text-white uppercase tracking-widest text-[11px] shadow-xl rounded-none">Finalizar y Cerrar Sondeo</Button>
       </div>
-
-      <style jsx global>{`
-        @media print {
-          body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-          .print\\:hidden { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }
