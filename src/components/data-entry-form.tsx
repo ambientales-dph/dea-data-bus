@@ -967,10 +967,6 @@ export function DataEntryForm({
       await deleteDoc(doc(db, 'custom_templates', templateId));
       toast({ title: "Planilla eliminada de tus opciones" });
       setTemplateToDelete(null);
-      // Foco explícito tras actualizar estado
-      setTimeout(() => {
-        document.getElementById('planillas-menu-trigger')?.focus();
-      }, 150);
     } catch (e) {
       console.error(e);
       toast({ variant: "destructive", title: "Error al eliminar" });
@@ -1143,9 +1139,14 @@ export function DataEntryForm({
           <AlertDialogContent 
             onCloseAutoFocus={(e) => {
               e.preventDefault();
+              // Técnica de Foco Blindado para evitar race condition
               const trigger = document.getElementById('planillas-menu-trigger');
               if (trigger) {
-                setTimeout(() => trigger.focus(), 50);
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    trigger.focus({ preventScroll: true });
+                  }, 10);
+                });
               }
             }}
             className="border-t-4 border-t-destructive rounded-none"
