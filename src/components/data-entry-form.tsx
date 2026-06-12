@@ -12,13 +12,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation, FolderOpen, Pencil, Settings, Trash2, FolderKanban } from 'lucide-react';
+import { MapPin, Send, PlusCircle, Database, FileText, Search, Loader2, ArrowLeft, Check, X, Briefcase, LayoutList, Star, ChevronRight, User, Clock, Navigation, FolderOpen, Pencil, Settings, Trash2, FolderKanban, ChevronDown } from 'lucide-react';
 import { SelectedPoint } from '@/app/page';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { SamplingReportForm } from './sampling-report-form';
 import { ReportList } from './report-list';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { MONITORING_TEMPLATES, BASIN_CODES_DATA } from '@/app/lib/monitoring-constants';
@@ -26,6 +25,24 @@ import { isUserAdmin } from '@/app/lib/auth-config';
 import { AdminDeleteDialog } from './admin-delete-dialog';
 import { ref, listAll, deleteObject } from 'firebase/storage';
 import { SurveyManager } from './survey-manager';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function isPointInPoly(pt: [number, number], poly: [number, number][][]) {
   for (let i = 0; i < poly.length; i++) {
@@ -232,7 +249,6 @@ function DataExplorer({
       <ScrollArea className="h-[calc(100vh-250px)] pr-2">
         <div className="space-y-0">
           <Accordion type="multiple" className="w-full">
-            {/* Sección de Campañas Colapsable */}
             <AccordionItem value="section-campañas" className="border-none mb-4">
               <AccordionTrigger className="py-2 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:h-4 [&>svg]:w-4">
                 <h2 className="text-[12px] font-normal uppercase tracking-[0.2em] text-black flex items-center gap-2">
@@ -269,7 +285,6 @@ function DataExplorer({
               </AccordionContent>
             </AccordionItem>
 
-            {/* Sección de Explorador de Datos (Árbol de Estaciones) */}
             <AccordionItem value="section-estaciones" className="border-none">
               <AccordionTrigger className="py-2 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:h-4 [&>svg]:w-4">
                 <h2 className="text-[12px] font-normal uppercase tracking-[0.2em] text-black flex items-center gap-2">
@@ -426,6 +441,7 @@ export function DataEntryForm({
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [projectSearch, setProjectSearch] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('agua_superficial');
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
   const [editLat, setEditLat] = useState('');
   const [editLon, setEditLon] = useState('');
@@ -453,7 +469,7 @@ export function DataEntryForm({
 
   const customTemplatesQuery = useMemo(() => {
     if (!db || !user) return null;
-    return query(collection(db, 'custom_templates'));
+    return query(collection(db, 'custom_templates'), orderBy('createdAt', 'desc'));
   }, [db, user]);
   const { data: customTemplates } = useCollection(customTemplatesQuery);
 
@@ -671,7 +687,6 @@ export function DataEntryForm({
           }
           stationForm.setValue('name', `${prefix}${nextNumber.toString().padStart(4, '0')}`);
         } catch (error) {
-          // Fallback offline: nombre temporal
           stationForm.setValue('name', `${prefix}TEMP-${Date.now().toString().slice(-4)}`);
         } finally {
           setIsGeneratingName(false);
@@ -784,7 +799,6 @@ export function DataEntryForm({
     setIsDeletingStation(true);
     const stationRef = doc(db, 'stations', selectedPoint.stationId);
     
-    // BORRADO OPTIMISTA
     deleteDoc(stationRef).catch(async (error) => { 
        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: stationRef.path, operation: 'delete' })); 
     });
@@ -853,7 +867,6 @@ export function DataEntryForm({
       setActiveView('report-entry');
       toast({ title: "Reporte iniciado", description: oid });
     } catch (e) {
-      // Fallback offline para OID
       const fallbackOid = `${prefix}OFF-${Date.now().toString().slice(-4)}`;
       const newReportRef = doc(collection(db, 'reports'));
       const reportData = { oid: fallbackOid, stationId: selectedPoint.stationId, trelloCardName: selectedProject || '', description: reportEditDesc || '', createdAt: serverTimestamp(), createdByEmail: user.email, status: 'open', editors: [user.email], surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId };
@@ -890,7 +903,6 @@ export function DataEntryForm({
     let templateId = 'agua_superficial';
     if (planilla.protocol && !planilla.protocol.startsWith('PP-001')) templateId = planilla.protocol;
     else if (planilla.protocol === 'PP-001') {
-      // Intentar deducir el templateId si es posible (en el futuro se debería guardar customTemplateId)
       templateId = 'personalizada'; 
     } else { 
       const foundTemplate = MONITORING_TEMPLATES.find(t => t.medium === planilla.medium); 
@@ -906,11 +918,9 @@ export function DataEntryForm({
     const targetFid = deletingPlanilla.fid;
     setIsDeletingPlanilla(true);
 
-    // BORRADO OPTIMISTA UI
     setDeletingPlanilla(null);
     toast({ title: "Eliminando planilla", description: "Los datos se están limpiando localmente." });
 
-    // Proceso en segundo plano sin bloquear
     (async () => {
       try {
         const q = query(collection(db, 'samples'), where('reportId', '==', currentReportId), where('formId', '==', targetFid));
@@ -950,6 +960,18 @@ export function DataEntryForm({
     if (station) handleExplorerSelectReport(station, reportId);
     else getDoc(doc(db, 'stations', stationId)).then(snap => { if (snap.exists()) handleExplorerSelectReport({ id: snap.id, ...snap.data() }, reportId); });
   }, [stations, db, handleExplorerSelectReport]);
+
+  const handleDeleteCustomTemplate = async (templateId: string) => {
+    if (!db) return;
+    try {
+      await deleteDoc(doc(db, 'custom_templates', templateId));
+      toast({ title: "Planilla eliminada de tus opciones" });
+      setTemplateToDelete(null);
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Error al eliminar" });
+    }
+  };
 
   if (activeView === 'campañas') {
     return <SurveyManager 
@@ -1022,6 +1044,17 @@ export function DataEntryForm({
 
   if (activeView === 'select-template' && selectedPoint.stationId) {
     const associatedCampaign = campañas?.find((l: any) => l.id === currentReportData?.surveyId);
+    
+    // Etiqueta del botón según el template seleccionado
+    const getActiveTemplateLabel = () => {
+      if (selectedTemplate === 'personalizada') return 'Crear Planilla Personalizada';
+      if (selectedTemplate.startsWith('custom_')) {
+        const id = selectedTemplate.replace('custom_', '');
+        return customTemplates?.find((ct: any) => ct.id === id)?.name || 'Planilla Personalizada';
+      }
+      return MONITORING_TEMPLATES.find(t => t.id === selectedTemplate)?.nombre || 'Seleccionar...';
+    };
+
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
         <Button variant="ghost" size="sm" onClick={() => currentReportId ? setActiveView('summary') : setActiveView('select-project')} className="mb-2 text-black font-normal"><ArrowLeft className="mr-2 h-4 w-4" /> Volver atrás</Button>
@@ -1031,20 +1064,90 @@ export function DataEntryForm({
             {currentReportId && (
               <Accordion type="single" collapsible className="w-full border rounded-none overflow-hidden">
                 <AccordionItem value="edit-report" className="border-none"><AccordionTrigger className="px-4 py-2 hover:bg-neutral-50 hover:no-underline text-xs font-normal uppercase text-black"><div className="flex items-center gap-2"><Settings className="h-4 w-4" /> Ajustes del Reporte</div></AccordionTrigger><AccordionContent className="px-4 py-3 bg-neutral-50 border-t space-y-4">
-                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Campaña (Agrupador)</Label><Select value={reportSurveyId} onValueChange={setReportSurveyId}><SelectTrigger className="h-10 text-xs rounded-none bg-white"><SelectValue placeholder="Sin vinculación" /></SelectTrigger><SelectContent><SelectItem value="sin-vinculo" className="text-xs">Sin vinculación</SelectItem>{campañas?.map((l: any) => (<SelectItem key={l.id} value={l.id} className="text-xs">{l.oid}</SelectItem>))}</SelectContent></Select></div>
-                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Proyecto Asociado</Label><Select value={selectedProject} onValueChange={(val) => { setSelectedProject(val); setProjectSearch(val); }}><SelectTrigger className="h-10 text-xs rounded-none bg-white"><SelectValue placeholder="Sin proyecto" /></SelectTrigger><SelectContent><SelectItem value="sin-proyecto" className="text-xs">Sin Proyecto</SelectItem>{trelloProjects.map((p) => (<SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>))}</SelectContent></Select></div>
-                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Descripción / Notas</Label><Textarea placeholder="Notas sobre el monitoreo..." className="text-xs rounded-none min-h-[80px] bg-white" value={reportEditDesc} onChange={(e) => setReportEditDesc(e.target.value)} /></div>
+                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Campaña (Agrupador)</Label><div className="bg-white border rounded-none overflow-hidden"><select value={reportSurveyId} onChange={(e) => setReportSurveyId(e.target.value)} className="w-full h-10 text-xs px-2 focus:ring-0 outline-none uppercase bg-transparent text-black font-normal"><option value="sin-vinculo">Sin vinculación</option>{campañas?.map((l: any) => (<option key={l.id} value={l.id}>{l.oid}</option>))}</select></div></div>
+                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Proyecto Asociado</Label><div className="bg-white border rounded-none overflow-hidden"><select value={selectedProject} onChange={(e) => { setSelectedProject(e.target.value); setProjectSearch(e.target.value); }} className="w-full h-10 text-xs px-2 focus:ring-0 outline-none uppercase bg-transparent text-black font-normal"><option value="sin-proyecto">Sin Proyecto</option>{trelloProjects.map((p) => (<option key={p} value={p}>{p}</option>))}</select></div></div>
+                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Descripción / Notas</Label><Textarea placeholder="Notas sobre el monitoreo..." className="text-xs rounded-none min-h-[80px] bg-white text-black font-normal" value={reportEditDesc} onChange={(e) => setReportEditDesc(e.target.value)} /></div>
                     <Button className="w-full h-10 bg-black text-white rounded-none text-[10px] font-normal uppercase tracking-widest" onClick={handleSaveReportEdits}>Guardar Ajustes</Button>
                 </AccordionContent></AccordionItem>
               </Accordion>
             )}
-            <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Nueva Planilla</Label><div className="flex gap-2"><Select value={selectedTemplate} onValueChange={setSelectedTemplate}><SelectTrigger className="h-11 flex-1 text-xs font-normal border-accent/20 bg-accent/5 text-black rounded-none"><SelectValue placeholder="Elegí un protocolo..." /></SelectTrigger><SelectContent><SelectItem value="personalizada" className="text-xs font-normal text-black flex items-center gap-1"><Star className="h-3 w-3 inline mr-1 fill-accent" /> Crear Planilla Personalizada</SelectItem>{customTemplates && customTemplates.length > 0 && (<><Separator className="my-1" /><div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Tus Planillas</div>{customTemplates.map((ct: any) => (<SelectItem key={ct.id} value={`custom_${ct.id}`} className="text-xs">{ct.name}</SelectItem>))}</>)}<Separator className="my-1" /><div className="px-2 py-1.5 text-[10px] font-normal text-black uppercase">Plantillas del Sistema</div>{MONITORING_TEMPLATES.map((t) => (<SelectItem key={t.id} value={t.id} className="text-xs">{t.nombre}</SelectItem>))}</SelectContent></Select><Button className="h-11 px-4 bg-primary hover:bg-primary/90 font-normal uppercase tracking-widest text-white rounded-none" disabled={isStartingReport} onClick={handleConfirmTemplate}>{isStartingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : "INICIAR CARGA"}</Button></div></div>
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Nueva Planilla</Label>
+              <div className="flex gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-11 flex-1 text-xs font-normal border-accent/20 bg-accent/5 text-black rounded-none justify-between hover:bg-accent/10">
+                      <span className="truncate">{getActiveTemplateLabel()}</span>
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-72 shadow-2xl border-accent/20 rounded-none bg-white p-1">
+                    <DropdownMenuItem onSelect={() => setSelectedTemplate('personalizada')} className="text-xs font-normal text-black py-2.5 cursor-pointer">
+                      <Star className="h-3.5 w-3.5 inline mr-2 fill-accent text-accent" /> Crear Planilla Personalizada
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[9px] font-normal text-black uppercase tracking-widest py-1.5 px-2">Plantillas del Sistema</DropdownMenuLabel>
+                    {MONITORING_TEMPLATES.map((t) => (
+                      <DropdownMenuItem key={t.id} onSelect={() => setSelectedTemplate(t.id)} className={cn("text-xs font-normal text-black py-2 cursor-pointer", selectedTemplate === t.id && "bg-accent/10")}>
+                        {t.nombre}
+                      </DropdownMenuItem>
+                    ))}
+
+                    {customTemplates && customTemplates.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-[9px] font-normal text-black uppercase tracking-widest py-1.5 px-2">Tus Planillas (PP-001)</DropdownMenuLabel>
+                        <ScrollArea className="h-48">
+                          {customTemplates.map((ct: any) => (
+                            <div key={ct.id} className="group relative">
+                              <DropdownMenuItem onSelect={() => setSelectedTemplate(`custom_${ct.id}`)} className={cn("text-xs font-normal text-black py-2.5 pl-2 pr-10 cursor-pointer", selectedTemplate === `custom_${ct.id}` && "bg-accent/10")}>
+                                <div className="flex flex-col">
+                                  <span className="truncate">{ct.name}</span>
+                                  <span className="text-[8px] opacity-40 uppercase tracking-tighter">Creado: {formatDate(ct.createdAt)}</span>
+                                </div>
+                              </DropdownMenuItem>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setTemplateToDelete(ct.id); }} 
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-neutral-300 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                                title="Eliminar de la lista"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </ScrollArea>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button className="h-11 px-4 bg-primary hover:bg-primary/90 font-normal uppercase tracking-widest text-white rounded-none" disabled={isStartingReport} onClick={handleConfirmTemplate}>
+                  {isStartingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : "INICIAR"}
+                </Button>
+              </div>
+            </div>
+
             {currentReportId && existingPlanillas.length > 0 && (
               <div className="space-y-3 pt-2"><Label className="text-[10px] uppercase font-normal text-black flex items-center gap-1.5 px-1">Planillas en este reporte (Editar)</Label><div className="grid grid-cols-1 gap-2">{existingPlanillas.map((p) => { const protocolLabel = getProtocolLabel(p.protocol, p.medium, p.protocol, p.customName); return (<div key={p.formId} className="group relative"><button onClick={() => handleReopenPlanilla(p)} className="w-full flex items-center justify-between p-3 rounded-none bg-neutral-100 border border-neutral-300 hover:bg-primary/5 hover:border-primary/30 transition-all"><div className="flex items-center gap-3"><div className="p-1.5 rounded-none bg-white shadow-sm border"><FileText className="h-3.5 w-3.5 text-black" /></div><div className="text-left"><p className="text-xs text-black uppercase tracking-tight font-normal">{p.formId}</p><div className="flex flex-col mt-0.5"><p className="text-[9px] text-black uppercase font-normal">{protocolLabel} <span className="opacity-60 font-normal ml-1">({p.count})</span></p><div className="flex items-center gap-2 text-[9px] text-black font-normal uppercase tracking-tighter mt-1"><span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatDate(p.timestamp)}</span><span className="flex items-center gap-0.5"><User className="h-2.5 w-2.5" /> {p.userEmail?.split('@')[0]}</span></div></div></div></div><ChevronRight className="h-4 w-4 text-black group-hover:translate-x-1 transition-all" /></button>{isAdmin && (<button onClick={(e) => { e.stopPropagation(); setDeletingPlanilla({ fid: p.formId, label: protocolLabel }); }} className="absolute -top-2 -right-2 h-6 w-6 bg-neutral-600 text-white rounded-full flex items-center justify-center shadow-md z-10" title="BORRAR PLANILLA"><Trash2 className="h-3 w-3" /></button>)}</div>); })}</div></div>
             )}
           </CardContent>
         </Card>
+        
         {deletingPlanilla && <AdminDeleteDialog open={!!deletingPlanilla} onOpenChange={(o) => !o && setDeletingPlanilla(null)} onConfirm={handleDeletePlanilla} title={`Borrar Planilla ${deletingPlanilla.label}`} description={`Vas a eliminar todos los registros de la planilla ${deletingPlanilla.fid}.`} isLoading={isDeletingPlanilla} />}
+        
+        <AlertDialog open={!!templateToDelete} onOpenChange={(o) => !o && setTemplateToDelete(null)}>
+          <AlertDialogContent className="border-t-4 border-t-destructive rounded-none">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-sm font-normal uppercase text-black">Eliminar Planilla Personalizada</AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-black">¿Estás seguro de eliminar esta planilla de tu catálogo? Esta acción no borrará los datos ya cargados en los reportes, solo quitará la opción de elegirla para nuevas cargas.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-row gap-2">
+              <AlertDialogCancel className="flex-1 rounded-none border-black m-0 text-[10px] uppercase text-black font-normal">Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => templateToDelete && handleDeleteCustomTemplate(templateToDelete)} className="flex-1 rounded-none bg-destructive text-white m-0 text-[10px] uppercase font-normal">Eliminar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -1092,21 +1195,21 @@ export function DataEntryForm({
                 <div className="flex items-center justify-between py-2 border-b border-neutral-200">
                   <Label htmlFor="station-name" className="text-[10px] font-normal uppercase text-black shrink-0">ETIQUETA</Label>
                   <div className="relative flex-1 flex justify-end">
-                    <Input id="station-name" placeholder="EMA0000" {...stationForm.register('name')} className="text-black font-body text-[12px] h-8 border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" />
+                    <input id="station-name" placeholder="EMA0000" {...stationForm.register('name')} className="text-black font-body text-[12px] h-8 border-none shadow-none focus:ring-0 rounded-none bg-transparent text-right pr-0 w-full outline-none" />
                     {isGeneratingName && <div className="absolute right-0 top-2"><Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" /></div>}
                   </div>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-neutral-200">
                   <Label htmlFor="station-aka" className="text-[10px] font-normal uppercase text-black shrink-0">AKA / ALIAS</Label>
-                  <Input id="station-aka" placeholder="Nombre alternativo..." {...stationForm.register('aka')} className="text-black font-body text-[12px] h-8 border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" />
+                  <input id="station-aka" placeholder="Nombre alternativo..." {...stationForm.register('aka')} className="text-black font-body text-[12px] h-8 border-none shadow-none focus:ring-0 rounded-none bg-transparent text-right pr-0 w-full outline-none" />
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-neutral-200">
                   <Label className="text-[10px] font-normal uppercase text-black shrink-0">LATITUD</Label>
-                  <Input type="text" value={editLat} onChange={(e) => handleManualCoordChange('lat', e.target.value)} className="h-8 text-[12px] font-body text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" />
+                  <input type="text" value={editLat} onChange={(e) => handleManualCoordChange('lat', e.target.value)} className="h-8 text-[12px] font-body text-black border-none shadow-none focus:ring-0 rounded-none bg-transparent text-right pr-0 w-full outline-none" />
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-neutral-200">
                   <Label className="text-[10px] font-normal uppercase text-black shrink-0">LONGITUD</Label>
-                  <Input type="text" value={editLon} onChange={(e) => handleManualCoordChange('lon', e.target.value)} className="h-8 text-[12px] font-body text-black border-none shadow-none focus-visible:ring-0 rounded-none bg-transparent text-right pr-0 w-full" />
+                  <input type="text" value={editLon} onChange={(e) => handleManualCoordChange('lon', e.target.value)} className="h-8 text-[12px] font-body text-black border-none shadow-none focus:ring-0 rounded-none bg-transparent text-right pr-0 w-full outline-none" />
                 </div>
                 <div className="py-3 border-b border-neutral-200 space-y-2">
                   <Label htmlFor="description" className="text-[10px] font-normal uppercase text-black">DESCRIPCIÓN / NOTAS</Label>
