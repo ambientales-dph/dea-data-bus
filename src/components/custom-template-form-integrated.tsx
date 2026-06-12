@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -101,6 +100,10 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
             }
           }
           if (data.isDeferred !== undefined) foundDeferred = data.isDeferred;
+          // Actualizamos el título si lo encontramos en alguna muestra
+          if (data.protocolName && data.protocolName !== currentTitle) {
+            setCurrentTitle(data.protocolName);
+          }
         });
 
         setFormData(newFormData);
@@ -114,7 +117,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
     };
 
     fetchExistingData();
-  }, [db, reportId, formId]);
+  }, [db, reportId, formId, currentTitle]);
 
   const handleReadingChange = (analyteName: string, readingId: string, value: string) => {
     setFormData(prev => {
@@ -203,7 +206,9 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
           isDeferred,
           userId: user.uid,
           userEmail: user.email,
-          capturedAt: Timestamp.fromMillis(reading.capturedAt)
+          capturedAt: Timestamp.fromMillis(reading.capturedAt),
+          protocol: 'PP-001',
+          protocolName: currentTitle
         };
 
         setDoc(sampleRef, payload, { merge: true });
@@ -265,7 +270,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                 <>
                   <h1 className="text-sm font-normal uppercase tracking-tight text-black font-headline">{currentTitle} • PP-001</h1>
                   <button onClick={() => setIsEditingTitle(true)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1">
-                    <Pencil className="h-3 w-3 text-black" />
+                    <Pencil className="h-3.5 w-3.5 text-black" />
                   </button>
                 </>
               )}

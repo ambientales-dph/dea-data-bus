@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -51,20 +50,24 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
   const { data: samples, loading: samplesLoading } = useCollection(samplesQuery);
 
   const groupedByPlanilla = useMemo(() => {
-    const groups: Record<string, { medium: string, protocol?: string, samples: any[] }> = {};
+    const groups: Record<string, { medium: string, protocol?: string, customName?: string, samples: any[] }> = {};
     samples.forEach((s: any) => {
       const fid = s.formId || 'legacy';
       if (!groups[fid]) {
-        let protocol = undefined;
-        if (s.medium === 'suelo') {
-          if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') protocol = 'suelo_geotecnia';
-          else protocol = 'suelo_edafologico';
-        } else if (s.medium === 'aire') {
-          protocol = 'calidad_aire';
+        let protocol = s.protocol || undefined;
+        if (!protocol) {
+          if (s.medium === 'suelo') {
+            if (s.analyte === 'sondeoNumero' || s.parameterType === 'Estratigrafía') protocol = 'suelo_geotecnia';
+            else protocol = 'suelo_edafologico';
+          } else if (s.medium === 'aire') {
+            protocol = 'calidad_aire';
+          }
         }
-        groups[fid] = { medium: s.medium || 'otro', protocol, samples: [] };
+        groups[fid] = { medium: s.medium || 'otro', protocol, customName: s.protocolName, samples: [] };
       }
       groups[fid].samples.push(s);
+      if (s.protocol) groups[fid].protocol = s.protocol;
+      if (s.protocolName) groups[fid].customName = s.protocolName;
     });
     return groups;
   }, [samples]);
@@ -111,7 +114,8 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
     })();
   };
 
-  const protocolLabel = (protocol: string | undefined, medium: string) => {
+  const protocolLabel = (protocol: string | undefined, medium: string, customName?: string) => {
+    if (protocol === 'PP-001' && customName) return customName;
     if (protocol === 'suelo_geotecnia') return 'Mecánica de suelos (MS-001)';
     if (protocol === 'suelo_edafologico') return 'Perfil Edafológico (PE-001)';
     if (protocol === 'calidad_aire' || medium === 'aire') return 'Calidad de Aire (CA-001)';
@@ -141,7 +145,7 @@ export function ReportDetail({ reportId, onClose }: ReportDetailProps) {
                     <div className="flex items-center gap-2">
                       <FileText className="h-3 w-3 text-accent" />
                       <span className="text-[10px] uppercase font-normal tracking-widest text-muted-foreground">
-                        {protocolLabel(data.protocol, data.medium)} {fid !== 'legacy' ? `(ID: ${fid.substring(0,8)})` : ''} <span className="opacity-60 font-normal ml-1">({data.samples.length})</span>
+                        {protocolLabel(data.protocol, data.medium, data.customName)} {fid !== 'legacy' ? `(ID: ${fid.substring(0,8)})` : ''} <span className="opacity-60 font-normal ml-1">({data.samples.length})</span>
                       </span>
                     </div>
                     {isAdmin && (
