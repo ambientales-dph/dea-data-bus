@@ -1045,7 +1045,6 @@ export function DataEntryForm({
   if (activeView === 'select-template' && selectedPoint.stationId) {
     const associatedCampaign = campañas?.find((l: any) => l.id === currentReportData?.surveyId);
     
-    // Etiqueta del botón según el template seleccionado
     const getActiveTemplateLabel = () => {
       if (selectedTemplate === 'personalizada') return 'Crear Planilla Personalizada';
       if (selectedTemplate.startsWith('custom_')) {
@@ -1076,7 +1075,7 @@ export function DataEntryForm({
               <div className="flex gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="h-11 flex-1 text-xs font-normal border-accent/20 bg-accent/5 text-black rounded-none justify-between hover:bg-accent/10">
+                    <Button id="planillas-menu-trigger" variant="outline" className="h-11 flex-1 text-xs font-normal border-accent/20 bg-accent/5 text-black rounded-none justify-between hover:bg-accent/10">
                       <span className="truncate">{getActiveTemplateLabel()}</span>
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
@@ -1137,7 +1136,14 @@ export function DataEntryForm({
         {deletingPlanilla && <AdminDeleteDialog open={!!deletingPlanilla} onOpenChange={(o) => !o && setDeletingPlanilla(null)} onConfirm={handleDeletePlanilla} title={`Borrar Planilla ${deletingPlanilla.label}`} description={`Vas a eliminar todos los registros de la planilla ${deletingPlanilla.fid}.`} isLoading={isDeletingPlanilla} />}
         
         <AlertDialog open={!!templateToDelete} onOpenChange={(o) => !o && setTemplateToDelete(null)}>
-          <AlertDialogContent className="border-t-4 border-t-destructive rounded-none">
+          <AlertDialogContent 
+            onCloseAutoFocus={(e) => {
+              e.preventDefault();
+              const trigger = document.getElementById('planillas-menu-trigger');
+              if (trigger) trigger.focus();
+            }}
+            className="border-t-4 border-t-destructive rounded-none"
+          >
             <AlertDialogHeader>
               <AlertDialogTitle className="text-sm font-normal uppercase text-black">Eliminar Planilla Personalizada</AlertDialogTitle>
               <AlertDialogDescription className="text-xs text-black">¿Estás seguro de eliminar esta planilla de tu catálogo? Esta acción no borrará los datos ya cargados en los reportes, solo quitará la opción de elegirla para nuevas cargas.</AlertDialogDescription>
