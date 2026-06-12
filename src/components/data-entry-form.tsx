@@ -967,6 +967,10 @@ export function DataEntryForm({
       await deleteDoc(doc(db, 'custom_templates', templateId));
       toast({ title: "Planilla eliminada de tus opciones" });
       setTemplateToDelete(null);
+      // Foco explícito tras actualizar estado
+      setTimeout(() => {
+        document.getElementById('planillas-menu-trigger')?.focus();
+      }, 150);
     } catch (e) {
       console.error(e);
       toast({ variant: "destructive", title: "Error al eliminar" });
@@ -1140,7 +1144,9 @@ export function DataEntryForm({
             onCloseAutoFocus={(e) => {
               e.preventDefault();
               const trigger = document.getElementById('planillas-menu-trigger');
-              if (trigger) trigger.focus();
+              if (trigger) {
+                setTimeout(() => trigger.focus(), 50);
+              }
             }}
             className="border-t-4 border-t-destructive rounded-none"
           >
@@ -1150,7 +1156,12 @@ export function DataEntryForm({
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-row gap-2">
               <AlertDialogCancel className="flex-1 rounded-none border-black m-0 text-[10px] uppercase text-black font-normal">Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={() => templateToDelete && handleDeleteCustomTemplate(templateToDelete)} className="flex-1 rounded-none bg-destructive text-white m-0 text-[10px] uppercase font-normal">Eliminar</AlertDialogAction>
+              <AlertDialogAction 
+                onClick={() => templateToDelete && handleDeleteCustomTemplate(templateToDelete)} 
+                className="flex-1 rounded-none bg-destructive text-white m-0 text-[10px] uppercase font-normal"
+              >
+                Eliminar
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

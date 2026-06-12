@@ -44,7 +44,16 @@ export function AdminDeleteDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="border-t-4 border-t-destructive rounded-none max-w-md">
+      <AlertDialogContent 
+        onCloseAutoFocus={(e) => {
+          // Intentamos devolver el foco a un elemento estable si el disparador desapareció
+          const fallback = document.getElementById('user-menu-trigger') || document.querySelector('header');
+          if (fallback instanceof HTMLElement) {
+            fallback.focus();
+          }
+        }}
+        className="border-t-4 border-t-destructive rounded-none max-w-md"
+      >
         <AlertDialogHeader>
           <div className="flex items-center gap-2 text-destructive mb-2">
             <AlertTriangle className="h-5 w-5" />
