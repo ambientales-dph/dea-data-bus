@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -46,11 +47,14 @@ export function AdminDeleteDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent 
         onCloseAutoFocus={(e) => {
-          // Intentamos devolver el foco a un elemento estable si el disparador desapareció
-          const fallback = document.getElementById('user-menu-trigger') || document.querySelector('header');
-          if (fallback instanceof HTMLElement) {
-            fallback.focus();
-          }
+          e.preventDefault();
+          // Aplicar retardo de seguridad de 200ms para asegurar estabilidad del DOM antes de re-enfocar
+          setTimeout(() => {
+            const fallback = document.getElementById('user-menu-trigger') || document.querySelector('header');
+            if (fallback instanceof HTMLElement) {
+              fallback.focus({ preventScroll: true });
+            }
+          }, 200);
         }}
         className="border-t-4 border-t-destructive rounded-none max-w-md"
       >

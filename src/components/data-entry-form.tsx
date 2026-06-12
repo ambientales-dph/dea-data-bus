@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -1063,7 +1064,7 @@ export function DataEntryForm({
             {currentReportId && (
               <Accordion type="single" collapsible className="w-full border rounded-none overflow-hidden">
                 <AccordionItem value="edit-report" className="border-none"><AccordionTrigger className="px-4 py-2 hover:bg-neutral-50 hover:no-underline text-xs font-normal uppercase text-black"><div className="flex items-center gap-2"><Settings className="h-4 w-4" /> Ajustes del Reporte</div></AccordionTrigger><AccordionContent className="px-4 py-3 bg-neutral-50 border-t space-y-4">
-                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Campaña (Agrupador)</Label><div className="bg-white border rounded-none overflow-hidden"><select value={reportSurveyId} onChange={(e) => setReportSurveyId(e.target.value)} className="w-full h-10 text-xs px-2 focus:ring-0 outline-none uppercase bg-transparent text-black font-normal"><option value="sin-vinculo">Sin vinculación</option>{campañas?.map((l: any) => (<option key={l.id} value={l.id}>{l.oid}</option>))}</select></div></div>
+                    <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Campaña (Agrupador)</Label><div className="bg-white border rounded-none overflow-hidden"><select value={reportSurveyId} onChange={(e) => setreportSurveyId(e.target.value)} className="w-full h-10 text-xs px-2 focus:ring-0 outline-none uppercase bg-transparent text-black font-normal"><option value="sin-vinculo">Sin vinculación</option>{campañas?.map((l: any) => (<option key={l.id} value={l.id}>{l.oid}</option>))}</select></div></div>
                     <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Proyecto Asociado</Label><div className="bg-white border rounded-none overflow-hidden"><select value={selectedProject} onChange={(e) => { setSelectedProject(e.target.value); setProjectSearch(e.target.value); }} className="w-full h-10 text-xs px-2 focus:ring-0 outline-none uppercase bg-transparent text-black font-normal"><option value="sin-proyecto">Sin Proyecto</option>{trelloProjects.map((p) => (<option key={p} value={p}>{p}</option>))}</select></div></div>
                     <div className="space-y-2"><Label className="text-[10px] uppercase font-normal text-black">Descripción / Notas</Label><Textarea placeholder="Notas sobre el monitoreo..." className="text-xs rounded-none min-h-[80px] bg-white text-black font-normal" value={reportEditDesc} onChange={(e) => setReportEditDesc(e.target.value)} /></div>
                     <Button className="w-full h-10 bg-black text-white rounded-none text-[10px] font-normal uppercase tracking-widest" onClick={handleSaveReportEdits}>Guardar Ajustes</Button>
@@ -1139,15 +1140,13 @@ export function DataEntryForm({
           <AlertDialogContent 
             onCloseAutoFocus={(e) => {
               e.preventDefault();
-              // Técnica de Foco Blindado para evitar race condition
-              const trigger = document.getElementById('planillas-menu-trigger');
-              if (trigger) {
-                requestAnimationFrame(() => {
-                  setTimeout(() => {
-                    trigger.focus({ preventScroll: true });
-                  }, 10);
-                });
-              }
+              // Forzar un retardo de seguridad (200ms) para que el trigger esté listo y Radix no interfiera
+              setTimeout(() => {
+                const trigger = document.getElementById('planillas-menu-trigger');
+                if (trigger) {
+                  trigger.focus({ preventScroll: true });
+                }
+              }, 200);
             }}
             className="border-t-4 border-t-destructive rounded-none"
           >
