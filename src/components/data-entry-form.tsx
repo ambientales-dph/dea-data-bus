@@ -34,16 +34,6 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 function isPointInPoly(pt: [number, number], poly: [number, number][][]) {
   for (let i = 0; i < poly.length; i++) {
@@ -442,7 +432,6 @@ export function DataEntryForm({
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [projectSearch, setProjectSearch] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('agua_superficial');
-  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
   const [editLat, setEditLat] = useState('');
   const [editLon, setEditLon] = useState('');
@@ -962,18 +951,6 @@ export function DataEntryForm({
     else getDoc(doc(db, 'stations', stationId)).then(snap => { if (snap.exists()) handleExplorerSelectReport({ id: snap.id, ...snap.data() }, reportId); });
   }, [stations, db, handleExplorerSelectReport]);
 
-  const handleDeleteCustomTemplate = async (templateId: string) => {
-    if (!db) return;
-    try {
-      await deleteDoc(doc(db, 'custom_templates', templateId));
-      toast({ title: "Planilla eliminada de tus opciones" });
-      setTemplateToDelete(null);
-    } catch (e) {
-      console.error(e);
-      toast({ variant: "destructive", title: "Error al eliminar" });
-    }
-  };
-
   if (activeView === 'campañas') {
     return <SurveyManager 
       onClose={() => { setPreSelectedSurveyId(null); setActiveView('summary'); }} 
@@ -1100,21 +1077,12 @@ export function DataEntryForm({
                         <DropdownMenuLabel className="text-[9px] font-normal text-black uppercase tracking-widest py-1.5 px-2">Tus Planillas (PP-001)</DropdownMenuLabel>
                         <ScrollArea className="h-48">
                           {customTemplates.map((ct: any) => (
-                            <div key={ct.id} className="group relative">
-                              <DropdownMenuItem onSelect={() => setSelectedTemplate(`custom_${ct.id}`)} className={cn("text-xs font-normal text-black py-2.5 pl-2 pr-10 cursor-pointer", selectedTemplate === `custom_${ct.id}` && "bg-accent/10")}>
-                                <div className="flex flex-col">
-                                  <span className="truncate">{ct.name}</span>
-                                  <span className="text-[8px] opacity-40 uppercase tracking-tighter">Creado: {formatDate(ct.createdAt)}</span>
-                                </div>
-                              </DropdownMenuItem>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setTemplateToDelete(ct.id); }} 
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-neutral-300 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                                title="Eliminar de la lista"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
+                            <DropdownMenuItem key={ct.id} onSelect={() => setSelectedTemplate(`custom_${ct.id}`)} className={cn("text-xs font-normal text-black py-2.5 pl-2 pr-2 cursor-pointer", selectedTemplate === `custom_${ct.id}` && "bg-accent/10")}>
+                              <div className="flex flex-col">
+                                <span className="truncate">{ct.name}</span>
+                                <span className="text-[8px] opacity-40 uppercase tracking-tighter">Creado: {formatDate(ct.createdAt)}</span>
+                              </div>
+                            </DropdownMenuItem>
                           ))}
                         </ScrollArea>
                       </>
@@ -1135,36 +1103,6 @@ export function DataEntryForm({
         </Card>
         
         {deletingPlanilla && <AdminDeleteDialog open={!!deletingPlanilla} onOpenChange={(o) => !o && setDeletingPlanilla(null)} onConfirm={handleDeletePlanilla} title={`Borrar Planilla ${deletingPlanilla.label}`} description={`Vas a eliminar todos los registros de la planilla ${deletingPlanilla.fid}.`} isLoading={isDeletingPlanilla} />}
-        
-        <AlertDialog open={!!templateToDelete} onOpenChange={(o) => !o && setTemplateToDelete(null)}>
-          <AlertDialogContent 
-            onCloseAutoFocus={(e) => {
-              e.preventDefault();
-              // Forzar un retardo de seguridad (200ms) para que el trigger esté listo y Radix no interfiera
-              setTimeout(() => {
-                const trigger = document.getElementById('planillas-menu-trigger');
-                if (trigger) {
-                  trigger.focus({ preventScroll: true });
-                }
-              }, 200);
-            }}
-            className="border-t-4 border-t-destructive rounded-none"
-          >
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm font-normal uppercase text-black">Eliminar Planilla Personalizada</AlertDialogTitle>
-              <AlertDialogDescription className="text-xs text-black">¿Estás seguro de eliminar esta planilla de tu catálogo? Esta acción no borrará los datos ya cargados en los reportes, solo quitará la opción de elegirla para nuevas cargas.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-row gap-2">
-              <AlertDialogCancel className="flex-1 rounded-none border-black m-0 text-[10px] uppercase text-black font-normal">Cancelar</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={() => templateToDelete && handleDeleteCustomTemplate(templateToDelete)} 
-                className="flex-1 rounded-none bg-destructive text-white m-0 text-[10px] uppercase font-normal"
-              >
-                Eliminar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     );
   }
