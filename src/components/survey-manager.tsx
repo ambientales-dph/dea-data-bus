@@ -17,6 +17,7 @@ import { TechnicianLink } from './technician-link';
 import { isUserAdmin } from '@/app/lib/auth-config';
 import { AdminDeleteDialog } from './admin-delete-dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { notifyPortalActivity } from '@/lib/portal-notifications';
 
 interface SurveyManagerProps {
   onClose: () => void;
@@ -167,6 +168,17 @@ export function SurveyManager({ onClose, onSurveySelected, onReportClick, initia
     try {
       const docRef = await addDoc(collection(db, 'levantamientos'), surveyData);
       toast({ title: "Campaña creada", description: `ID: ${finalOid}` });
+      
+      notifyPortalActivity(db, {
+        actionType: 'data_bus_survey_created',
+        projectName: trelloProject || finalOid,
+        surveyId: docRef.id,
+        userEmail: user.email || '',
+        userName: user.displayName || undefined,
+        userPhoto: user.photoURL,
+        details: `Inició la campaña de campo ${finalOid}${description ? `: ${description}` : ''}`,
+      });
+
       setSelectedSurveyId(docRef.id);
       setView('edit');
     } catch (e) {

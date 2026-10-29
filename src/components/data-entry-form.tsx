@@ -26,6 +26,7 @@ import { isUserAdmin } from '@/app/lib/auth-config';
 import { AdminDeleteDialog } from './admin-delete-dialog';
 import { ref, listAll, deleteObject } from 'firebase/storage';
 import { SurveyManager } from './survey-manager';
+import { notifyPortalActivity } from '@/lib/portal-notifications';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -853,6 +854,20 @@ export function DataEntryForm({
         }));
       });
 
+      notifyPortalActivity(db, {
+        actionType: 'data_bus_report_created',
+        projectName: selectedProject || 'Monitoreo de Campo DPH',
+        stationName: (stationDetails as any)?.name || selectedPoint.name || 'Estación',
+        stationId: selectedPoint.stationId,
+        reportId: newReportRef.id,
+        reportOid: oid,
+        surveyId: reportSurveyId === 'sin-vinculo' ? undefined : reportSurveyId,
+        userEmail: user.email || '',
+        userName: user.displayName || undefined,
+        userPhoto: user.photoURL,
+        details: `Inició el reporte ${oid} en ${(stationDetails as any)?.name || selectedPoint.name || 'estación'}`,
+      });
+
       setCurrentReportId(newReportRef.id);
       setActiveView('report-entry');
       toast({ title: "Reporte iniciado", description: oid });
@@ -861,6 +876,21 @@ export function DataEntryForm({
       const newReportRef = doc(collection(db, 'reports'));
       const reportData = { oid: fallbackOid, stationId: selectedPoint.stationId, trelloCardName: selectedProject || '', description: reportEditDesc || '', createdAt: serverTimestamp(), createdByEmail: user.email, status: 'open', editors: [user.email], surveyId: reportSurveyId === 'sin-vinculo' ? null : reportSurveyId };
       setDoc(newReportRef, reportData);
+
+      notifyPortalActivity(db, {
+        actionType: 'data_bus_report_created',
+        projectName: selectedProject || 'Monitoreo de Campo DPH',
+        stationName: (stationDetails as any)?.name || selectedPoint.name || 'Estación',
+        stationId: selectedPoint.stationId,
+        reportId: newReportRef.id,
+        reportOid: fallbackOid,
+        surveyId: reportSurveyId === 'sin-vinculo' ? undefined : reportSurveyId,
+        userEmail: user.email || '',
+        userName: user.displayName || undefined,
+        userPhoto: user.photoURL,
+        details: `Inició el reporte ${fallbackOid} en ${(stationDetails as any)?.name || selectedPoint.name || 'estación'}`,
+      });
+
       setCurrentReportId(newReportRef.id);
       setActiveView('report-entry');
     } finally { setIsStartingReport(false); }

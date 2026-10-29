@@ -21,6 +21,7 @@ import { CustomTemplateFormIntegrated } from './custom-template-form-integrated'
 import { MONITORING_TEMPLATES } from '@/app/lib/monitoring-constants';
 import { TechnicianLink } from './technician-link';
 import { getCurrentGPSLocation } from '@/lib/geo-utils';
+import { notifyPortalActivity } from '@/lib/portal-notifications';
 
 interface ManualEntry {
   value: string;
@@ -147,6 +148,18 @@ export function SamplingReportForm({ reportId, formId, stationId, onClose, templ
         if (user.email && reportRef) {
           updateDoc(reportRef, { editors: arrayUnion(user.email) });
         }
+
+        notifyPortalActivity(db, {
+          actionType: 'data_bus_samples_uploaded',
+          projectName: currentReportData?.trelloCardName || campaignData?.oid || 'Monitoreo de Campo DPH',
+          stationId,
+          reportId,
+          reportOid: currentReportData?.oid,
+          userEmail: user.email || '',
+          userName: user.displayName || undefined,
+          userPhoto: user.photoURL,
+          details: `Cargó datos de ${template.nombre || 'protocolo'} en reporte ${currentReportData?.oid || reportId}`,
+        });
       } catch (e) { console.error(e); }
     })();
   };

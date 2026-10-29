@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { getUserNameByEmail } from '@/app/lib/auth-config';
 import { compressImage } from '@/lib/image-processing';
 import { getCurrentGPSLocation } from '@/lib/geo-utils';
+import { notifyPortalActivity } from '@/lib/portal-notifications';
 import piexif from 'piexifjs';
 import {
   AlertDialog,
@@ -106,6 +107,16 @@ export function PhotoRegistry({ reportId, formId, stationId, medium, analyteTag 
       await addDoc(collection(db, 'samples'), photoData);
       await updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(() => {});
       
+      notifyPortalActivity(db, {
+        actionType: 'data_bus_photos_uploaded',
+        stationId,
+        reportId,
+        userEmail: user.email || '',
+        userName: user.displayName || undefined,
+        userPhoto: user.photoURL,
+        details: `Subió evidencia visual (${analyteTag || medium})`,
+      });
+
       await offlineStorage.removePhoto(photoId);
       setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
       
