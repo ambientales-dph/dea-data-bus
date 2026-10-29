@@ -2,18 +2,16 @@
 # https://firebase.google.com/docs/app-hosting/configure
 
 runConfig:
-  # Increase this value if you'd like to automatically spin up
-  # more instances in response to increased traffic.
   maxInstances: 1
 
 env:
-  # Secretos protegidos (manejados en Google Cloud Secret Manager)
+  # Claves de integración
   - variable: TRELLO_API_KEY
-    secret: TRELLO_API_KEY
+    value: "2c89a69c11e8410ed788d415a9acfbe0"
   - variable: TRELLO_API_TOKEN
-    secret: TRELLO_API_TOKEN
+    value: "ATTAaed41a799d381cc8f280bb685ac0a85781cb43dcc263e4d22470a2cb393fab4f93E0C295"
   - variable: GEMINI_API_KEY
-    secret: GEMINI_API_KEY
+    value: "AIzaSyCxF8RGxRZY6NQXzYkwwf6WCMK1ffSUvOg"
 
   # Variables públicas de configuración Firebase
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
