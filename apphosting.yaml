@@ -5,3 +5,32 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+
+env:
+  # Secretos protegidos (manejados en Google Cloud Secret Manager)
+  - variable: TRELLO_API_KEY
+    secret: TRELLO_API_KEY
+  - variable: TRELLO_API_TOKEN
+    secret: TRELLO_API_TOKEN
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+
+  # Variables públicas de configuración Firebase
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyDvb1qLm_raKBHZhLWnfzl55cdbvq55f7E"
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "studio-7793356696-41de0.firebaseapp.com"
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "studio-7793356696-41de0"
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "studio-7793356696-41de0.firebasestorage.app"
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "305117569173"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:305117569173:web:cbe28de7469b026b657b9c"
+
+  # Tableros de Trello vinculados
+  - variable: NEXT_PUBLIC_TRELLO_BOARD_ID_1
+    value: "5ffc801cf3f43446ad22e1b0"
+  - variable: NEXT_PUBLIC_TRELLO_BOARD_ID_2
+    value: "6182b5b73b68da8f804d5d82"
