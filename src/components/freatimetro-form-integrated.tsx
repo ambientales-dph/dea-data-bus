@@ -373,10 +373,10 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
                   <div className="flex items-center gap-1 border-l border-neutral-100 pl-2 ml-2">
                     <button 
                       onClick={() => saveReading(config.name, reading.id, config.category)}
-                      className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-300 hover:text-black")}
+                      className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-500 hover:text-black")}
                       title="Guardar lectura"
                     >
-                      {reading.isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className={cn("h-3.5 w-3.5", !reading.isSaved && "opacity-30")} />}
+                      {reading.isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                     </button>
                     <button 
                       onClick={() => addReading(config.name, config.unit)}

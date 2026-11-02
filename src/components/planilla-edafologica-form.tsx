@@ -342,7 +342,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
                       value={r.value} 
                       onChange={(e) => handleReadingChange(layerId, field, r.id, e.target.value)} 
                     />
-                    <button onClick={() => saveReading(layerId, field, r.id)} className={cn("p-0.5", r.isSaved ? "text-green-600" : "text-neutral-300")}>
+                    <button onClick={() => saveReading(layerId, field, r.id)} className={cn("p-0.5 transition-colors", r.isSaved ? "text-green-600" : "text-neutral-500 hover:text-black")}>
                       <Check className="h-3 w-3" />
                     </button>
                     <button onClick={() => addReading(layerId, field)} className="p-0.5 text-neutral-300 hover:text-black">
@@ -412,7 +412,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           <div className="flex items-center gap-2 flex-1 justify-end">
             <input type="text" className="h-7 w-48 text-right border-none bg-neutral-50 px-2 text-[12px] font-code text-black" value={osmQuery} onChange={(e) => handleOSMSearch(e.target.value)} placeholder="Buscar localidad..." />
             {isSearchingOSM ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3 text-neutral-400" />}
-            <button onClick={() => handleSimpleFieldSave("Lugar", "General", osmQuery)} className={cn("p-1", savedFields["Lugar"] ? "text-green-600" : "text-neutral-300")}><Check className="h-4 w-4" /></button>
+            <button onClick={() => handleSimpleFieldSave("Lugar", "General", osmQuery)} className={cn("p-1", savedFields["Lugar"] ? "text-green-600" : "text-neutral-500 hover:text-black")}><Check className="h-4 w-4" /></button>
           </div>
           {showOSMResults && (
             <div className="absolute top-full left-0 right-0 z-50 bg-white border shadow-xl mt-1"><ScrollArea className="h-40">{osmResults.map((res, i) => (<button key={i} onClick={() => { setOsmQuery(res.display_name); handleSimpleFieldSave("Lugar", "General", res.display_name); setShowOSMResults(false); }} className="w-full text-left p-2 hover:bg-neutral-50 text-[10px] uppercase">{res.display_name}</button>))}</ScrollArea></div>
@@ -423,7 +423,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
           <div className="flex items-center gap-2 flex-1 justify-end">
             <input type="text" className="h-7 w-48 text-right border-none bg-neutral-50 px-2 text-[12px] font-code text-black" value={formData["Punto_Muestreo"]?.value ?? ""} onChange={(e) => handleHeaderChange("Punto_Muestreo", e.target.value)} />
             <button onClick={captureGPS} className="p-1"><Locate className="h-4 w-4 text-primary" /></button>
-            <button onClick={() => handleSimpleFieldSave("Punto_Muestreo", "General", formData["Punto_Muestreo"]?.value)} className={cn("p-1", savedFields["Punto_Muestreo"] ? "text-green-600" : "text-neutral-300")}><Check className="h-4 w-4" /></button>
+            <button onClick={() => handleSimpleFieldSave("Punto_Muestreo", "General", formData["Punto_Muestreo"]?.value)} className={cn("p-1", savedFields["Punto_Muestreo"] ? "text-green-600" : "text-neutral-500 hover:text-black")}><Check className="h-4 w-4" /></button>
           </div>
         </div>
       </div>

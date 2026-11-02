@@ -379,10 +379,10 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
                               <div className="flex items-center gap-1 border-l border-neutral-100 pl-2 ml-2">
                                 <button 
                                   onClick={() => saveReading(param.nombre, reading.id, param.categoria, param.mediumKey)}
-                                  className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-black")}
+                                  className={cn("p-1 transition-colors", reading.isSaved ? "text-green-600" : "text-neutral-500 hover:text-black")}
                                   title="Guardar"
                                 >
-                                  {reading.isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className={cn("h-3.5 w-3.5", !reading.isSaved && "opacity-30")} />}
+                                  {reading.isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                                 </button>
                                 <button 
                                   onClick={() => addReading(param.nombre, param.unidades)}

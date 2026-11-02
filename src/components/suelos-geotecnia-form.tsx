@@ -344,7 +344,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                       value={r.value} 
                       onChange={(e) => handleReadingChange(layerId, field, r.id, e.target.value)} 
                     />
-                    <button onClick={() => saveReading(layerId, field, r.id)} className={cn("p-0.5", r.isSaved ? "text-green-600" : "text-neutral-300")}>
+                    <button onClick={() => saveReading(layerId, field, r.id)} className={cn("p-0.5 transition-colors", r.isSaved ? "text-green-600" : "text-neutral-500 hover:text-black")}>
                       <Check className="h-3 w-3" />
                     </button>
                     <button onClick={() => addReading(layerId, field)} className="p-0.5 text-neutral-300 hover:text-black">
@@ -414,7 +414,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
                 value={formData[f.id].value} onChange={(e) => handleHeaderChange(f.id, e.target.value)}
               />
               {f.gps && <button onClick={captureGPS} className="p-1"><Locate className="h-4 w-4 text-primary" /></button>}
-              <button onClick={() => handleSimpleFieldSave(f.id, f.cat, formData[f.id].value)} className={cn("p-1", savedFields[f.id] ? "text-green-600" : "text-neutral-300")}><Check className="h-4 w-4" /></button>
+              <button onClick={() => handleSimpleFieldSave(f.id, f.cat, formData[f.id].value)} className={cn("p-1", savedFields[f.id] ? "text-green-600" : "text-neutral-500 hover:text-black")}><Check className="h-4 w-4" /></button>
             </div>
           </div>
         ))}
