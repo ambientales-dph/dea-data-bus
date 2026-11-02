@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
 import { getCurrentGPSLocation } from '@/lib/geo-utils';
+import { evaluateReading } from '@/lib/guideline-evaluator';
+import { GuidelineAlertBadge } from './guideline-alert-badge';
 
 interface Reading {
   id: string;
@@ -351,6 +353,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
           {params.map((param) => {
             const state = formData[param.name] || { readings: [], unit: param.unit, isExpanded: false };
             const stats = calculateStats(state.readings);
+            const statsEval = stats ? evaluateReading('aire', param.name, stats.mean, param.unit) : null;
             const hasSavedValue = state.readings.some(r => r.isSaved);
             
             return (
@@ -375,8 +378,21 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
 
                   <div className="flex items-center gap-3">
                     {stats && (
-                       <div className="bg-neutral-100 px-3 py-1 rounded-sm border border-neutral-200 flex items-center gap-1.5" title="Media ± SE">
-                          <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean} ± {stats.error}</span>
+                       <div 
+                         className={cn(
+                           "px-3 py-1 rounded-sm border flex items-center gap-1.5 transition-colors",
+                           statsEval?.hasViolations 
+                             ? "bg-amber-50 border-amber-300 text-amber-900" 
+                             : "bg-neutral-100 border-neutral-200"
+                         )} 
+                         title="Media ± SE"
+                       >
+                          <span className={cn("text-[10px] font-code font-black", statsEval?.hasViolations ? "text-amber-700" : "text-primary")}>
+                            x̄: {stats.mean} ± {stats.error}
+                          </span>
+                          {statsEval?.hasViolations && (
+                            <GuidelineAlertBadge evaluation={statsEval} />
+                          )}
                        </div>
                     )}
                     <span className="text-[9px] font-bold text-neutral-300 px-2">{param.unit}</span>
@@ -385,14 +401,24 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
 
                 {state.isExpanded && (
                   <div className="bg-white pb-2 animate-in slide-in-from-top-1 duration-200 divide-y divide-neutral-50 border-t border-neutral-100">
-                    {state.readings.map((reading, idx) => (
+                    {state.readings.map((reading, idx) => {
+                      const readingEval = evaluateReading('aire', param.name, reading.value, param.unit);
+                      return (
                       <div key={reading.id} className="flex items-center justify-between gap-2 py-1 px-4 border-b border-neutral-50 last:border-0 hover:bg-neutral-50/50 transition-colors group">
                         <span className="text-[9px] font-normal uppercase text-neutral-300 group-hover:text-neutral-500 transition-colors shrink-0">L{idx + 1}</span>
                         <div className="flex items-center gap-2 flex-1 justify-end">
+                          {readingEval.hasViolations && (
+                            <GuidelineAlertBadge evaluation={readingEval} />
+                          )}
                           <input 
                             type="text" 
                             placeholder="0.00"
-                            className="h-7 w-20 border-none bg-transparent px-1 text-[11px] font-code text-black text-right outline-none focus:ring-0"
+                            className={cn(
+                              "h-7 w-20 px-1 text-[11px] font-code text-right outline-none focus:ring-0 transition-colors rounded-sm",
+                              readingEval.hasViolations 
+                                ? "border border-amber-400 bg-amber-50 text-amber-950 font-bold focus:border-amber-600 focus:bg-amber-100/50" 
+                                : "border-none bg-transparent text-black"
+                            )}
                             value={reading.value}
                             onChange={(e) => handleReadingChange(param.name, reading.id, e.target.value)}
                           />
@@ -421,7 +447,8 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                     {state.readings.length === 0 && (
                       <div className="p-4 text-center">
                         <p className="text-[9px] text-neutral-400 mb-2 uppercase tracking-wider italic">Sin lecturas para {param.name}</p>

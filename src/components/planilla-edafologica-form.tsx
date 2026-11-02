@@ -13,6 +13,8 @@ import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getCurrentGPSLocation } from '@/lib/geo-utils';
+import { evaluateReading } from '@/lib/guideline-evaluator';
+import { GuidelineAlertBadge } from './guideline-alert-badge';
 
 interface Reading {
   id: string;
@@ -308,17 +310,25 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
     const capa = capas.find(c => c.id === layerId);
     const state = capa?.multidata[field] || { readings: [], isExpanded: false };
     const stats = calculateStats(state.readings);
+    const statsEval = stats ? evaluateReading('suelo', field, stats.mean, unit) : null;
 
     return (
       <div className="flex flex-col gap-1 py-1">
         <button 
           onClick={() => setCapas(prev => prev.map(c => c.id === layerId ? { ...c, multidata: { ...c.multidata, [field]: { ...state, isExpanded: !state.isExpanded } } } : c))}
-          className="w-full text-center hover:bg-neutral-100 transition-colors py-0.5 rounded"
+          className="w-full text-center hover:bg-neutral-100 transition-colors py-0.5 rounded flex items-center justify-center gap-1"
         >
           {stats ? (
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-code font-black text-primary leading-none">{stats.mean}</span>
-              <span className="text-[7px] text-neutral-400 font-code leading-tight">±{stats.error}</span>
+            <div className="flex items-center gap-1">
+              <div className="flex flex-col items-center">
+                <span className={cn("text-[10px] font-code font-black leading-none", statsEval?.hasViolations ? "text-amber-700" : "text-primary")}>
+                  {stats.mean}
+                </span>
+                <span className="text-[7px] text-neutral-400 font-code leading-tight">±{stats.error}</span>
+              </div>
+              {statsEval?.hasViolations && (
+                <GuidelineAlertBadge evaluation={statsEval} />
+              )}
             </div>
           ) : (
             <span className="text-neutral-300 italic text-[9px]">---</span>
@@ -326,7 +336,7 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
         </button>
 
         {state.isExpanded && (
-          <div className="absolute z-[60] bg-white border border-neutral-300 shadow-2xl p-2 rounded-sm w-44 animate-in fade-in zoom-in-95 duration-200">
+          <div className="absolute z-[60] bg-white border border-neutral-300 shadow-2xl p-2 rounded-sm w-48 animate-in fade-in zoom-in-95 duration-200">
              <div className="flex items-center justify-between mb-1.5 border-b pb-1">
                 <span className="text-[8px] font-black uppercase text-neutral-400">{field} ({unit})</span>
                 <button onClick={() => setCapas(prev => prev.map(c => c.id === layerId ? { ...c, multidata: { ...c.multidata, [field]: { ...state, isExpanded: false } } } : c))}>
@@ -334,11 +344,21 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
                 </button>
              </div>
              <div className="space-y-1">
-                {state.readings.map((r, i) => (
+                {state.readings.map((r, i) => {
+                  const readingEval = evaluateReading('suelo', field, r.value, unit);
+                  return (
                   <div key={r.id} className="flex items-center gap-1">
                     <span className="text-[8px] text-neutral-300">L{i+1}</span>
+                    {readingEval.hasViolations && (
+                      <GuidelineAlertBadge evaluation={readingEval} />
+                    )}
                     <input 
-                      className="h-6 w-14 text-[10px] font-code border border-neutral-100 px-1 focus:ring-0 outline-none" 
+                      className={cn(
+                        "h-6 w-14 text-[10px] font-code px-1 focus:ring-0 outline-none transition-colors rounded-sm",
+                        readingEval.hasViolations 
+                          ? "border border-amber-400 bg-amber-50 text-amber-950 font-bold focus:border-amber-600 focus:bg-amber-100/50" 
+                          : "border border-neutral-100 bg-transparent text-black"
+                      )} 
                       value={r.value} 
                       onChange={(e) => handleReadingChange(layerId, field, r.id, e.target.value)} 
                     />
@@ -352,7 +372,8 @@ export function PlanillaEdafologicaForm({ reportId, formId, stationId, onClose }
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
                 {state.readings.length === 0 && (
                    <button onClick={() => addReading(layerId, field)} className="w-full h-7 text-[8px] uppercase border border-dashed border-neutral-300">Cargar</button>
                 )}

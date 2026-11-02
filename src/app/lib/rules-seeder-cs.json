@@ -1,0 +1,2816 @@
+[
+  {
+    "idRegla": "REG-CS-COT-SF-01",
+    "analyteId": "cot_porc",
+    "analito": "Carbono Orgánico Total COT",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Umbral Base (Suelos/Sedimentos) - NOAA SQuiRTs / Guías RIVM (Holanda)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.0,
+      "unidad": "%"
+    },
+    "metadata": {
+      "usoRecurso": "1. Umbral Base (Suelos/Sedimentos)",
+      "fuenteNormativa": "NOAA SQuiRTs / Guías RIVM (Holanda)",
+      "autoridadAplicacion": "NOAA SQuiRTs / Guías RIVM",
+      "comentarioTecnico": "Valor de referencia para un lecho mineral limpio con baja capacidad de adsorción.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-COT-SF-02",
+    "analyteId": "cot_porc",
+    "analito": "Carbono Orgánico Total COT",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Intervención (Retención) - Criterios Holandeses (RIVM) / EPA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "%"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Intervención (Retención)",
+      "fuenteNormativa": "Criterios Holandeses (RIVM) / EPA",
+      "autoridadAplicacion": "Criterios Holandeses",
+      "comentarioTecnico": "El COT es una esponja. > 5% indica un barro altamente adsorbente, disparando el riesgo de que metales e hidrocarburos estén atrapados.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CN-SF-01",
+    "analyteId": "cianuro_total_mg_kg",
+    "analito": "Cianuro Total",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía (Target Value) - RIVM Target (Holanda)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.01,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía (Target Value)",
+      "fuenteNormativa": "RIVM Target (Holanda)",
+      "autoridadAplicacion": "RIVM Target",
+      "comentarioTecnico": "Vara internacional de excelencia para calidad de sedimentos y protección de vida acuática.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CN-SF-02",
+    "analyteId": "cianuro_total_mg_kg",
+    "analito": "Cianuro Total",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Residencial/Agrícola - Dec. Reg. 831/93 (Ley 24.051 - PBA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.1,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Residencial/Agrícola",
+      "fuenteNormativa": "Dec. Reg. 831/93 (Ley 24.051 - PBA)",
+      "autoridadAplicacion": "Dec. Reg. 831/93",
+      "comentarioTecnico": "Límite legal nacional proxy. Superarlo implica un impacto industrial directo en el cauce.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CN-SF-03",
+    "analyteId": "cianuro_total_mg_kg",
+    "analito": "Cianuro Total",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite de Intervención / Peligroso - RIVM Intervention (Holanda)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 20.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite de Intervención / Peligroso",
+      "fuenteNormativa": "RIVM Intervention (Holanda)",
+      "autoridadAplicacion": "RIVM Intervention",
+      "comentarioTecnico": "Toxicidad aguda crítica. Exige paralizar cualquier obra de dragado para evitar solubilización letal.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CE-SF-01",
+    "analyteId": "conductividad_electrica_ue_ms_cm",
+    "analito": "Conductividad Eléctrica",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Límite Geotécnico / Agronómico - Guías FAO / Ley 24.051 (Suelos)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2000.0,
+      "unidad": "µS/cm"
+    },
+    "metadata": {
+      "usoRecurso": "1. Límite Geotécnico / Agronómico",
+      "fuenteNormativa": "Guías FAO / Ley 24.051 (Suelos)",
+      "autoridadAplicacion": "Guías FAO / Ley 24.051",
+      "comentarioTecnico": "Define la salinidad basal. Dato vital si se planea disponer el material dragado en los taludes para consolidación.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CE-SF-02",
+    "analyteId": "conductividad_electrica_ue_ms_cm",
+    "analito": "Conductividad Eléctrica",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Salinización Severa - Guías FAO / Criterios Agronómicos",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 4000.0,
+      "unidad": "µS/cm"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Salinización Severa",
+      "fuenteNormativa": "Guías FAO / Criterios Agronómicos",
+      "autoridadAplicacion": "Guías FAO / Criterios Agronómicos",
+      "comentarioTecnico": "Sedimento hipersalino. Material de descarte, inviable para uso de suelo o relleno en zonas vegetadas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FEN-SF-01",
+    "analyteId": "fenoles_totales_mg_kg",
+    "analito": "Fenoles Totales",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía (Target Value) - RIVM Target (Holanda) / CCME",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.05,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía (Target Value)",
+      "fuenteNormativa": "RIVM Target (Holanda) / CCME",
+      "autoridadAplicacion": "RIVM Target",
+      "comentarioTecnico": "Límite de protección estricto para ecosistemas acuáticos sensibles.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FEN-SF-02",
+    "analyteId": "fenoles_totales_mg_kg",
+    "analito": "Fenoles Totales",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Residencial/Agrícola - Dec. Reg. 831/93 (Ley 24.051 - PBA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Residencial/Agrícola",
+      "fuenteNormativa": "Dec. Reg. 831/93 (Ley 24.051 - PBA)",
+      "autoridadAplicacion": "Dec. Reg. 831/93",
+      "comentarioTecnico": "Tope legal nacional. Su superación acusa contaminación petroquímica o química persistente en el fondo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FEN-SF-03",
+    "analyteId": "fenoles_totales_mg_kg",
+    "analito": "Fenoles Totales",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Suelo Industrial - Dec. Reg. 831/93 (Ley 24.051 - PBA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 10.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Suelo Industrial",
+      "fuenteNormativa": "Dec. Reg. 831/93 (Ley 24.051 - PBA)",
+      "autoridadAplicacion": "Dec. Reg. 831/93",
+      "comentarioTecnico": "Frontera pericial. Si el barro supera esto, califica definitivamente como residuo peligroso.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-MO-SF-01",
+    "analyteId": "materia_organica_porc",
+    "analito": "Materia Orgánica",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Límite Geomecánico y Trófico - Geotecnia Ambiental / US-EPA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 10.0,
+      "unidad": "%"
+    },
+    "metadata": {
+      "usoRecurso": "1. Límite Geomecánico y Trófico",
+      "fuenteNormativa": "Geotecnia Ambiental / US-EPA",
+      "autoridadAplicacion": "Geotecnia Ambiental / US-EPA",
+      "comentarioTecnico": "Barros con > 10% son sapropélicos. Tienen pésima capacidad portante para fundaciones y consumen todo el oxígeno si se dragan.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PH-SF-01",
+    "analyteId": "ph_ue",
+    "analito": "pH",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Límite Inferior (Acidificación) - Dec. Reg. 831/93 (Ley 24.051 - PBA)",
+    "criterio": {
+      "operador": "MAYOR_IGUAL",
+      "valor": 6.0,
+      "unidad": "unidad pH"
+    },
+    "metadata": {
+      "usoRecurso": "1. Límite Inferior (Acidificación)",
+      "fuenteNormativa": "Dec. Reg. 831/93 (Ley 24.051 - PBA)",
+      "autoridadAplicacion": "Dec. Reg. 831/93",
+      "comentarioTecnico": "Frontera de acidificación legal nacional. Por debajo de pH 6, los metales pesados se solubilizan.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PH-SF-02",
+    "analyteId": "ph_ue",
+    "analito": "pH",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Inferior (Acidificación) - US-EPA (Sediment Quality)",
+    "criterio": {
+      "operador": "MAYOR_IGUAL",
+      "valor": 6.0,
+      "unidad": "unidad pH"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Inferior (Acidificación)",
+      "fuenteNormativa": "US-EPA (Sediment Quality)",
+      "autoridadAplicacion": "US-EPA",
+      "comentarioTecnico": "Frontera de acidificación internacional. Por debajo de pH 6, los metales pesados se solubilizan.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PH-SF-03",
+    "analyteId": "ph_ue",
+    "analito": "pH",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Superior (Alcalinización) - Dec. Reg. 831/93 (Ley 24.051 - PBA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 8.5,
+      "unidad": "unidad pH"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Superior (Alcalinización)",
+      "fuenteNormativa": "Dec. Reg. 831/93 (Ley 24.051 - PBA)",
+      "autoridadAplicacion": "Dec. Reg. 831/93",
+      "comentarioTecnico": "Frontera de alcalinidad legal nacional. Indica vuelcos industriales y solubiliza metaloides.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PH-SF-04",
+    "analyteId": "ph_ue",
+    "analito": "pH",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "4. Límite Superior (Alcalinización) - US-EPA (Sediment Quality)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 8.5,
+      "unidad": "unidad pH"
+    },
+    "metadata": {
+      "usoRecurso": "4. Límite Superior (Alcalinización)",
+      "fuenteNormativa": "US-EPA (Sediment Quality)",
+      "autoridadAplicacion": "US-EPA",
+      "comentarioTecnico": "Frontera de alcalinidad internacional. Indica vuelcos industriales y solubiliza metaloides.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-AS-SF-01",
+    "analyteId": "arsenico_mg_kg",
+    "analito": "Arsénico",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.9,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite ecológico estricto (coincide con tu sistema). Por encima de esto, el arsénico empieza a ser tóxico para los macroinvertebrados del fondo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-AS-SF-02",
+    "analyteId": "arsenico_mg_kg",
+    "analito": "Arsénico",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 20.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal argentino. Define si el sedimento dragado puede usarse para perfilar taludes vegetados o zonas de acceso público.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-AS-SF-03",
+    "analyteId": "arsenico_mg_kg",
+    "analito": "Arsénico",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Suelo Industrial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 50.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Suelo Industrial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Umbral de peligrosidad. Si el barro supera esto, se clasifica como residuo peligroso (Y24).",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CD-SF-01",
+    "analyteId": "cadmio_mg_kg",
+    "analito": "Cadmio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.6,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá)",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite ecológico base. El cadmio es altamente bioacumulable; superarlo activa protocolos de monitoreo íctico.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CD-SF-02",
+    "analyteId": "cadmio_mg_kg",
+    "analito": "Cadmio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 3.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Restricción argentina severa debido a la fácil transferencia del cadmio desde el suelo/barro a las raíces de las plantas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CD-SF-03",
+    "analyteId": "cadmio_mg_kg",
+    "analito": "Cadmio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Suelo Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Suelo Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Umbral legal para el contacto civil con el material removido.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CU-SF-01",
+    "analyteId": "cobre_mg_kg",
+    "analito": "Cobre",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 35.7,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá)",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Alerta ecológica. El cobre libre en sedimentos es letal para algas y estadios larvales de peces.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CU-SF-02",
+    "analyteId": "cobre_mg_kg",
+    "analito": "Cobre",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 100.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Frontera pericial nacional. Define la viabilidad del refulado del sedimento en los márgenes de la cuenca.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CRT-SF-01",
+    "analyteId": "cromo_total_mg_kg",
+    "analito": "Cromo Total",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 37.3,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá)",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Piso de sensibilidad biológica frente a la acumulación de cromo en el lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CRT-SF-02",
+    "analyteId": "cromo_total_mg_kg",
+    "analito": "Cromo Total",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Proxy (Cromo III) Agrícola - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 400.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Proxy (Cromo III) Agrícola",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "La ley asume que el cromo total en la naturaleza es mayormente Cr III. Límite para disposición rural.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CR6-SF-01",
+    "analyteId": "cromo_vi_mg_kg",
+    "analito": "Cromo VI",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Límite Ecológico / Target - RIVM (Holanda) / Criterios EPA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Límite Ecológico / Target",
+      "fuenteNormativa": "RIVM (Holanda) / Criterios EPA",
+      "autoridadAplicacion": "RIVM",
+      "comentarioTecnico": "Límite preventivo máximo. El Cr VI es cancerígeno, mutagénico y soluble; su presencia natural es casi nula.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CR6-SF-02",
+    "analyteId": "cromo_vi_mg_kg",
+    "analito": "Cromo VI",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 8.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Alerta roja legal en Argentina. Superar este valor cataloga de forma inmediata al sedimento como material contaminado agudo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-HG-SF-01",
+    "analyteId": "mercurio_mg_kg",
+    "analito": "Mercurio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.17,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica temprana. Coincide con tu captura. Superarlo indica enriquecimiento antrópico y riesgo biológico basal.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-HG-SF-02",
+    "analyteId": "mercurio_mg_kg",
+    "analito": "Mercurio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.48,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de daño comprobado en sedimentos. La fauna bentónica sufre toxicidad aguda por encima de este valor.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-HG-SF-03",
+    "analyteId": "mercurio_mg_kg",
+    "analito": "Mercurio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Suelo Agrícola - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Suelo Agrícola",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Límite legal nacional para disposición rural. El mercurio es tan móvil que la ley prohíbe usar barros con > 2 mg/kg en zonas de cultivo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-HG-SF-04",
+    "analyteId": "mercurio_mg_kg",
+    "analito": "Mercurio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "4. Límite Suelo Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "4. Límite Suelo Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Límite legal nacional civil. Tope normativo para usar el material dragado en perfilado de taludes, parques o zonas urbanizadas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-HG-SF-05",
+    "analyteId": "mercurio_mg_kg",
+    "analito": "Mercurio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "5. Límite Suelo Industrial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 24.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "5. Límite Suelo Industrial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Frontera pericial extrema. Superar este valor convierte al sedimento automáticamente en residuo peligroso (Y29) in situ.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-NI-SF-01",
+    "analyteId": "niquel_mg_kg",
+    "analito": "Níquel",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía de Efecto Umbral (TEC) - Guías de Calidad (Consenso EPA/NOAA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 35.9,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía de Efecto Umbral (TEC)",
+      "fuenteNormativa": "Guías de Calidad (Consenso EPA/NOAA)",
+      "autoridadAplicacion": "Guías de Calidad",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. Superarlo indica un enriquecimiento antrópico que comienza a estresar a los macroinvertebrados.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-NI-SF-02",
+    "analyteId": "niquel_mg_kg",
+    "analito": "Níquel",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 50.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal nacional. Define si el sedimento dragado es apto para ser dispuesto en zonas productivas rurales sin riesgo de fitotoxicidad.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-NI-SF-03",
+    "analyteId": "niquel_mg_kg",
+    "analito": "Níquel",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Suelo Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 50.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Suelo Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Frontera legal para uso civil. Si el barro supera esto, no puede usarse para rellenar orillas de parques o zonas urbanas abiertas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-NI-SF-04",
+    "analyteId": "niquel_mg_kg",
+    "analito": "Níquel",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "4. Límite Suelo Industrial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 500.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "4. Límite Suelo Industrial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Límite de peligrosidad pericial. Superar este valor convierte al sedimento extraído en un residuo peligroso, exigiendo tratamiento especial.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PB-SF-01",
+    "analyteId": "plomo_mg_kg",
+    "analito": "Plomo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 35.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. A partir de acá, el plomo empieza a generar estrés crónico en los organismos del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PB-SF-02",
+    "analyteId": "plomo_mg_kg",
+    "analito": "Plomo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 91.3,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de daño comprobado. La fauna bentónica sufre toxicidad aguda frecuente por encima de este valor.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PB-SF-03",
+    "analyteId": "plomo_mg_kg",
+    "analito": "Plomo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Suelo Agrícola - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 375.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Suelo Agrícola",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Límite legal nacional para disposición rural. El material extraído no puede aplicarse en zonas de cultivo si supera esta marca.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PB-SF-04",
+    "analyteId": "plomo_mg_kg",
+    "analito": "Plomo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "4. Límite Suelo Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 500.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "4. Límite Suelo Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope normativo para uso civil. Frontera máxima para disponer el barro en perfilado de taludes, parques o zonas de acceso público.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PB-SF-05",
+    "analyteId": "plomo_mg_kg",
+    "analito": "Plomo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "5. Límite Suelo Industrial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "5. Límite Suelo Industrial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Límite pericial extremo. Superar esto tipifica al sedimento como residuo peligroso pesado, requiriendo confinamiento de seguridad.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-SE-SF-01",
+    "analyteId": "selenio_mg_kg",
+    "analito": "Selenio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (Bioacumulación) - Guías Internacionales (BC Environment / EPA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (Bioacumulación)",
+      "fuenteNormativa": "Guías Internacionales (BC Environment / EPA)",
+      "autoridadAplicacion": "Guías Internacionales",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. A partir de este valor, el selenio entra en la red trófica causando toxicidad reproductiva en peces y aves.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-SE-SF-02",
+    "analyteId": "selenio_mg_kg",
+    "analito": "Selenio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal nacional. Si el sedimento dragado supera este umbral, queda prohibida su aplicación en tierras de cultivo por el riesgo de transferencia a los cultivos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-SE-SF-03",
+    "analyteId": "selenio_mg_kg",
+    "analito": "Selenio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Suelo Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 10.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Suelo Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Frontera pericial para uso civil. Define si el barro puede utilizarse en el perfilado de taludes, plazas o espacios públicos ribereños.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-SE-SF-04",
+    "analyteId": "selenio_mg_kg",
+    "analito": "Selenio",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "4. Límite Suelo Industrial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 50.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "4. Límite Suelo Industrial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Límite máximo pericial. Si el material removido supera esta marca, es un residuo peligroso pesado y exige disposición final en relleno de seguridad.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ZN-SF-01",
+    "analyteId": "zinc_mg_kg",
+    "analito": "Zinc",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 123.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica basal. Coincide con tu captura. A partir de acá, el zinc genera estrés crónico en los macroinvertebrados del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ZN-SF-02",
+    "analyteId": "zinc_mg_kg",
+    "analito": "Zinc",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 315.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de daño ecológico comprobado. Si el sedimento supera esto, la toxicidad para la vida acuática es frecuente y severa.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ZN-SF-03",
+    "analyteId": "zinc_mg_kg",
+    "analito": "Zinc",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Suelo Agrícola - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 600.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Suelo Agrícola",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal nacional. Frontera que prohíbe el uso del material removido como enmienda o relleno en zonas de producción rural (riesgo de fitotoxicidad).",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ZN-SF-04",
+    "analyteId": "zinc_mg_kg",
+    "analito": "Zinc",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "4. Límite Suelo Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 600.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "4. Límite Suelo Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Límite normativo civil. Tope pericial para disponer los barros de la obra hidráulica en taludes, zonas ribereñas abiertas al público o plazas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ZN-SF-05",
+    "analyteId": "zinc_mg_kg",
+    "analito": "Zinc",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "5. Límite Suelo Industrial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1500.0,
+      "unidad": "mg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "5. Límite Suelo Industrial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Límite máximo pericial. Si el sedimento dragado supera esta concentración, es un residuo peligroso pesado. Exige disposición final en relleno de seguridad.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ACE-SF-01",
+    "analyteId": "acenafteno_mg_kg",
+    "analito": "Acenafteno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 6.71,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de alerta preventiva. Coincide con tu captura. Su superación indica que el fondo está estresando crónicamente a los organismos bentónicos por toxicidad orgánica.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ACE-SF-02",
+    "analyteId": "acenafteno_mg_kg",
+    "analito": "Acenafteno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 88.9,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de daño severo. Concentraciones superiores a esta generan mortalidad aguda frecuente en la fauna del lecho del arroyo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ACF-SF-01",
+    "analyteId": "acenaftileno_mg_kg",
+    "analito": "Acenaftileno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.87,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de alerta temprana para este hidrocarburo de combustión. Coincide con tu captura.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ACF-SF-02",
+    "analyteId": "acenaftileno_mg_kg",
+    "analito": "Acenaftileno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 128.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de toxicidad severa comprobada. El sedimento es un peligro directo para la vida acuática si se moviliza.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ANT-SF-01",
+    "analyteId": "antraceno_mg_kg",
+    "analito": "Antraceno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 46.9,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. A partir de acá, el antraceno empieza a generar estrés crónico por toxicidad orgánica en los organismos del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ANT-SF-02",
+    "analyteId": "antraceno_mg_kg",
+    "analito": "Antraceno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 245.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de daño comprobado. La fauna bentónica sufre toxicidad aguda frecuente por encima de este valor. Marca la frontera de sedimento altamente impactado.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ANT-SF-03",
+    "analyteId": "antraceno_mg_kg",
+    "analito": "Antraceno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Suplementario (Criterio RIVM) - Guías RIVM (Holanda) - Intervención",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1200.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Suplementario (Criterio RIVM)",
+      "fuenteNormativa": "Guías RIVM (Holanda) - Intervención",
+      "autoridadAplicacion": "Guías RIVM",
+      "comentarioTecnico": "Límite de peligrosidad pericial europeo para hidrocarburos individuales. Superarlo exige remoción y confinamiento inmediato del barro.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BAA-SF-01",
+    "analyteId": "benzo_a_antraceno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 31.7,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta preventiva. Coincide con tu captura. Su superación indica estrés crónico en la fauna del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BAA-SF-02",
+    "analyteId": "benzo_a_antraceno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 385.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de toxicidad aguda. Concentraciones superiores generan mortalidad frecuente en macroinvertebrados bentónicos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BAP-SF-01",
+    "analyteId": "benzo_a_pireno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 31.9,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral ecológico preventivo. Coincide con tu captura. Marca el inicio del riesgo por bioacumulación de este potente carcinógeno.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BAP-SF-02",
+    "analyteId": "benzo_a_pireno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 782.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de daño ecológico masivo y severo por toxicidad orgánica en sedimentos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BAP-SF-03",
+    "analyteId": "benzo_a_pireno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal nacional (1 mg/Kg) para contacto civil. Define si el barro puede usarse para perfilar taludes ribereños abiertos al público.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BAP-SF-04",
+    "analyteId": "benzo_a_pireno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "4. Límite Suelo Industrial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 10000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "4. Límite Suelo Industrial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Límite pericial extremo. Superarlo convierte al sedimento en un residuo peligroso pesado (Y39/Y48) que exige confinamiento.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BBF-SF-01",
+    "analyteId": "benzo_b_fluoranteno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía de Efecto (LEL) - Ontario PSQG / Guías Internacionales",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 240.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía de Efecto (LEL)",
+      "fuenteNormativa": "Ontario PSQG / Guías Internacionales",
+      "autoridadAplicacion": "Ontario PSQG / Guías Internacionales",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. Compuesto asociado a hollín denso y cenizas pesadas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BBF-SF-02",
+    "analyteId": "benzo_b_fluoranteno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Intervención - Criterios RIVM (Holanda)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Intervención",
+      "fuenteNormativa": "Criterios RIVM (Holanda)",
+      "autoridadAplicacion": "Criterios RIVM",
+      "comentarioTecnico": "Vara internacional para tipificar el lecho como zona de intervención obligatoria por pasivo ambiental.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BGP-SF-01",
+    "analyteId": "benzo_g_h_i_perileno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel de Efecto Bajo (LEL) - Ontario PSQG (Sedimentos)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 170.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel de Efecto Bajo (LEL)",
+      "fuenteNormativa": "Ontario PSQG (Sedimentos)",
+      "autoridadAplicacion": "Ontario PSQG",
+      "comentarioTecnico": "Límite ecológico preventivo. Coincide con tu captura. Su superación marca el inicio del estrés crónico en la fauna del lecho del arroyo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BGP-SF-02",
+    "analyteId": "benzo_g_h_i_perileno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Severo (SEL) - Ontario PSQG (Sedimentos)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1700.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Severo (SEL)",
+      "fuenteNormativa": "Ontario PSQG (Sedimentos)",
+      "autoridadAplicacion": "Ontario PSQG",
+      "comentarioTecnico": "Frontera de toxicidad aguda masiva. El sedimento está severamente impactado y es peligroso para la vida acuática si se resuspende.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BKF-SF-01",
+    "analyteId": "benzo_k_fluoranteno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel de Efecto Bajo (LEL) - Ontario PSQG (Sedimentos)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 240.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel de Efecto Bajo (LEL)",
+      "fuenteNormativa": "Ontario PSQG (Sedimentos)",
+      "autoridadAplicacion": "Ontario PSQG",
+      "comentarioTecnico": "Umbral de alerta temprana ecológica. Coincide con tu captura. Indicador clave de aportes pirogénicos y escorrentía urbana.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BKF-SF-02",
+    "analyteId": "benzo_k_fluoranteno_mg_kg",
+    "analito": "Benzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Severo (SEL) - Ontario PSQG (Sedimentos)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2400.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Severo (SEL)",
+      "fuenteNormativa": "Ontario PSQG (Sedimentos)",
+      "autoridadAplicacion": "Ontario PSQG",
+      "comentarioTecnico": "Límite de daño comprobado. El material excede la capacidad de autodepuración del sistema y requiere gestión controlada.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CRI-SF-01",
+    "analyteId": "criseno_mg_kg",
+    "analito": "Criseno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 57.1,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. A partir de este umbral, el Criseno empieza a generar toxicidad crónica en la biota del fondo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CRI-SF-02",
+    "analyteId": "criseno_mg_kg",
+    "analito": "Criseno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 846.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de daño comprobado. El material excede la capacidad de depuración y genera mortalidad aguda frecuente en invertebrados.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CRI-SF-03",
+    "analyteId": "criseno_mg_kg",
+    "analito": "Criseno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Legal Proxy (HAPs Totales) - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Legal Proxy (HAPs Totales)",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Estrategia pericial: Si solo el Criseno supera los 1000 µg/Kg, ya se violó el límite de la Ley Nacional para la suma de HAPs Totales en uso agrícola/residencial.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DBA-SF-01",
+    "analyteId": "dibenzo_a_h_antraceno_mg_kg",
+    "analito": "Dibenzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 6.22,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá)",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite ecológico preventivo. Es bajísimo por su altísimo potencial mutagénico y cancerígeno. Coincide con tu captura.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DBA-SF-02",
+    "analyteId": "dibenzo_a_h_antraceno_mg_kg",
+    "analito": "Dibenzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 135.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá)",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de toxicidad aguda masiva. El sedimento está severamente impactado y es un residuo de alta peligrosidad para contacto directo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DBA-SF-03",
+    "analyteId": "dibenzo_a_h_antraceno_mg_kg",
+    "analito": "Dibenzo",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Legal Proxy (HAPs Totales) - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Legal Proxy (HAPs Totales)",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Estrategia pericial: Su superación individual garantiza la infracción de la sumatoria de HAPs de la normativa argentina para disposición civil.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FENA-SF-01",
+    "analyteId": "fenantreno_mg_kg",
+    "analito": "Fenantreno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 41.9,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. Indica el comienzo del estrés bentónico, especialmente letal si el sedimento se resuspende en aguas claras (fototoxicidad).",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FENA-SF-02",
+    "analyteId": "fenantreno_mg_kg",
+    "analito": "Fenantreno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 515.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de daño comprobado. El material excede la capacidad del ecosistema y genera toxicidad aguda en crustáceos e invertebrados.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FENA-SF-03",
+    "analyteId": "fenantreno_mg_kg",
+    "analito": "Fenantreno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Legal Proxy (HAPs Totales) - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Legal Proxy (HAPs Totales)",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Estrategia pericial: Si el Fenantreno por sí solo supera los 1000 µg/Kg, el sedimento viola automáticamente el límite de la Ley Nacional para HAPs Totales en uso agrícola/residencial.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FLUO-SF-01",
+    "analyteId": "fluoranteno_mg_kg",
+    "analito": "Fluoranteno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 111.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. A partir de este valor, el Fluoranteno comienza a causar estrés y disrupción en los organismos del lecho del arroyo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FLUO-SF-02",
+    "analyteId": "fluoranteno_mg_kg",
+    "analito": "Fluoranteno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2355.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño masivo. El sedimento excede su capacidad de asimilación, generando mortalidad crónica. Indica un pasivo ambiental asfáltico severo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FLUO-SF-03",
+    "analyteId": "fluoranteno_mg_kg",
+    "analito": "Fluoranteno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Legal Proxy (HAPs Totales) - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Legal Proxy (HAPs Totales)",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Estrategia pericial: Su superación individual garantiza la infracción de la sumatoria legal (1 mg/Kg) para disposición en suelo residencial/agrícola.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FLRN-SF-01",
+    "analyteId": "fluoreno_mg_kg",
+    "analito": "Fluoreno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 21.2,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. A partir de acá, comienza el riesgo de toxicidad aguda por transferencia a la columna de agua superficial.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FLRN-SF-02",
+    "analyteId": "fluoreno_mg_kg",
+    "analito": "Fluoreno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 144.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño masivo. El sedimento excede su capacidad de amortiguación. Mortalidad comprobada en macroinvertebrados.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-FLRN-SF-03",
+    "analyteId": "fluoreno_mg_kg",
+    "analito": "Fluoreno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Legal Proxy (HAPs Totales) - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Legal Proxy (HAPs Totales)",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Estrategia pericial: Si el Fluoreno por sí solo llega a este valor, el sedimento viola de facto el límite nacional (1 mg/Kg) para disposición en suelo residencial/agrícola.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-INDP-SF-01",
+    "analyteId": "indeno_1_2_3_cd_pireno_mg_kg",
+    "analito": "Indeno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel de Efecto Bajo (LEL) - Ontario PSQG (Sedimentos)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 200.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel de Efecto Bajo (LEL)",
+      "fuenteNormativa": "Ontario PSQG (Sedimentos)",
+      "autoridadAplicacion": "Ontario PSQG",
+      "comentarioTecnico": "Límite ecológico preventivo. Coincide con tu captura. Su superación indica el comienzo del estrés crónico en la fauna bentónica por acumulación de hollín pesado.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-INDP-SF-02",
+    "analyteId": "indeno_1_2_3_cd_pireno_mg_kg",
+    "analito": "Indeno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Legal Proxy (HAPs Totales) - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Legal Proxy (HAPs Totales)",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Estrategia pericial: Si este compuesto individual supera los 1000 µg/Kg, el sedimento entra automáticamente en infracción legal nacional para uso agrícola y residencial.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-INDP-SF-03",
+    "analyteId": "indeno_1_2_3_cd_pireno_mg_kg",
+    "analito": "Indeno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Nivel de Efecto Severo (SEL) - Ontario PSQG (Sedimentos)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 3200.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Nivel de Efecto Severo (SEL)",
+      "fuenteNormativa": "Ontario PSQG (Sedimentos)",
+      "autoridadAplicacion": "Ontario PSQG",
+      "comentarioTecnico": "Umbral pericial de daño catastrófico. El sedimento es altamente tóxico, persistente y requiere gestión como residuo peligroso o confinamiento in situ.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-NAF-SF-01",
+    "analyteId": "naftaleno_mg_kg",
+    "analito": "Naftaleno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 34.6,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite ecológico preventivo. Coincide con tu captura. Su superación indica el comienzo del estrés agudo en la fauna del lecho por toxicidad y narcosis.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-NAF-SF-02",
+    "analyteId": "naftaleno_mg_kg",
+    "analito": "Naftaleno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 391.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño masivo. El sedimento excede su capacidad de asimilación, generando mortalidad aguda por rápida transferencia a las branquias de la biota.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-NAF-SF-03",
+    "analyteId": "naftaleno_mg_kg",
+    "analito": "Naftaleno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Legal Proxy (HAPs Totales) - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Legal Proxy (HAPs Totales)",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Estrategia pericial: Si el Naftaleno solo alcanza este valor, el sedimento entra automáticamente en infracción legal nacional para disposición en zonas residenciales o agrícolas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PIR-SF-01",
+    "analyteId": "pireno_mg_kg",
+    "analito": "Pireno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 53.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta preventiva. Coincide con tu captura. Marca el inicio del estrés crónico en la fauna del lecho por exposición a hidrocarburos de combustión.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PIR-SF-02",
+    "analyteId": "pireno_mg_kg",
+    "analito": "Pireno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 875.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño masivo. El sedimento está severamente impactado y genera toxicidad aguda comprobada en macroinvertebrados.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PIR-SF-03",
+    "analyteId": "pireno_mg_kg",
+    "analito": "Pireno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite Legal Proxy (HAPs Totales) - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1000.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite Legal Proxy (HAPs Totales)",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Estrategia pericial: Su superación individual garantiza la infracción de la sumatoria legal nacional (1 mg/Kg) para disposición en suelo residencial o rural.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DDD-SF-01",
+    "analyteId": "ddd_mg_kg",
+    "analito": "DDD",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 3.54,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta preventiva. Coincide con tu captura. Inicio del estrés crónico.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DDD-SF-02",
+    "analyteId": "ddd_mg_kg",
+    "analito": "DDD",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 8.51,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de daño agudo comprobado para la fauna bentónica.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DDE-SF-01",
+    "analyteId": "dde_mg_kg",
+    "analito": "DDE",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.42,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta preventiva. Coincide con tu captura. Riesgo altísimo de bioacumulación en peces.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DDE-SF-02",
+    "analyteId": "dde_mg_kg",
+    "analito": "DDE",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 6.75,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Umbral de toxicidad severa. Exige prohibir el dragado sin barreras de contención.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DDT-SF-01",
+    "analyteId": "ddt_mg_kg",
+    "analito": "DDT",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.19,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. Indica presencia del compuesto original activo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DDT-SF-02",
+    "analyteId": "ddt_mg_kg",
+    "analito": "DDT",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 4.77,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño masivo. El sedimento está severamente impactado por este plaguicida neurotóxico.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ALD-SF-01",
+    "analyteId": "aldrin_mg_kg",
+    "analito": "Aldrín",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (Preventivo) - Guías Internacionales (NOAA / NYSDEC)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (Preventivo)",
+      "fuenteNormativa": "Guías Internacionales (NOAA / NYSDEC)",
+      "autoridadAplicacion": "Guías Internacionales",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con el valor cargado. Su superación indica la presencia de un organoclorado prohibido que inicia el riesgo de toxicidad crónica en el fondo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ALD-SF-02",
+    "analyteId": "aldrin_mg_kg",
+    "analito": "Aldrín",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal nacional (0.005 mg/Kg). Si el sedimento supera este límite, está terminantemente prohibido utilizar el barro extraído en el perfilado de márgenes o en tierras productivas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ALD-SF-03",
+    "analyteId": "aldrin_mg_kg",
+    "analito": "Aldrín",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite de Efecto Severo (SEL) - Guías de Intervención (Proxy)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 20.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite de Efecto Severo (SEL)",
+      "fuenteNormativa": "Guías de Intervención (Proxy)",
+      "autoridadAplicacion": "Guías de Intervención",
+      "comentarioTecnico": "Frontera de daño masivo y riesgo agudo. El sedimento es inmanejable y requiere confinamiento estricto por alto peligro de bioacumulación en la cadena trófica.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CLOR-SF-01",
+    "analyteId": "clordano_mg_kg",
+    "analito": "Clordano",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 4.5,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica. Coincide con tu captura. A partir de acá, comienza el riesgo de toxicidad y bioacumulación en la fauna del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CLOR-SF-02",
+    "analyteId": "clordano_mg_kg",
+    "analito": "Clordano",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal nacional (0.005 mg/Kg). Si el sedimento supera este umbral, se prohíbe terminantemente utilizar el barro dragado para relleno o perfilado civil/rural.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CLOR-SF-03",
+    "analyteId": "clordano_mg_kg",
+    "analito": "Clordano",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 8.87,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño agudo severo. El sedimento excede su capacidad asimilativa; la toxicidad para macroinvertebrados es alta y frecuente.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CLORP-SF-01",
+    "analyteId": "clorpirifos_mg_kg",
+    "analito": "Clorpirifos",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / EPA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / EPA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica preventiva. Coincide con tu captura. A partir de acá, el insecticida genera estrés neurotóxico agudo en los macroinvertebrados del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CLORP-SF-02",
+    "analyteId": "clorpirifos_mg_kg",
+    "analito": "Clorpirifos",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / EPA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 4.6,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / EPA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño severo comprobado. Concentraciones superiores provocan mortalidad masiva en la fauna acuática e invertebrados bentónicos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-CLORP-SF-03",
+    "analyteId": "clorpirifos_mg_kg",
+    "analito": "Clorpirifos",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Límite de Intervención Ampliado - Criterios Internacionales (RIVM / EPA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 100.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Límite de Intervención Ampliado",
+      "fuenteNormativa": "Criterios Internacionales (RIVM / EPA)",
+      "autoridadAplicacion": "Criterios Internacionales",
+      "comentarioTecnico": "Vara pericial extrema para plaguicidas de uso actual. Superarlo indica un foco de contaminación directa o un vertido clandestino masivo en la cuenca.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DIEL-SF-01",
+    "analyteId": "dieldrin_mg_kg",
+    "analito": "Dieldrín",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2.85,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica preventiva. Coincide con tu captura. A partir de acá, el organoclorado inicia estrés crónico y bioacumulación en la fauna del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DIEL-SF-02",
+    "analyteId": "dieldrin_mg_kg",
+    "analito": "Dieldrín",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal nacional (0.005 mg/Kg). Si el sedimento supera este umbral, se prohíbe terminantemente utilizar el barro dragado para relleno o perfilado civil y rural.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DIEL-SF-03",
+    "analyteId": "dieldrin_mg_kg",
+    "analito": "Dieldrín",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 6.67,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño agudo severo. El sedimento excede su capacidad de asimilación; la toxicidad para macroinvertebrados bentónicos es alta y frecuente.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ENDR-SF-01",
+    "analyteId": "endrin_mg_kg",
+    "analito": "Endrín",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2.67,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica preventiva. Coincide con tu captura. Inicio del estrés crónico y neurotoxicidad extrema en la fauna del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ENDR-SF-02",
+    "analyteId": "endrin_mg_kg",
+    "analito": "Endrín",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal pericial nacional. Superar este valor prohíbe terminantemente utilizar el barro dragado en áreas rurales o civiles.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ENDR-SF-03",
+    "analyteId": "endrin_mg_kg",
+    "analito": "Endrín",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 62.4,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño agudo severo. Concentraciones superiores provocan mortalidad letal masiva y frecuente en macroinvertebrados bentónicos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-HEPT-SF-01",
+    "analyteId": "heptacloro_mg_kg",
+    "analito": "Heptacloro",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.6,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica preventiva. Coincide con tu captura. Inicio del estrés crónico y toxicidad en la fauna bentónica del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-HEPT-SF-02",
+    "analyteId": "heptacloro_mg_kg",
+    "analito": "Heptacloro",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal pericial nacional para organoclorados. Superar este valor prohíbe terminantemente utilizar el dragado en áreas rurales o civiles.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-HEPT-SF-03",
+    "analyteId": "heptacloro_mg_kg",
+    "analito": "Heptacloro",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2.74,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño agudo severo. Concentraciones superiores provocan toxicidad letal y frecuente en macroinvertebrados bentónicos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-LIND-SF-01",
+    "analyteId": "hch_gamma_lindano_mg_kg",
+    "analito": "HCH Gamma / Lindano",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.94,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica preventiva. Coincide con tu captura. Inicio del estrés crónico y toxicidad en la fauna bentónica del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-LIND-SF-02",
+    "analyteId": "hch_gamma_lindano_mg_kg",
+    "analito": "HCH Gamma / Lindano",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal pericial nacional para organoclorados. Superar este valor prohíbe terminantemente utilizar el dragado en áreas rurales o civiles.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-LIND-SF-03",
+    "analyteId": "hch_gamma_lindano_mg_kg",
+    "analito": "HCH Gamma / Lindano",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.38,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño agudo severo. Concentraciones superiores provocan toxicidad letal y frecuente en macroinvertebrados bentónicos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-MALA-SF-01",
+    "analyteId": "malation_mg_kg",
+    "analito": "Malatión",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / EPA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / EPA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica preventiva. Coincide con tu captura. Inicio del estrés crónico y neurotoxicidad en la fauna bentónica del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-MALA-SF-02",
+    "analyteId": "malation_mg_kg",
+    "analito": "Malatión",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Intervención / Alerta Operativa - Criterios Internacionales de Referencia",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 10.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Intervención / Alerta Operativa",
+      "fuenteNormativa": "Criterios Internacionales de Referencia",
+      "autoridadAplicacion": "Criterios Internacionales de Referencia",
+      "comentarioTecnico": "Umbral pericial de control intermedio. Su superación exige revisar campañas de fumigación recientes o descargas pluviales urbanas/rurales.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-MALA-SF-03",
+    "analyteId": "malation_mg_kg",
+    "analito": "Malatión",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Nivel de Efecto Probable (PEL) - Guías CCME (Canadá) / NOAA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 21.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "3. Nivel de Efecto Probable (PEL)",
+      "fuenteNormativa": "Guías CCME (Canadá) / NOAA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Frontera de daño agudo severo. Concentraciones superiores provocan toxicidad letal y frecuente en macroinvertebrados bentónicos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ALFH-SF-01",
+    "analyteId": "hch_beta_mg_kg",
+    "analito": "HCH Beta",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / EPA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / EPA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta ecológica preventiva. Coincide con tu captura. Inicio del estrés crónico por isómero alfa de HCH en la fauna del lecho.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-ALFH-SF-02",
+    "analyteId": "hch_beta_mg_kg",
+    "analito": "HCH Beta",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal pericial nacional. Superar este valor prohíbe terminantemente utilizar el sedimento dragado en áreas rurales o civiles.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BETH-SF-01",
+    "analyteId": "hch_beta_mg_kg",
+    "analito": "HCH Beta",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / EPA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / EPA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite preventivo para el isómero beta (el más persistente y bioacumulable de todos los HCH en el sedimento).",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BETH-SF-02",
+    "analyteId": "hch_beta_mg_kg",
+    "analito": "HCH Beta",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal nacional para el isómero beta. Su superación bloquea el uso del barro por riesgo de persistencia crónica.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DELH-SF-01",
+    "analyteId": "hch_beta_mg_kg",
+    "analito": "HCH Beta",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Nivel Guía Bentónico (ISQG) - Guías CCME (Canadá) / EPA",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "1. Nivel Guía Bentónico (ISQG)",
+      "fuenteNormativa": "Guías CCME (Canadá) / EPA",
+      "autoridadAplicacion": "Guías CCME",
+      "comentarioTecnico": "Límite de alerta preventiva para el isómero delta del HCH en sedimentos de fondo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-DELH-SF-02",
+    "analyteId": "hch_beta_mg_kg",
+    "analito": "HCH Beta",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Suelo Agrícola/Residencial - Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "µg/Kg"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Suelo Agrícola/Residencial",
+      "fuenteNormativa": "Ley 24.051 - Dec. 831/93 (Anexo II, Tabla 9 - Proxy)",
+      "autoridadAplicacion": "Ley 24.051 - Dec. 831/93",
+      "comentarioTecnico": "Tope legal nacional proxy para isómeros secundarios del hexaclorociclohexano en obras de dragado.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BEN-01",
+    "analyteId": "benceno_mg_kg",
+    "analito": "Benceno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "Nivel Guía Agrícola - Ley 24.051 Dec. 831/93",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.05,
+      "unidad": "mg/kg"
+    },
+    "metadata": {
+      "usoRecurso": "Agrícola",
+      "fuenteNormativa": "Ley 24.051 Dec. 831/93 Tabla 9",
+      "autoridadAplicacion": "Ley Nacional 24.051",
+      "comentarioTecnico": "Límite guía de calidad de suelo agrícola.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-BEN-02",
+    "analyteId": "benceno_mg_kg",
+    "analito": "Benceno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "Nivel Guía Residencial - Ley 24.051 Dec. 831/93",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.5,
+      "unidad": "mg/kg"
+    },
+    "metadata": {
+      "usoRecurso": "Residencial",
+      "fuenteNormativa": "Ley 24.051 Dec. 831/93 Tabla 9",
+      "autoridadAplicacion": "Ley Nacional 24.051",
+      "comentarioTecnico": "Límite guía residencial para protección de la salud humana.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-TOL-01",
+    "analyteId": "tolueno_mg_kg",
+    "analito": "Tolueno",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "Nivel Guía Agrícola - Ley 24.051 Dec. 831/93",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.1,
+      "unidad": "mg/kg"
+    },
+    "metadata": {
+      "usoRecurso": "Agrícola",
+      "fuenteNormativa": "Ley 24.051 Dec. 831/93 Tabla 9",
+      "autoridadAplicacion": "Ley Nacional 24.051",
+      "comentarioTecnico": "Límite guía agrícola.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-TCE-01",
+    "analyteId": "tricloroetileno_tce_mg_kg",
+    "analito": "Tricloroetileno TCE",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "Nivel Guía Agrícola - Ley 24.051 Dec. 831/93",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.1,
+      "unidad": "mg/kg"
+    },
+    "metadata": {
+      "usoRecurso": "Agrícola",
+      "fuenteNormativa": "Ley 24.051 Dec. 831/93 Tabla 9",
+      "autoridadAplicacion": "Ley Nacional 24.051",
+      "comentarioTecnico": "Límite agrícola para solvente clorado.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CS-PCE-01",
+    "analyteId": "tetracloroetileno_pce_mg_kg",
+    "analito": "Tetracloroetileno PCE",
+    "planillaId": "CS-001",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "Nivel Guía Agrícola - Ley 24.051 Dec. 831/93",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 0.1,
+      "unidad": "mg/kg"
+    },
+    "metadata": {
+      "usoRecurso": "Agrícola",
+      "fuenteNormativa": "Ley 24.051 Dec. 831/93 Tabla 9",
+      "autoridadAplicacion": "Ley Nacional 24.051",
+      "comentarioTecnico": "Límite agrícola para solvente clorado.",
+      "esSembrada": true
+    },
+    "activo": true
+  }
+]

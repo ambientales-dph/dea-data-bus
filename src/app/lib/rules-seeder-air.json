@@ -1,0 +1,1262 @@
+[
+  {
+    "idRegla": "REG-BEN-AI-01",
+    "analyteId": "Benceno_ug_m3",
+    "analito": "Benceno",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Aire Continuo - Directiva Europea de Calidad de Aire (2008/50/CE)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Aire Continuo",
+      "fuenteNormativa": "Directiva Europea de Calidad de Aire (2008/50/CE)",
+      "autoridadAplicacion": "Directiva Europea de Calidad de Aire",
+      "comentarioTecnico": "Tu valor de 5 µg/m³ es analíticamente perfecto como promedio anual. Protege contra el riesgo epidemiológico directo de leucemia mieloide crónica.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-BEN-AI-02",
+    "analyteId": "Benceno_ug_m3",
+    "analito": "Benceno",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Exposición Ocupacional - Ley Nac. 19.587 de Higiene y Seguridad (Res. 295/03)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1600.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Exposición Ocupacional",
+      "fuenteNormativa": "Ley Nac. 19.587 de Higiene y Seguridad (Res. 295/03)",
+      "autoridadAplicacion": "Ley Nac. 19.587 de Higiene y Seguridad",
+      "comentarioTecnico": "¡Tope industrial de fábrica! Equivalente a 0.5 ppm para jornada laboral de 8 horas. Tu sistema debe diferenciar inmisión de barrio (5 µg/m³) vs ambiente de trabajo interno.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CLF-AI-01",
+    "analyteId": "Cloroformo_ug_m3",
+    "analito": "Cloroformo",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Aire Continuo - Nivel Guía de Referencia Inhalatoria US-EPA (IRIS Criteria)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 15.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Aire Continuo",
+      "fuenteNormativa": "Nivel Guía de Referencia Inhalatoria US-EPA (IRIS Criteria)",
+      "autoridadAplicacion": "Nivel Guía de Referencia Inhalatoria US-EPA",
+      "comentarioTecnico": "Tu valor de 15 µg/m³ es excelente y de vanguardia. Blinda el backend contra el riesgo onco-hepático acumulativo ante vacíos regulatorios locales directos en inmisión.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CLF-AI-02",
+    "analyteId": "Cloroformo_ug_m3",
+    "analito": "Cloroformo",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Exposición Ocupacional - Ley Nac. 19.587 de Higiene y Seguridad (Res. 295/03)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 49000.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Exposición Ocupacional",
+      "fuenteNormativa": "Ley Nac. 19.587 de Higiene y Seguridad (Res. 295/03)",
+      "autoridadAplicacion": "Ley Nac. 19.587 de Higiene y Seguridad",
+      "comentarioTecnico": "Tope industrial CMP de ambiente laboral interno equivalente a 10 ppm. Tu motor de software debe usar el valor de 15 µg/m³ para estaciones de monitoreo perimetrales civiles.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CLV-AI-01",
+    "analyteId": "Cloruro_de_Vinilo_ug_m3",
+    "analito": "Cloruro de Vinilo",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Aire Continuo - Directiva Europea de Calidad de Aire (Nivel de Resguardo)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Aire Continuo",
+      "fuenteNormativa": "Directiva Europea de Calidad de Aire (Nivel de Resguardo)",
+      "autoridadAplicacion": "Directiva Europea de Calidad de Aire",
+      "comentarioTecnico": "Tu valor de 2 µg/m³ es óptimo como promedio anual. Protege contra el riesgo epidemiológico directo de angiosarcoma hepático y tumores pulmonares civiles.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-CLV-AI-02",
+    "analyteId": "Cloruro_de_Vinilo_ug_m3",
+    "analito": "Cloruro de Vinilo",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Exposición Ocupacional - Ley Nac. 19.587 de Higiene y Seguridad (Res. 295/03)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2560.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Exposición Ocupacional",
+      "fuenteNormativa": "Ley Nac. 19.587 de Higiene y Seguridad (Res. 295/03)",
+      "autoridadAplicacion": "Ley Nac. 19.587 de Higiene y Seguridad",
+      "comentarioTecnico": "¡Tope de fábrica interna! Límite de exposición CMP equivalente a 1 ppm para 8 horas de trabajo. Tu software debe usar los 2 µg/m³ para estaciones perimetrales vecinales.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-DCM-AI-01",
+    "analyteId": "Diclorometano_ug_m3",
+    "analito": "Diclorometano",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Aire Continuo - Nivel Guía de Referencia Inhalatoria US-EPA (IRIS Criteria)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 20.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Aire Continuo",
+      "fuenteNormativa": "Nivel Guía de Referencia Inhalatoria US-EPA (IRIS Criteria)",
+      "autoridadAplicacion": "Nivel Guía de Referencia Inhalatoria US-EPA",
+      "comentarioTecnico": "Tu valor de 20 µg/m³ es analíticamente excelente. Resguarda contra el riesgo neurotóxico acumulativo y oncológico probable (2A) ante vacíos locales directos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-DCM-AI-02",
+    "analyteId": "Diclorometano_ug_m3",
+    "analito": "Diclorometano",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Exposición Ocupacional - Ley Nac. 19.587 de Higiene y Seguridad (Res. 295/03) Fija el techo ocupacionalCMP de ambiente laboral interno equivalente a 50 ppm. El motor de reglas debe aislar este número para proteger exclusivamente al operario con EPP.",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 174000.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Exposición Ocupacional",
+      "fuenteNormativa": "Ley Nac. 19.587 de Higiene y Seguridad (Res. 295/03) Fija el techo ocupacionalCMP de ambiente laboral interno equivalente a 50 ppm. El motor de reglas debe aislar este número para proteger exclusivamente al operario con EPP.",
+      "autoridadAplicacion": "Ley Nac. 19.587 de Higiene y Seguridad",
+      "comentarioTecnico": "",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-SO2-AI-01",
+    "analyteId": "Dioxido_de_Azufre_SO2_ppb",
+    "analito": "Dióxido de Azufre SO2",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Aire Promedio Anual - Estándar de Calidad de Aire de Vanguardia (US-EPA NAAQS / OMS)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 20.0,
+      "unidad": "ppb"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Aire Promedio Anual",
+      "fuenteNormativa": "Estándar de Calidad de Aire de Vanguardia (US-EPA NAAQS / OMS)",
+      "autoridadAplicacion": "Estándar de Calidad de Aire de Vanguardia",
+      "comentarioTecnico": "Tu valor de 20 ppb es analíticamente impecable como promedio de larga exposición. Protege a la población civil periurbana contra el desarrollo de afecciones respiratorias obstructivas crónicas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-SO2-AI-02",
+    "analyteId": "Dioxido_de_Azufre_SO2_ppb",
+    "analito": "Dióxido de Azufre SO2",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Inmisión Aguda de Red (24h) - Estándar de Inmisión Diario Corto Plazo (US-EPA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 75.0,
+      "unidad": "ppb"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Inmisión Aguda de Red (24h)",
+      "fuenteNormativa": "Estándar de Inmisión Diario Corto Plazo (US-EPA)",
+      "autoridadAplicacion": "Estándar de Inmisión Diario Corto Plazo",
+      "comentarioTecnico": "¡Umbral de control diario! Tu sistema debe acoplar esta regla si el muestreo es puntual de 24 horas para captar picos operativos o escapes de refinerías y termoeléctricas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-NO2-AI-01",
+    "analyteId": "Dioxido_de_Nitrogeno_NO2_ppb",
+    "analito": "Dióxido de Nitrógeno NO2",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Aire Promedio Anual - Nivel de Resguardo Epidemiológico de Vanguardia (Consenso Internacional)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 25.0,
+      "unidad": "ppb"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Aire Promedio Anual",
+      "fuenteNormativa": "Nivel de Resguardo Epidemiológico de Vanguardia (Consenso Internacional)",
+      "autoridadAplicacion": "Nivel de Resguardo Epidemiológico de Vanguardia",
+      "comentarioTecnico": "Tu valor de 25 ppb es excelente y de alta exigencia. Blinda el backend contra el incremento crónico de admisiones hospitalarias por asma y bronquitis en zonas urbanas densas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-NO2-AI-02",
+    "analyteId": "Dioxido_de_Nitrogeno_NO2_ppb",
+    "analito": "Dióxido de Nitrógeno NO2",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Inmisión Aguda de Red (1h) - Estándar de Inmisión Horario Corto Plazo (US-EPA / UE)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 100.0,
+      "unidad": "ppb"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Inmisión Aguda de Red (1h)",
+      "fuenteNormativa": "Estándar de Inmisión Horario Corto Plazo (US-EPA / UE)",
+      "autoridadAplicacion": "Estándar de Inmisión Horario Corto Plazo",
+      "comentarioTecnico": "¡Tope horario de alerta! Regla obligatoria para monitoreos en tiempo real continuo que permite detectar picos extremos durante las horas de máxima congestión de tráfico vehicular pesado.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-ETB-AI-01",
+    "analyteId": "Etilbenceno_ug_m3",
+    "analito": "Etilbenceno",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Aire Continuo - Nivel Guía de Referencia Inhalatoria US-EPA (IRIS)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 200.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Aire Continuo",
+      "fuenteNormativa": "Nivel Guía de Referencia Inhalatoria US-EPA (IRIS)",
+      "autoridadAplicacion": "Nivel Guía de Referencia Inhalatoria US-EPA",
+      "comentarioTecnico": "Tu valor de 200 µg/m³ es analíticamente impecable como techo anual preventivo para resguardar la salud pública civil contra el riesgo oncológico 2B.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-ETB-AI-02",
+    "analyteId": "Etilbenceno_ug_m3",
+    "analito": "Etilbenceno",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Exposición Ocupacional - Ley Nac. 19.587 de Higiene y Seguridad (Res. 295/03)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 434000.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Exposición Ocupacional",
+      "fuenteNormativa": "Ley Nac. 19.587 de Higiene y Seguridad (Res. 295/03)",
+      "autoridadAplicacion": "Ley Nac. 19.587 de Higiene y Seguridad",
+      "comentarioTecnico": "Tope industrial CMP de ambiente laboral interno equivalente a 100 ppm para jornada de 8 horas. Tu sistema debe aislar este número exclusivamente para áreas industriales internas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-MCO-AI-01",
+    "analyteId": "Monoxido_de_Carbono_CO_ppm",
+    "analito": "Monóxido de Carbono CO",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Promedio Móvil 8 Horas - Límite Legal Obligatorio Nacional (Ley 20.284 / US-EPA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 9.0,
+      "unidad": "ppm"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Promedio Móvil 8 Horas",
+      "fuenteNormativa": "Límite Legal Obligatorio Nacional (Ley 20.284 / US-EPA)",
+      "autoridadAplicacion": "Límite Legal Obligatorio Nacional",
+      "comentarioTecnico": "Tu valor de 9 ppm (aprox. 10 mg/m³) es el estándar legal obligatorio de red. Evita la acumulación crítica de carboxihemoglobina en la población civil.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-MCO-AI-02",
+    "analyteId": "Monoxido_de_Carbono_CO_ppm",
+    "analito": "Monóxido de Carbono CO",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Inmisión de Emergencia Horaria (1h) - Estándar de Inmisión Corto Plazo (US-EPA NAAQS)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 35.0,
+      "unidad": "ppm"
+    },
+    "metadata": {
+      "usoRecurso": "2. Inmisión de Emergencia Horaria (1h)",
+      "fuenteNormativa": "Estándar de Inmisión Corto Plazo (US-EPA NAAQS)",
+      "autoridadAplicacion": "Estándar de Inmisión Corto Plazo",
+      "comentarioTecnico": "¡Tope horario de alerta extrema! Regla obligatoria para sensores en tiempo real continuo que permite detectar picos letales por escapes industriales inversos o túneles viales.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-NOX-AI-01",
+    "analyteId": "Oxidos_de_Nitrogeno_NOx_ppb",
+    "analito": "Óxidos de Nitrógeno NOx",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Aire Promedio Anual - Estándar Internacional de Calidad de Aire (US-EPA / UE)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 50.0,
+      "unidad": "ppb"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Aire Promedio Anual",
+      "fuenteNormativa": "Estándar Internacional de Calidad de Aire (US-EPA / UE)",
+      "autoridadAplicacion": "Estándar Internacional de Calidad de Aire",
+      "comentarioTecnico": "Tu valor de 50 ppb es analíticamente impecable como promedio de larga exposición. Protege a la población civil contra el desarrollo de afecciones respiratorias crónicas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-NOX-AI-02",
+    "analyteId": "Oxidos_de_Nitrogeno_NOx_ppb",
+    "analito": "Óxidos de Nitrógeno NOx",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Operativo Horario de Alerta - Estándar de Control Corto Plazo (NAAQS US-EPA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 100.0,
+      "unidad": "ppb"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Operativo Horario de Alerta",
+      "fuenteNormativa": "Estándar de Control Corto Plazo (NAAQS US-EPA)",
+      "autoridadAplicacion": "Estándar de Control Corto Plazo",
+      "comentarioTecnico": "Tope horario crítico para sensores en tiempo real continuo que permite detectar picos masivos de gases de escape durante las horas de máxima congestión de tráfico pesado.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-OZO-AI-01",
+    "analyteId": "Ozono_Troposferico_O3_ppb",
+    "analito": "Ozono Troposférico O3",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Máximo de 8 Horas - Directriz de Calidad de Aire de la OMS (Global Update)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 50.0,
+      "unidad": "ppb"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Máximo de 8 Horas",
+      "fuenteNormativa": "Directriz de Calidad de Aire de la OMS (Global Update)",
+      "autoridadAplicacion": "Directriz de Calidad de Aire de la OMS",
+      "comentarioTecnico": "Tu valor de 50 ppb (100 µg/m³) es el estándar internacional de vanguardia para resguardo de la salud pública contra el estrés oxidativo tisular pulmonar agudo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-OZO-AI-02",
+    "analyteId": "Ozono_Troposferico_O3_ppb",
+    "analito": "Ozono Troposférico O3",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite de Alerta Legal / Horario - Estándar Federal Obligatorio de los EE.UU. (US-EPA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 70.0,
+      "unidad": "ppb"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite de Alerta Legal / Horario",
+      "fuenteNormativa": "Estándar Federal Obligatorio de los EE.UU. (US-EPA)",
+      "autoridadAplicacion": "Estándar Federal Obligatorio de los EE.UU.",
+      "comentarioTecnico": "Tope regulatorio estricto utilizado universalmente en plataformas ambientales corporativas para gatillar los protocolos públicos de alerta por esmog fotoquímico.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-M10-AI-01",
+    "analyteId": "Material_Particulado_PM10_ug_m3",
+    "analito": "PM10",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Ciclo 24 Horas - Estándar Nacional de Calidad de Aire / US-EPA NAAQS",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 150.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Ciclo 24 Horas",
+      "fuenteNormativa": "Estándar Nacional de Calidad de Aire / US-EPA NAAQS",
+      "autoridadAplicacion": "Estándar Nacional de Calidad de Aire / US-EPA NAAQS",
+      "comentarioTecnico": "Tu valor de 150 µg/m³ es el correcto según el marco legal diario para proteger a la población general contra la irritación respiratoria aguda y asma.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-M10-AI-02",
+    "analyteId": "Material_Particulado_PM10_ug_m3",
+    "analito": "PM10",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Promedio de Inmisión Anual - Estándar de Larga Exposición (Unión Europea)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 40.0,
+      "unidad": "µg/L"
+    },
+    "metadata": {
+      "usoRecurso": "2. Promedio de Inmisión Anual",
+      "fuenteNormativa": "Estándar de Larga Exposición (Unión Europea)",
+      "autoridadAplicacion": "Estándar de Larga Exposición",
+      "comentarioTecnico": "¡Tope crónico obligatorio! Tu software debe incorporar este límite anual para resguardar la salud epidemiológica civil contra afecciones obstructivas crónicas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-M25-AI-01",
+    "analyteId": "Material_Particulado_PM2.5_ug_m3",
+    "analito": "PM2.5",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Ciclo 24 Horas - ¡Actualización mandatoria! US-EPA NAAQS Daily Standard",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 35.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Ciclo 24 Horas",
+      "fuenteNormativa": "¡Actualización mandatoria! US-EPA NAAQS Daily Standard",
+      "autoridadAplicacion": "¡Actualización mandatoria! US-EPA NAAQS Daily Standard",
+      "comentarioTecnico": "Tu valor de 65 µg/m³ es obsoleto y laxo. Modificar obligatoriamente a 35 µg/m³ para blindar la red contra el riesgo inmediato de infartos y eventos vasculares agudos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-M25-AI-02",
+    "analyteId": "Material_Particulado_PM2.5_ug_m3",
+    "analito": "PM2.5",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Promedio de Inmisión Anual - Estándar de Vanguardia Anual (US-EPA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 9.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "2. Promedio de Inmisión Anual",
+      "fuenteNormativa": "Estándar de Vanguardia Anual (US-EPA)",
+      "autoridadAplicacion": "Estándar de Vanguardia Anual",
+      "comentarioTecnico": "Techo anual estricto para monitoreos continuos. Funciona en tu backend como la frontera pericial definitiva contra la exposición sistemática a hollín diésel.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-PCE-AI-01",
+    "analyteId": "Tetracloroetileno_PCE_ug_m3",
+    "analito": "Tetracloroetileno PCE",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Promedio Anual / Crónico - Guías de Calidad de Aire (OMS)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 250.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Promedio Anual / Crónico",
+      "fuenteNormativa": "Guías de Calidad de Aire (OMS)",
+      "autoridadAplicacion": "Guías de Calidad de Aire",
+      "comentarioTecnico": "Límite de resguardo general europeo para evitar hepatotoxicidad en exposición continua.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-PCE-AI-02",
+    "analyteId": "Tetracloroetileno_PCE_ug_m3",
+    "analito": "Tetracloroetileno PCE",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Referencia Crónico (RfC) - US-EPA (IRIS)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 40.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Referencia Crónico (RfC)",
+      "fuenteNormativa": "US-EPA (IRIS)",
+      "autoridadAplicacion": "US-EPA",
+      "comentarioTecnico": "La EPA es mucho más estricta. Este valor blinda contra la neurotoxicidad a largo plazo y es clave para modelos de dispersión preventivos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-TOL-AI-01",
+    "analyteId": "Tolueno_ug_m3",
+    "analito": "Tolueno",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Ciclo 24 hs - Guías de Calidad de Aire (OMS)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 260.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Ciclo 24 hs",
+      "fuenteNormativa": "Guías de Calidad de Aire (OMS)",
+      "autoridadAplicacion": "Guías de Calidad de Aire",
+      "comentarioTecnico": "Tope clásico de protección civil contra afecciones del sistema nervioso central.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-TOL-AI-02",
+    "analyteId": "Tolueno_ug_m3",
+    "analito": "Tolueno",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Promedio de Inmisión / 8 Horas - Decreto 3395/96 (Ley 5965 - PBA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 1400.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "2. Promedio de Inmisión / 8 Horas",
+      "fuenteNormativa": "Decreto 3395/96 (Ley 5965 - PBA)",
+      "autoridadAplicacion": "Decreto 3395/96",
+      "comentarioTecnico": "Fundamental para el marco legal bonaerense. Es el límite guía provincial para una franja horaria laboral/diurna. Si superás esto, hay infracción directa.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-TOL-AI-03",
+    "analyteId": "Tolueno_ug_m3",
+    "analito": "Tolueno",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Nivel de Referencia Crónico (RfC) - US-EPA (IRIS)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 5000.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "3. Nivel de Referencia Crónico (RfC)",
+      "fuenteNormativa": "US-EPA (IRIS)",
+      "autoridadAplicacion": "US-EPA",
+      "comentarioTecnico": "Límite superior de exposición crónica tolerada para efectos no cancerígenos respiratorios y neurológicos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-TCE-AI-01",
+    "analyteId": "Tricloroetileno_TCE_ug_m3",
+    "analito": "Tricloroetileno TCE",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Umbral de Riesgo Carcinogénico (Anual) - Guías de Calidad de Aire (OMS) / EPA IRIS",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2.3,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Umbral de Riesgo Carcinogénico (Anual)",
+      "fuenteNormativa": "Guías de Calidad de Aire (OMS) / EPA IRIS",
+      "autoridadAplicacion": "Guías de Calidad de Aire",
+      "comentarioTecnico": "Tu valor de 2.3 µg/m³ es ultra estricto. Representa el límite de concentración en aire para evitar un riesgo de cáncer superior a 1 en un millón por inhalación crónica.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-TCE-AI-02",
+    "analyteId": "Tricloroetileno_TCE_ug_m3",
+    "analito": "Tricloroetileno TCE",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Nivel de Referencia Crónico (RfC) no oncológico - US-EPA (IRIS)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 2.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "2. Nivel de Referencia Crónico (RfC) no oncológico",
+      "fuenteNormativa": "US-EPA (IRIS)",
+      "autoridadAplicacion": "US-EPA",
+      "comentarioTecnico": "Techo de la EPA para proteger contra efectos sistémicos y cardíacos a largo plazo (no asociados al cáncer).",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-XIL-AI-01",
+    "analyteId": "Xilenos_Totales_ug_m3",
+    "analito": "Xilenos Totales",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Inmisión Ambiental / Ciclo 24 Horas - Normativa Internacional / OMS",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 500.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "1. Inmisión Ambiental / Ciclo 24 Horas",
+      "fuenteNormativa": "Normativa Internacional / OMS",
+      "autoridadAplicacion": "Normativa Internacional / OMS",
+      "comentarioTecnico": "Tu valor de 500 µg/m³ está perfecto como límite diario para proteger el sistema nervioso central de la población general.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-XIL-AI-02",
+    "analyteId": "Xilenos_Totales_ug_m3",
+    "analito": "Xilenos Totales",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Promedio de Inmisión / 8 Horas - Decreto 3395/96 (Ley 5965 - PBA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 870.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "2. Promedio de Inmisión / 8 Horas",
+      "fuenteNormativa": "Decreto 3395/96 (Ley 5965 - PBA)",
+      "autoridadAplicacion": "Decreto 3395/96",
+      "comentarioTecnico": "Límite de referencia provincial bonaerense (derivado de fracciones ocupacionales) para franjas diurnas o laborales. Clave para el cumplimiento legal territorial.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-XIL-AI-03",
+    "analyteId": "Xilenos_Totales_ug_m3",
+    "analito": "Xilenos Totales",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "3. Nivel de Referencia Crónico (RfC) - US-EPA (IRIS)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 100.0,
+      "unidad": "µg/m³"
+    },
+    "metadata": {
+      "usoRecurso": "3. Nivel de Referencia Crónico (RfC)",
+      "fuenteNormativa": "US-EPA (IRIS)",
+      "autoridadAplicacion": "US-EPA",
+      "comentarioTecnico": "Vara internacional para monitoreos continuos a largo plazo. Evita la exposición sistémica crónica.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-031-01",
+    "analyteId": "Banda_31.5_Hz_dB",
+    "analito": "Banda 31.5 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Espectro Diurno / Uso Mixto - ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 80.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "1. Espectro Diurno / Uso Mixto",
+      "fuenteNormativa": "ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+      "autoridadAplicacion": "ISO 1996-2 / IRAM 4062",
+      "comentarioTecnico": "Límite diurno para muy bajas frecuencias. Tolera vibraciones de maquinaria pesada en horarios operativos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-031-02",
+    "analyteId": "Banda_31.5_Hz_dB",
+    "analito": "Banda 31.5 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Espectro Nocturno / Residencial - OMS / IFC World Bank Group (Curva NR-45)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 70.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "2. Espectro Nocturno / Residencial",
+      "fuenteNormativa": "OMS / IFC World Bank Group (Curva NR-45)",
+      "autoridadAplicacion": "OMS / IFC World Bank Group",
+      "comentarioTecnico": "Restricción nocturna mandatoria. La OMS exige reducir la presión para evitar la transmisión de resonancias a través de mampostería.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-063-01",
+    "analyteId": "Banda_63_Hz_dB",
+    "analito": "Banda 63 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Espectro Diurno / Uso Mixto - ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 75.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "1. Espectro Diurno / Uso Mixto",
+      "fuenteNormativa": "ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+      "autoridadAplicacion": "ISO 1996-2 / IRAM 4062",
+      "comentarioTecnico": "Límite operativo para el zumbido típico de la red eléctrica o grandes motores diésel en marcha diurna.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-063-02",
+    "analyteId": "Banda_63_Hz_dB",
+    "analito": "Banda 63 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Espectro Nocturno / Residencial - OMS / IFC World Bank Group (Curva NR-45)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 65.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "2. Espectro Nocturno / Residencial",
+      "fuenteNormativa": "OMS / IFC World Bank Group (Curva NR-45)",
+      "autoridadAplicacion": "OMS / IFC World Bank Group",
+      "comentarioTecnico": "Límite nocturno. Blinda a los receptores sensibles contra zumbidos continuos de estaciones de bombeo o generadores.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-125-01",
+    "analyteId": "Banda_125_Hz_dB",
+    "analito": "Banda 125 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Espectro Diurno / Uso Mixto - ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 70.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "1. Espectro Diurno / Uso Mixto",
+      "fuenteNormativa": "ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+      "autoridadAplicacion": "ISO 1996-2 / IRAM 4062",
+      "comentarioTecnico": "Banda crítica para el ruido de tráfico pesado vehicular y maquinaria de excavación.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-125-02",
+    "analyteId": "Banda_125_Hz_dB",
+    "analito": "Banda 125 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Espectro Nocturno / Residencial - OMS / IFC World Bank Group (Curva NR-45)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 60.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "2. Espectro Nocturno / Residencial",
+      "fuenteNormativa": "OMS / IFC World Bank Group (Curva NR-45)",
+      "autoridadAplicacion": "OMS / IFC World Bank Group",
+      "comentarioTecnico": "Tope nocturno para restringir el movimiento de camiones y logística vial en zonas pobladas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-250-01",
+    "analyteId": "Banda_250_Hz_dB",
+    "analito": "Banda 250 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Espectro Diurno / Uso Mixto - ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 65.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "1. Espectro Diurno / Uso Mixto",
+      "fuenteNormativa": "ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+      "autoridadAplicacion": "ISO 1996-2 / IRAM 4062",
+      "comentarioTecnico": "Rango de transición diurno. Controla ruidos mecánicos de rodamientos y ventilación industrial.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-250-02",
+    "analyteId": "Banda_250_Hz_dB",
+    "analito": "Banda 250 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Espectro Nocturno / Residencial - OMS / IFC World Bank Group (Curva NR-45)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 55.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "2. Espectro Nocturno / Residencial",
+      "fuenteNormativa": "OMS / IFC World Bank Group (Curva NR-45)",
+      "autoridadAplicacion": "OMS / IFC World Bank Group",
+      "comentarioTecnico": "Ajuste nocturno preventivo para sistemas de ventilación (HVAC) o extractores operando 24/7.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-500-01",
+    "analyteId": "Banda_500_Hz_dB",
+    "analito": "Banda 500 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Espectro Diurno / Uso Mixto - ISO 1996-2 / ANSI S12.2",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 60.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "1. Espectro Diurno / Uso Mixto",
+      "fuenteNormativa": "ISO 1996-2 / ANSI S12.2",
+      "autoridadAplicacion": "ISO 1996-2 / ANSI S12.2",
+      "comentarioTecnico": "Frecuencia central de la voz humana. Límite para evitar la interferencia conversacional al aire libre.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-500-02",
+    "analyteId": "Banda_500_Hz_dB",
+    "analito": "Banda 500 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Espectro Nocturno / Residencial - OMS / IFC World Bank Group (Curva NR-45)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 50.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "2. Espectro Nocturno / Residencial",
+      "fuenteNormativa": "OMS / IFC World Bank Group (Curva NR-45)",
+      "autoridadAplicacion": "OMS / IFC World Bank Group",
+      "comentarioTecnico": "Penalización por intrusión. Asegura el confort acústico intra-muro durante el descanso.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-1K-01",
+    "analyteId": "Banda_1000_Hz_dB",
+    "analito": "Banda 1000 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Espectro Diurno / Uso Mixto - ISO 1996-2 / ANSI S12.2",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 55.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "1. Espectro Diurno / Uso Mixto",
+      "fuenteNormativa": "ISO 1996-2 / ANSI S12.2",
+      "autoridadAplicacion": "ISO 1996-2 / ANSI S12.2",
+      "comentarioTecnico": "Valor pivote de referencia acústica (1 kHz). Altamente penalizado por el oído humano en vigilia.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-1K-02",
+    "analyteId": "Banda_1000_Hz_dB",
+    "analito": "Banda 1000 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Espectro Nocturno / Residencial - Directrices OMS para el Ruido Urbano",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 45.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "2. Espectro Nocturno / Residencial",
+      "fuenteNormativa": "Directrices OMS para el Ruido Urbano",
+      "autoridadAplicacion": "Directrices OMS para el Ruido Urbano",
+      "comentarioTecnico": "Valor guía exacto de la OMS para el ruido exterior nocturno. Superarlo implica alteraciones crónicas del sueño.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-2K-01",
+    "analyteId": "Banda_2000_Hz_dB",
+    "analito": "Banda 2000 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Espectro Diurno / Uso Mixto - ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 50.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "1. Espectro Diurno / Uso Mixto",
+      "fuenteNormativa": "ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+      "autoridadAplicacion": "ISO 1996-2 / IRAM 4062",
+      "comentarioTecnico": "Límite diurno para frecuencias medias-altas (fricción rápida, corte, turbinas menores).",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-2K-02",
+    "analyteId": "Banda_2000_Hz_dB",
+    "analito": "Banda 2000 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Espectro Nocturno / Residencial - OMS / IFC World Bank Group (Curva NR-45)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 40.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "2. Espectro Nocturno / Residencial",
+      "fuenteNormativa": "OMS / IFC World Bank Group (Curva NR-45)",
+      "autoridadAplicacion": "OMS / IFC World Bank Group",
+      "comentarioTecnico": "Ajuste restrictivo. A esta frecuencia el oído es muy sensible; se percibe como un chillido molesto en la noche.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-4K-01",
+    "analyteId": "Banda_4000_Hz_dB",
+    "analito": "Banda 4000 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Espectro Diurno / Uso Mixto - ISO 1996-2 / ANSI S12.2",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 45.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "1. Espectro Diurno / Uso Mixto",
+      "fuenteNormativa": "ISO 1996-2 / ANSI S12.2",
+      "autoridadAplicacion": "ISO 1996-2 / ANSI S12.2",
+      "comentarioTecnico": "El canal auditivo resuena acá. El límite diurno baja drásticamente porque genera un alto índice de molestia.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-4K-02",
+    "analyteId": "Banda_4000_Hz_dB",
+    "analito": "Banda 4000 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Espectro Nocturno / Residencial - OMS / IFC World Bank Group (Curva NR-45)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 35.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "2. Espectro Nocturno / Residencial",
+      "fuenteNormativa": "OMS / IFC World Bank Group (Curva NR-45)",
+      "autoridadAplicacion": "OMS / IFC World Bank Group",
+      "comentarioTecnico": "Tope nocturno casi de silencio de fondo para frecuencias tonales agudas.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-8K-01",
+    "analyteId": "Banda_8000_Hz_dB",
+    "analito": "Banda 8000 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Espectro Diurno / Uso Mixto - ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 40.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "1. Espectro Diurno / Uso Mixto",
+      "fuenteNormativa": "ISO 1996-2 / IRAM 4062 (Curva NR-55)",
+      "autoridadAplicacion": "ISO 1996-2 / IRAM 4062",
+      "comentarioTecnico": "Frecuencia aguda (escapes de alta presión). Se exige un valor bajo ya que es fácil de atenuar acústicamente.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-RUI-8K-02",
+    "analyteId": "Banda_8000_Hz_dB",
+    "analito": "Banda 8000 Hz",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Espectro Nocturno / Residencial - OMS / IFC World Bank Group (Curva NR-45)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 30.0,
+      "unidad": "dB"
+    },
+    "metadata": {
+      "usoRecurso": "2. Espectro Nocturno / Residencial",
+      "fuenteNormativa": "OMS / IFC World Bank Group (Curva NR-45)",
+      "autoridadAplicacion": "OMS / IFC World Bank Group",
+      "comentarioTecnico": "El límite es mínimo. Cualquier superación indica una fuga presurizada anómala.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-LEQ-01",
+    "analyteId": "Nivel_Sonoro_Continuo_Equivalente_Leq_dBA",
+    "analito": "Nivel Equivalente Leq",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Límite Diurno / Uso Mixto - IRAM 4062 / Directrices OMS",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 65.0,
+      "unidad": "dBA"
+    },
+    "metadata": {
+      "usoRecurso": "1. Límite Diurno / Uso Mixto",
+      "fuenteNormativa": "IRAM 4062 / Directrices OMS",
+      "autoridadAplicacion": "IRAM 4062 / Directrices OMS",
+      "comentarioTecnico": "Valor estándar de resguardo diurno para evitar interferencia en la comunicación y molestias generales en la comunidad.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-LEQ-02",
+    "analyteId": "Nivel_Sonoro_Continuo_Equivalente_Leq_dBA",
+    "analito": "Nivel Equivalente Leq",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Límite Nocturno / Residencial - IFC World Bank Group / OMS",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 55.0,
+      "unidad": "dBA"
+    },
+    "metadata": {
+      "usoRecurso": "2. Límite Nocturno / Residencial",
+      "fuenteNormativa": "IFC World Bank Group / OMS",
+      "autoridadAplicacion": "IFC World Bank Group / OMS",
+      "comentarioTecnico": "Límite restrictivo para la noche. Superar este Leq sostenido genera alteraciones crónicas del sueño en los receptores linderos.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-LMAX-01",
+    "analyteId": "Nivel_Sonoro_Maximo_Lmax_dBA",
+    "analito": "Nivel Máximo Lmax",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Pico Máximo (Cualquier horario) - SRT Res. 295/03 / Criterio de Impacto",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 85.0,
+      "unidad": "dBA"
+    },
+    "metadata": {
+      "usoRecurso": "1. Pico Máximo (Cualquier horario)",
+      "fuenteNormativa": "SRT Res. 295/03 / Criterio de Impacto",
+      "autoridadAplicacion": "SRT Res. 295/03 / Criterio de Impacto",
+      "comentarioTecnico": "Límite de prevención de daño auditivo agudo y sobresalto. Superar los 85 dBA en el exterior es un evento impulsivo crítico.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-LMAX-02",
+    "analyteId": "Nivel_Sonoro_Maximo_Lmax_dBA",
+    "analito": "Nivel Máximo Lmax",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "2. Pico Máximo Nocturno (Dormitorios) - Directrices OMS para el Ruido Urbano",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 60.0,
+      "unidad": "dBA"
+    },
+    "metadata": {
+      "usoRecurso": "2. Pico Máximo Nocturno (Dormitorios)",
+      "fuenteNormativa": "Directrices OMS para el Ruido Urbano",
+      "autoridadAplicacion": "Directrices OMS para el Ruido Urbano",
+      "comentarioTecnico": "A nivel ambiental exterior, un Lmax nocturno > 60 dBA garantiza el despertar de la población (Sleep Disturbance).",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-LMIN-01",
+    "analyteId": "Nivel_Sonoro_Minimo_Lmin_dBA",
+    "analito": "Nivel Mínimo Lmin",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Piso Acústico Ambiental - Línea de Base Ambiental (Referencia)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 40.0,
+      "unidad": "dBA"
+    },
+    "metadata": {
+      "usoRecurso": "1. Piso Acústico Ambiental",
+      "fuenteNormativa": "Línea de Base Ambiental (Referencia)",
+      "autoridadAplicacion": "Línea de Base Ambiental",
+      "comentarioTecnico": "No es un límite de infracción, sino un control de calidad del dato. Si el Lmin es muy alto, indica que el sonómetro está mal calibrado o hay viento fuerte.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-L10-01",
+    "analyteId": "Percentil_L10_dBA",
+    "analito": "Percentil L10",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Límite Diurno de Eventos Frecuentes - Federal Highway Administration (FHWA)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 70.0,
+      "unidad": "dBA"
+    },
+    "metadata": {
+      "usoRecurso": "1. Límite Diurno de Eventos Frecuentes",
+      "fuenteNormativa": "Federal Highway Administration (FHWA)",
+      "autoridadAplicacion": "Federal Highway Administration",
+      "comentarioTecnico": "Indicador internacional de ruido de tráfico pesado. Si el 10% del tiempo se superan los 70 dBA, hay impacto vial severo.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-L50-01",
+    "analyteId": "Percentil_L50_dBA",
+    "analito": "Percentil L50",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Mediana del Clima Sonoro - Estadística Acústica (Referencia)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 60.0,
+      "unidad": "dBA"
+    },
+    "metadata": {
+      "usoRecurso": "1. Mediana del Clima Sonoro",
+      "fuenteNormativa": "Estadística Acústica (Referencia)",
+      "autoridadAplicacion": "Estadística Acústica",
+      "comentarioTecnico": "Define la tendencia central del ruido en el área de estudio.",
+      "esSembrada": true
+    },
+    "activo": true
+  },
+  {
+    "idRegla": "REG-L90-01",
+    "analyteId": "Percentil_L90_dBA",
+    "analito": "Percentil L90",
+    "planillaId": "AIR-NOI-01",
+    "tipoRegla": "NUMERICO",
+    "nombreRegla": "1. Ruido de Fondo (Línea de Base IRAM) - IRAM 4062 (Metodología de Fondo)",
+    "criterio": {
+      "operador": "MENOR_IGUAL",
+      "valor": 50.0,
+      "unidad": "dBA"
+    },
+    "metadata": {
+      "usoRecurso": "1. Ruido de Fondo (Línea de Base IRAM)",
+      "fuenteNormativa": "IRAM 4062 (Metodología de Fondo)",
+      "autoridadAplicacion": "IRAM 4062",
+      "comentarioTecnico": "Parámetro crítico. Si la operación de una planta eleva el L90 por encima de 50 dBA, se destruye el confort acústico basal del vecindario.",
+      "esSembrada": true
+    },
+    "activo": true
+  }
+]

@@ -11,6 +11,8 @@ import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
 import { getCurrentGPSLocation } from '@/lib/geo-utils';
 import { notifyPortalActivity } from '@/lib/portal-notifications';
+import { evaluateReading } from '@/lib/guideline-evaluator';
+import { GuidelineAlertBadge } from './guideline-alert-badge';
 
 type MeasurementSystem = 'metric' | 'imperial' | 'local';
 
@@ -403,6 +405,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
             const units = [...analyte[globalSystem], ...analyte.metric, ...analyte.imperial, ...analyte.local].filter((u, i, self) => u && self.indexOf(u) === i);
             const state = formData[analyte.name] || { readings: [], unit: units[0] || "", isExpanded: false };
             const stats = calculateStats(state.readings);
+            const statsEval = stats ? evaluateReading('agua_superficial', analyte.name, stats.mean, state.unit) : null;
             const hasSavedValue = state.readings.some(r => r.isSaved);
             
             return (
@@ -426,8 +429,21 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
                   <div className="flex items-center gap-3">
                     {stats && (
-                       <div className="bg-neutral-100 px-3 py-1 rounded-sm border border-neutral-200 flex items-center gap-1.5" title="Media ± SE">
-                          <span className="text-[10px] font-code font-black text-primary">x̄: {stats.mean} ± {stats.error}</span>
+                       <div 
+                         className={cn(
+                           "px-3 py-1 rounded-sm border flex items-center gap-1.5 transition-colors",
+                           statsEval?.hasViolations 
+                             ? "bg-amber-50 border-amber-300 text-amber-900" 
+                             : "bg-neutral-100 border-neutral-200"
+                         )} 
+                         title="Media ± SE"
+                       >
+                          <span className={cn("text-[10px] font-code font-black", statsEval?.hasViolations ? "text-amber-700" : "text-primary")}>
+                            x̄: {stats.mean} ± {stats.error}
+                          </span>
+                          {statsEval?.hasViolations && (
+                            <GuidelineAlertBadge evaluation={statsEval} />
+                          )}
                        </div>
                     )}
                     <select 
@@ -442,14 +458,24 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
                 {state.isExpanded && (
                   <div className="bg-white pb-2 animate-in slide-in-from-top-1 duration-200 divide-y divide-neutral-50 border-t border-neutral-100">
-                    {state.readings.map((reading, idx) => (
+                    {state.readings.map((reading, idx) => {
+                      const readingEval = evaluateReading('agua_superficial', analyte.name, reading.value, state.unit);
+                      return (
                       <div key={reading.id} className="flex items-center justify-between gap-2 py-1 px-4 border-b border-neutral-50 last:border-0 hover:bg-neutral-50/50 transition-colors group">
                         <span className="text-[9px] font-normal uppercase text-neutral-300 group-hover:text-neutral-500 transition-colors shrink-0">L{idx + 1}</span>
                         <div className="flex items-center gap-2 flex-1 justify-end">
+                          {readingEval.hasViolations && (
+                            <GuidelineAlertBadge evaluation={readingEval} />
+                          )}
                           <input 
                             type="text" 
                             placeholder="0.00"
-                            className="h-7 w-20 border-none bg-transparent px-1 text-[11px] font-code text-black text-right outline-none focus:ring-0"
+                            className={cn(
+                              "h-7 w-20 px-1 text-[11px] font-code text-right outline-none focus:ring-0 transition-colors rounded-sm",
+                              readingEval.hasViolations 
+                                ? "border border-amber-400 bg-amber-50 text-amber-950 font-bold focus:border-amber-600 focus:bg-amber-100/50" 
+                                : "border-none bg-transparent text-black"
+                            )}
                             value={reading.value}
                             onChange={(e) => handleReadingChange(analyte.name, reading.id, e.target.value)}
                           />
@@ -478,7 +504,8 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                     {state.readings.length === 0 && (
                       <div className="p-4 text-center">
                         <p className="text-[9px] text-neutral-400 mb-2 uppercase tracking-wider italic">Sin lecturas para {analyte.name}</p>
@@ -509,6 +536,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
             const state = formData[param.name] || { readings: [], unit: param.unit, isExpanded: true };
             const currentReading = state.readings[0] || { id: `temp_lab_${param.name}`, value: "", capturedAt: Date.now(), isSaved: false, isSaving: false };
             const hasSavedValue = state.readings.some(r => r.isSaved);
+            const labEval = evaluateReading('agua_superficial', param.name, currentReading.value, param.unit);
 
             return (
               <div key={param.name} className="flex items-center justify-between py-3 px-4 hover:bg-neutral-50 transition-colors">
@@ -523,10 +551,18 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                 </div>
                 
                 <div className="flex items-center gap-2">
+                  {labEval.hasViolations && (
+                    <GuidelineAlertBadge evaluation={labEval} />
+                  )}
                   <span className="text-[9px] font-normal text-neutral-500">{param.unit}</span>
                   <input 
                     type="text" 
-                    className="h-8 w-24 border-none bg-neutral-50 px-2 text-[12px] font-code text-black text-right outline-none placeholder:text-neutral-300" 
+                    className={cn(
+                      "h-8 w-24 px-2 text-[12px] font-code text-right outline-none placeholder:text-neutral-300 transition-colors rounded-sm",
+                      labEval.hasViolations 
+                        ? "border border-amber-400 bg-amber-50 text-amber-950 font-bold focus:border-amber-600 focus:bg-amber-100/50" 
+                        : "border-none bg-neutral-50 text-black"
+                    )} 
                     value={currentReading.value} 
                     onChange={(e) => {
                       if (state.readings.length === 0) {
