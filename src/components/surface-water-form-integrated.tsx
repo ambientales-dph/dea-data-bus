@@ -6,9 +6,11 @@ import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Check, CheckCircle2, Clock, User, Calendar, Beaker, Settings2, Plus, Trash2, ChevronDown, ChevronUp, Sigma, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { PhotoRegistry } from './photo-registry';
 import { TechnicianLink } from './technician-link';
 import { getCurrentGPSLocation } from '@/lib/geo-utils';
+import { notifyPortalActivity } from '@/lib/portal-notifications';
 
 type MeasurementSystem = 'metric' | 'imperial' | 'local';
 
@@ -103,7 +105,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         const snapshot = await getDocs(q);
         
         const newFormData: Record<string, SurfaceWaterAnalyteState> = {};
-        let foundMetadata = { timestamp: null };
+        let foundMetadata: { timestamp: any } = { timestamp: null };
         let foundDeferred = false;
 
         snapshot.docs.forEach(docSnap => {
@@ -258,6 +260,20 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
         setDoc(sampleRef, payload, { merge: true }).catch(console.error);
         updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
+
+        // Notificar al Portal DEA
+        notifyPortalActivity(db, {
+          type: 'databus',
+          action: 'sample_added',
+          title: `Lectura de ${analyteName} (Agua Superficial)`,
+          stationId,
+          reportId,
+          planillaCode: formId || 'AS-001',
+          userEmail: user.email || '',
+          userName: user.displayName || undefined,
+          userPhoto: user.photoURL,
+          details: `Registró ${analyteName}: ${finalValue}`,
+        });
       } catch (err) {
         console.error("Error guardando lectura:", err);
       }
@@ -349,7 +365,9 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
              <Sigma className="h-4 w-4" />
              <span className="text-[10px] font-normal uppercase tracking-[0.2em]">Sección I: Mediciones In Situ (Estabilización)</span>
            </div>
-           <AlertCircle className="h-3 w-3 text-neutral-400" title="Se recomienda cargar al menos 3 lecturas para estabilizar." />
+           <span title="Se recomienda cargar al menos 3 lecturas para estabilizar.">
+             <AlertCircle className="h-3 w-3 text-neutral-400" />
+           </span>
         </div>
         
         <div className="divide-y divide-neutral-200">

@@ -9,14 +9,19 @@ import { useEffect } from 'react';
  */
 export function ServiceWorkerRegistration() {
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.workbox === undefined) {
+    // En desarrollo local (especialmente con Turbopack), no se compila el service worker /sw.js
+    if (process.env.NODE_ENV === 'development') {
+      return;
+    }
+
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && (window as any).workbox === undefined) {
       const registerSW = async () => {
         try {
           // El archivo /sw.js es generado por @ducanh2912/next-pwa durante el build
           const registration = await navigator.serviceWorker.register('/sw.js');
           console.log('DEA Data Bus: Service Worker registrado con éxito. Scope:', registration.scope);
         } catch (error) {
-          console.error('DEA Data Bus: Fallo al registrar el Service Worker:', error);
+          console.warn('DEA Data Bus: Service Worker no disponible en este entorno.');
         }
       };
 
