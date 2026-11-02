@@ -7,7 +7,8 @@ export type DataBusActionType =
   | 'data_bus_report_created' 
   | 'data_bus_samples_uploaded' 
   | 'data_bus_photos_uploaded'
-  | 'data_bus_survey_created';
+  | 'data_bus_survey_created'
+  | 'data_bus_guideline_alert';
 
 export interface DataBusActivityPayload {
   actionType: DataBusActionType;
@@ -22,6 +23,12 @@ export interface DataBusActivityPayload {
   userPhoto?: string | null;
   details?: string;
   cardId?: string;
+  analyte?: string;
+  value?: string | number;
+  unit?: string;
+  norm?: string;
+  limitText?: string;
+  violations?: any[];
 }
 
 /**
@@ -50,6 +57,12 @@ export async function notifyPortalActivity(db: Firestore, payload: DataBusActivi
       userPhoto: payload.userPhoto || null,
       details: payload.details || null,
       cardId: payload.cardId || null,
+      analyte: payload.analyte || null,
+      value: payload.value !== undefined ? payload.value : null,
+      unit: payload.unit || null,
+      norm: payload.norm || null,
+      limitText: payload.limitText || null,
+      violations: payload.violations || null,
       timestamp: serverTimestamp(),
     });
   } catch (err: any) {

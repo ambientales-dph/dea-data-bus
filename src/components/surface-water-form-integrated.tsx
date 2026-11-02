@@ -280,6 +280,29 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         setDoc(sampleRef, payload, { merge: true }).catch(console.error);
         updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
 
+        // Si vulnera nivel guía, notificamos alerta ambiental a Portal DEA
+        const evalResult = evaluateReading('agua_superficial', analyteName, finalValue, analyte.unit);
+        if (evalResult.hasViolations && db && user) {
+          notifyPortalActivity(db, {
+            actionType: 'data_bus_guideline_alert',
+            projectName: reportInfo.trelloCardName || 'Monitoreo de Campo DPH',
+            stationName: reportInfo.stationName || 'Estación',
+            stationId,
+            reportId,
+            reportOid: reportInfo.oid,
+            userEmail: user.email || '',
+            userName: user.displayName || undefined,
+            userPhoto: user.photoURL,
+            details: 'Agua Superficial (AS-001)',
+            analyte: analyteName,
+            value: finalValue,
+            unit: analyte.unit,
+            norm: evalResult.primaryViolation?.fuenteNormativa,
+            limitText: evalResult.primaryViolation?.limiteTexto,
+            violations: evalResult.violations,
+          }).catch(console.warn);
+        }
+
         // Lectura persistida en Firestore samples
       } catch (err) {
         console.error("Error guardando lectura:", err);
