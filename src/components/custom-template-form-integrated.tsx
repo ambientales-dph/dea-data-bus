@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, Timestamp, deleteDoc } from 'firebase/firestore';
+import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, getDoc, Timestamp, deleteDoc } from 'firebase/firestore';
+import { notifyPortalActivity } from '@/lib/portal-notifications';
 import { useFirestore, useUser, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Check, CheckCircle2, Clock, User, Calendar, Settings2, Plus, Trash2, ChevronDown, ChevronUp, Star, Pencil, Layers } from 'lucide-react';
@@ -49,6 +50,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
   const [metadata, setMetadata] = useState<{ timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
+  const [reportInfo, setReportInfo] = useState<{ oid?: string; trelloCardName?: string; stationName?: string }>({});
 
   useEffect(() => {
     const fetchExistingData = async () => {
@@ -117,6 +119,21 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
     };
 
     fetchExistingData();
+    if (reportId && db) {
+      getDoc(doc(db, 'reports', reportId)).then(async (snap) => {
+        if (snap.exists()) {
+          const rData = snap.data();
+          let sName = '';
+          if (stationId) {
+            try {
+              const sSnap = await getDoc(doc(db, 'stations', stationId));
+              if (sSnap.exists()) sName = sSnap.data().name || '';
+            } catch (err) {}
+          }
+          setReportInfo({ oid: rData.oid, trelloCardName: rData.trelloCardName, stationName: sName });
+        }
+      }).catch(console.error);
+    }
   }, [db, reportId, formId, currentTitle]);
 
   const handleReadingChange = (analyteName: string, readingId: string, value: string) => {
@@ -249,6 +266,28 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
     acc[cat].push(p);
     return acc;
   }, {});
+
+    const handleFinalize = async () => {
+    if (db && user) {
+      try {
+        await notifyPortalActivity(db, {
+          actionType: 'data_bus_samples_uploaded',
+          projectName: reportInfo.trelloCardName || 'Monitoreo de Campo DPH',
+          stationName: reportInfo.stationName || 'Estación',
+          stationId,
+          reportId,
+          reportOid: reportInfo.oid,
+          userEmail: user.email || '',
+          userName: user.displayName || undefined,
+          userPhoto: user.photoURL,
+          details: 'Protocolo Personalizado (PP-001)',
+        });
+      } catch (err) {
+        console.warn('Error notificando finalización:', err);
+      }
+    }
+    onClose?.();
+  };
 
   return (
     <div className="mx-auto w-full border border-black bg-white font-body shadow-sm rounded-none overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
@@ -437,7 +476,7 @@ export function CustomTemplateFormIntegrated({ reportId, formId, stationId, temp
       </div>
 
       <div className="bg-white p-4 border-t border-black">
-        <button onClick={onClose} className="w-full bg-black hover:bg-neutral-900 py-4 text-[11px] font-normal uppercase tracking-widest text-white shadow-xl">Finalizar Protocolo PP-001</button>
+        <button onClick={handleFinalize} className="w-full bg-black hover:bg-neutral-900 py-4 text-[11px] font-normal uppercase tracking-widest text-white shadow-xl">Finalizar Protocolo PP-001</button>
       </div>
     </div>
   );

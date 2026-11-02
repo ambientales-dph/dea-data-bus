@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, Timestamp, deleteDoc } from 'firebase/firestore';
+import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, getDoc, Timestamp, deleteDoc } from 'firebase/firestore';
+import { notifyPortalActivity } from '@/lib/portal-notifications';
 import { useFirestore, useUser, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Check, Clock, User, Wind, CheckCircle2, Calendar, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
@@ -41,6 +42,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
   const [metadata, setMetadata] = useState<{ timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
+  const [reportInfo, setReportInfo] = useState<{ oid?: string; trelloCardName?: string; stationName?: string }>({});
 
   const params = [
     { name: "PM10", unit: "µg/m³", cat: "Particulado", desc: "Nación/Prov: 150 (24hs) • OMS: 45 (24hs)" },
@@ -120,6 +122,21 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
     };
 
     fetchExistingData();
+    if (reportId && db) {
+      getDoc(doc(db, 'reports', reportId)).then(async (snap) => {
+        if (snap.exists()) {
+          const rData = snap.data();
+          let sName = '';
+          if (stationId) {
+            try {
+              const sSnap = await getDoc(doc(db, 'stations', stationId));
+              if (sSnap.exists()) sName = sSnap.data().name || '';
+            } catch (err) {}
+          }
+          setReportInfo({ oid: rData.oid, trelloCardName: rData.trelloCardName, stationName: sName });
+        }
+      }).catch(console.error);
+    }
   }, [db, reportId, formId, user?.email]);
 
   const handleReadingChange = (analyteName: string, readingId: string, value: string) => {
@@ -257,6 +274,28 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
   }
 
   const isDeferredLocked = Object.keys(formData).some(k => formData[k].readings.some(r => r.isSaved));
+
+    const handleFinalize = async () => {
+    if (db && user) {
+      try {
+        await notifyPortalActivity(db, {
+          actionType: 'data_bus_samples_uploaded',
+          projectName: reportInfo.trelloCardName || 'Monitoreo de Campo DPH',
+          stationName: reportInfo.stationName || 'Estación',
+          stationId,
+          reportId,
+          reportOid: reportInfo.oid,
+          userEmail: user.email || '',
+          userName: user.displayName || undefined,
+          userPhoto: user.photoURL,
+          details: 'Calidad de Aire (CA-001)',
+        });
+      } catch (err) {
+        console.warn('Error notificando finalización:', err);
+      }
+    }
+    onClose?.();
+  };
 
   return (
     <div className="mx-auto w-full border border-black bg-white font-body shadow-sm rounded-none overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
@@ -413,7 +452,7 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
       </div>
 
       <div className="bg-white p-4 border-t border-black">
-        <button onClick={onClose} className="w-full bg-black hover:bg-neutral-900 py-4 text-[11px] font-normal uppercase tracking-widest text-white shadow-xl">Finalizar Monitoreo de Aire</button>
+        <button onClick={handleFinalize} className="w-full bg-black hover:bg-neutral-900 py-4 text-[11px] font-normal uppercase tracking-widest text-white shadow-xl">Finalizar Monitoreo de Aire</button>
       </div>
     </div>
   );

@@ -278,8 +278,20 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         setDoc(sampleRef, payload, { merge: true }).catch(console.error);
         updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
 
-        // Notificar al Portal DEA
-        notifyPortalActivity(db, {
+        // Lectura persistida en Firestore samples
+      } catch (err) {
+        console.error("Error guardando lectura:", err);
+      }
+    })();
+
+    toast({ title: "Lectura capturada", description: `${analyteName} sincronizando...` });
+  };
+
+    const handleFinalize = async () => {
+    const hasReadings = Object.values(formData).some(a => a.readings && a.readings.length > 0);
+    if (hasReadings && db && user) {
+      try {
+        await notifyPortalActivity(db, {
           actionType: 'data_bus_samples_uploaded',
           projectName: reportInfo.trelloCardName || 'Monitoreo de Campo DPH',
           stationName: reportInfo.stationName || 'Estación',
@@ -289,14 +301,13 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
           userEmail: user.email || '',
           userName: user.displayName || undefined,
           userPhoto: user.photoURL,
-          details: `Registró ${analyteName}: ${finalValue}`,
+          details: 'Agua Superficial (AS-001)',
         });
       } catch (err) {
-        console.error("Error guardando lectura:", err);
+        console.warn('Error notificando finalización:', err);
       }
-    })();
-
-    toast({ title: "Lectura capturada", description: `${analyteName} sincronizando...` });
+    }
+    onClose?.();
   };
 
   const calculateStats = (readings: Reading[]) => {
@@ -549,7 +560,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
       </div>
 
       <div className="bg-white p-4 border-t border-black">
-        <button onClick={onClose} className="w-full bg-black hover:bg-neutral-900 py-4 text-[11px] font-normal uppercase tracking-widest text-white shadow-xl">Finalizar Protocolo AS-001</button>
+        <button onClick={handleFinalize} className="w-full bg-black hover:bg-neutral-900 py-4 text-[11px] font-normal uppercase tracking-widest text-white shadow-xl">Finalizar Protocolo AS-001</button>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, orderBy, Timestamp, deleteDoc } from 'firebase/firestore';
+import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, getDoc, orderBy, Timestamp, deleteDoc } from 'firebase/firestore';
+import { notifyPortalActivity } from '@/lib/portal-notifications';
 import { useFirestore, useUser, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, Check, Plus, Trash2, Clock, User, Calendar, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
@@ -69,6 +70,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
   const [metadata, setMetadata] = useState<{ timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
+  const [reportInfo, setReportInfo] = useState<{ oid?: string; trelloCardName?: string; stationName?: string }>({});
   const hasSetInitialId = useRef(false);
 
   const stationRef = useMemo(() => {
@@ -149,6 +151,21 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
     };
 
     fetchExistingData();
+    if (reportId && db) {
+      getDoc(doc(db, 'reports', reportId)).then(async (snap) => {
+        if (snap.exists()) {
+          const rData = snap.data();
+          let sName = '';
+          if (stationId) {
+            try {
+              const sSnap = await getDoc(doc(db, 'stations', stationId));
+              if (sSnap.exists()) sName = sSnap.data().name || '';
+            } catch (err) {}
+          }
+          setReportInfo({ oid: rData.oid, trelloCardName: rData.trelloCardName, stationName: sName });
+        }
+      }).catch(console.error);
+    }
   }, [db, reportId, formId, user?.email]);
 
   useEffect(() => {
@@ -327,8 +344,30 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
     const stats = calculateStats(state.readings);
     const hasSavedValue = state.readings.some(r => r.isSaved);
 
-    return (
-      <div key={config.key} className="flex flex-col bg-white overflow-hidden border-b border-neutral-200">
+      const handleFinalize = async () => {
+    if (db && user) {
+      try {
+        await notifyPortalActivity(db, {
+          actionType: 'data_bus_samples_uploaded',
+          projectName: reportInfo.trelloCardName || 'Monitoreo de Campo DPH',
+          stationName: reportInfo.stationName || 'Estación',
+          stationId,
+          reportId,
+          reportOid: reportInfo.oid,
+          userEmail: user.email || '',
+          userName: user.displayName || undefined,
+          userPhoto: user.photoURL,
+          details: 'Freatímetros (FTA-001)',
+        });
+      } catch (err) {
+        console.warn('Error notificando finalización:', err);
+      }
+    }
+    onClose?.();
+  };
+
+  return (
+    <div key={config.key} className="flex flex-col bg-white overflow-hidden border-b border-neutral-200">
         <div className="flex items-center justify-between py-3 px-4 hover:bg-neutral-50 transition-colors">
           <button 
             onClick={() => setFormData(prev => ({ ...prev, [config.name]: { ...state, isExpanded: !state.isExpanded } }))}
@@ -523,7 +562,7 @@ export function FreatimetroFormIntegrated({ reportId, formId, stationId, onClose
       </div>
 
       <div className="bg-white p-4 border-t border-black">
-        <button onClick={onClose} className="w-full bg-black hover:bg-neutral-900 py-4 text-[11px] font-normal uppercase tracking-widest text-white shadow-xl">Finalizar Protocolo FTA-001</button>
+        <button onClick={handleFinalize} className="w-full bg-black hover:bg-neutral-900 py-4 text-[11px] font-normal uppercase tracking-widest text-white shadow-xl">Finalizar Protocolo FTA-001</button>
       </div>
     </div>
   );
