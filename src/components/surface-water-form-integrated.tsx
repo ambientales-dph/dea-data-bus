@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, Timestamp, deleteDoc } from 'firebase/firestore';
+import { collection, setDoc, serverTimestamp, doc, updateDoc, arrayUnion, query, where, getDocs, getDoc, Timestamp, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Check, CheckCircle2, Clock, User, Calendar, Beaker, Settings2, Plus, Trash2, ChevronDown, ChevronUp, Sigma, AlertCircle } from 'lucide-react';
@@ -91,6 +91,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
   const [metadata, setMetadata] = useState<{ timestamp?: any }>({});
   const [isDeferred, setIsDeferred] = useState(false);
   const [manualDate, setManualDate] = useState<string>(new Date().toISOString().slice(0, 16));
+  const [reportInfo, setReportInfo] = useState<{ oid?: string; trelloCardName?: string; stationName?: string }>({});
 
   useEffect(() => {
     const fetchExistingData = async () => {
@@ -158,6 +159,22 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
     };
 
     fetchExistingData();
+
+    if (reportId && db) {
+      getDoc(doc(db, 'reports', reportId)).then(async (snap) => {
+        if (snap.exists()) {
+          const rData = snap.data();
+          let sName = '';
+          if (stationId) {
+            try {
+              const sSnap = await getDoc(doc(db, 'stations', stationId));
+              if (sSnap.exists()) sName = sSnap.data().name || '';
+            } catch (err) {}
+          }
+          setReportInfo({ oid: rData.oid, trelloCardName: rData.trelloCardName, stationName: sName });
+        }
+      }).catch(console.error);
+    }
   }, [db, reportId, formId, user?.email]);
 
   const handleReadingChange = (analyteName: string, readingId: string, value: string) => {
@@ -263,12 +280,12 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
 
         // Notificar al Portal DEA
         notifyPortalActivity(db, {
-          type: 'databus',
-          action: 'sample_added',
-          title: `Lectura de ${analyteName} (Agua Superficial)`,
+          actionType: 'data_bus_samples_uploaded',
+          projectName: reportInfo.trelloCardName || 'Monitoreo de Campo DPH',
+          stationName: reportInfo.stationName || 'Estación',
           stationId,
           reportId,
-          planillaCode: formId || 'AS-001',
+          reportOid: reportInfo.oid,
           userEmail: user.email || '',
           userName: user.displayName || undefined,
           userPhoto: user.photoURL,
