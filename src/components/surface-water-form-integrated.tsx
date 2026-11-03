@@ -13,6 +13,7 @@ import { getCurrentGPSLocation } from '@/lib/geo-utils';
 import { notifyPortalActivity } from '@/lib/portal-notifications';
 import { evaluateReading } from '@/lib/guideline-evaluator';
 import { GuidelineAlertBadge } from './guideline-alert-badge';
+import { GuidelineInfoModal } from './guideline-info-modal';
 
 type MeasurementSystem = 'metric' | 'imperial' | 'local';
 
@@ -281,7 +282,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
         updateDoc(doc(db, 'reports', reportId), { editors: arrayUnion(user.email) }).catch(console.error);
 
         // Si vulnera nivel guía, notificamos alerta ambiental a Portal DEA
-        const evalResult = evaluateReading('agua_superficial', analyteName, finalValue, analyte.unit);
+        const evalResult = evaluateReading('agua_superficial', analyteName, finalValue, analyteState?.unit || '');
         if (evalResult.hasViolations && db && user) {
           notifyPortalActivity(db, {
             actionType: 'data_bus_guideline_alert',
@@ -296,7 +297,7 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
             details: 'Agua Superficial (AS-001)',
             analyte: analyteName,
             value: finalValue,
-            unit: analyte.unit,
+            unit: analyteState?.unit || '',
             norm: evalResult.primaryViolation?.fuenteNormativa,
             limitText: evalResult.primaryViolation?.limiteTexto,
             violations: evalResult.violations,
@@ -440,7 +441,10 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
                   >
                     {state.isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
                     <div className="flex flex-col">
-                      <span className="text-[12px] font-normal text-black uppercase tracking-tight">{analyte.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[12px] font-normal text-black uppercase tracking-tight">{analyte.name}</span>
+                        <GuidelineInfoModal analyteName={analyte.name} matrix="agua_superficial" currentUnit={state.unit} />
+                      </div>
                       {hasSavedValue && state.userEmail && (
                         <div className="flex items-center gap-1 mt-0.5">
                           <User className="h-2.5 w-2.5 text-neutral-300" />
@@ -564,7 +568,10 @@ export function SurfaceWaterFormIntegrated({ reportId, formId, stationId, onClos
             return (
               <div key={param.name} className="flex items-center justify-between py-3 px-4 hover:bg-neutral-50 transition-colors">
                 <div className="flex flex-col">
-                  <label className="text-[11px] font-normal text-black uppercase tracking-tight">{param.name}</label>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-[11px] font-normal text-black uppercase tracking-tight">{param.name}</label>
+                    <GuidelineInfoModal analyteName={param.name} matrix="agua_superficial" currentUnit={param.unit} />
+                  </div>
                   {hasSavedValue && state.userEmail && (
                     <div className="flex items-center gap-1 mt-0.5">
                       <User className="h-2.5 w-2.5 text-neutral-300" />

@@ -14,6 +14,7 @@ import { TechnicianLink } from './technician-link'
 import { getCurrentGPSLocation } from '@/lib/geo-utils'
 import { evaluateReading } from '@/lib/guideline-evaluator'
 import { GuidelineAlertBadge } from './guideline-alert-badge'
+import { GuidelineInfoModal } from './guideline-info-modal'
 
 interface Reading {
   id: string;
@@ -340,7 +341,7 @@ export function SuelosGeotecniaFormIntegrated({ reportId, formId, stationId, onC
         {state.isExpanded && (
           <div className="absolute z-[60] bg-white border border-neutral-300 shadow-2xl p-2 rounded-sm w-48 animate-in fade-in zoom-in-95 duration-200">
              <div className="flex items-center justify-between mb-1.5 border-b pb-1">
-                <span className="text-[8px] font-black uppercase text-neutral-400">{field} ({unit})</span>
+                <div className="flex items-center gap-1"><span className="text-[8px] font-black uppercase text-neutral-400">{field} ({unit})</span><GuidelineInfoModal analyteName={field} matrix="suelo" currentUnit={unit} /></div>
                 <button onClick={() => setCapas(prev => prev.map(c => c.id === layerId ? { ...c, multidata: { ...c.multidata, [field]: { ...state, isExpanded: false } } } : c))}>
                    <ChevronUp className="h-3 w-3 text-neutral-300" />
                 </button>

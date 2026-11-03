@@ -12,6 +12,7 @@ import { TechnicianLink } from './technician-link';
 import { getCurrentGPSLocation } from '@/lib/geo-utils';
 import { evaluateReading } from '@/lib/guideline-evaluator';
 import { GuidelineAlertBadge } from './guideline-alert-badge';
+import { GuidelineInfoModal } from './guideline-info-modal';
 
 interface Reading {
   id: string;
@@ -388,7 +389,10 @@ export function AirQualityFormIntegrated({ reportId, formId, stationId, onClose 
                   >
                     {state.isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
                     <div className="flex flex-col">
-                      <span className="text-[12px] font-normal text-black uppercase tracking-tight">{param.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[12px] font-normal text-black uppercase tracking-tight">{param.name}</span>
+                        <GuidelineInfoModal analyteName={param.name} matrix="aire" currentUnit={param.unit} />
+                      </div>
                       {hasSavedValue && state.userEmail && (
                         <div className="flex items-center gap-1 mt-0.5">
                           <User className="h-2.5 w-2.5 text-neutral-300" />

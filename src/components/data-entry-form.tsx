@@ -21,6 +21,7 @@ import { SamplingReportForm } from './sampling-report-form';
 import { ReportList } from './report-list';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { MONITORING_TEMPLATES, BASIN_CODES_DATA } from '@/app/lib/monitoring-constants';
 import { isUserAdmin } from '@/app/lib/auth-config';
 import { AdminDeleteDialog } from './admin-delete-dialog';
@@ -35,6 +36,14 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+
+function TrelloIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M19.5 2h-15A2.5 2.5 0 0 0 2 4.5v15A2.5 2.5 0 0 0 4.5 22h15a2.5 2.5 0 0 0 2.5-2.5v-15A2.5 2.5 0 0 0 19.5 2zm-8.25 14a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V16zm7.5-5a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V11z"/>
+    </svg>
+  );
+}
 
 function isPointInPoly(pt: [number, number], poly: [number, number][][]) {
   for (let i = 0; i < poly.length; i++) {
@@ -124,16 +133,39 @@ function DataExplorer({
     return match ? match[1] : null;
   };
 
-  const stationsByBasin = useMemo(() => {
+  const stationMap = useMemo(() => {
+    const map = new Map<string, any>();
+    stations.forEach((s: any) => map.set(s.id, s));
+    return map;
+  }, [stations]);
+
+  const reportsByBasin = useMemo(() => {
     const groups: Record<string, any[]> = {};
-    stations.forEach(s => {
+    
+    // Inicializar con cuencas de estaciones para mantener la lista completa de cuencas
+    stations.forEach((s: any) => {
       let bCode = getBasinCodeFromStationName(s.name || '');
       if (!bCode) bCode = s.basinCode || 'S/C';
+      bCode = bCode || 'S/C';
       if (!groups[bCode]) groups[bCode] = [];
-      groups[bCode].push(s);
     });
+
+    reports.forEach((r: any) => {
+      const st = r.stationId ? stationMap.get(r.stationId) : null;
+      let bCode = getBasinCodeFromStationName(st?.name || r.oid || '');
+      if (!bCode) bCode = st?.basinCode || 'S/C';
+      bCode = bCode || 'S/C';
+      if (!groups[bCode]) groups[bCode] = [];
+      groups[bCode].push(r);
+    });
+
+    // Ordenar reportes por OID ascendente
+    Object.keys(groups).forEach(k => {
+      groups[k].sort((a, b) => (a.oid || '').localeCompare(b.oid || ''));
+    });
+
     return groups;
-  }, [stations]);
+  }, [reports, stations, stationMap]);
 
   const getBasinLabel = (code: string) => {
     if (code === 'S/C') return 'Otras Ubicaciones';
@@ -292,100 +324,108 @@ function DataExplorer({
                         <p className="text-[8px] uppercase tracking-widest text-black">Sin datos</p>
                       </div>
                     ) : (
-                      Object.entries(stationsByBasin).map(([basinCode, basinStations]) => (
+                      Object.entries(reportsByBasin).map(([basinCode, basinReports]) => (
                         <AccordionItem key={basinCode} value={`basin-${basinCode}`} className="border-none">
                           <AccordionTrigger className="py-1 px-1 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:hidden">
                             <div className="flex items-center gap-2">
                               <span className="text-[11px] text-black uppercase font-normal tracking-widest group-hover:text-primary transition-colors text-left">
-                                {getBasinLabel(basinCode)} <span className="text-[9px] opacity-60 font-normal ml-1">({basinStations.length})</span>
+                                {getBasinLabel(basinCode)} <span className="text-[9px] opacity-60 font-normal ml-1">({basinReports.length})</span>
                               </span>
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="pb-0 pt-0 pl-3 border-l border-neutral-100 ml-2">
-                            <Accordion type="multiple" className="w-full">
-                              {basinStations.map((station: any) => {
-                                const stationReports = getReportsByStation(station.id);
-                                return (
-                                  <AccordionItem key={station.id} value={station.id} className="border-none">
-                                    <AccordionTrigger className="py-0.5 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:hidden">
-                                      <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 bg-primary shrink-0" />
-                                        <span 
-                                          role="button"
-                                          tabIndex={0}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            onSelectStation({
-                                              lat: station.latitude,
-                                              lon: station.longitude,
-                                              stationId: station.id,
-                                              name: station.name,
-                                              basinCode: station.basinCode
-                                            });
-                                          }}
-                                          className="text-[11px] text-black font-normal truncate text-left hover:underline underline-offset-4 decoration-primary/30 group-hover:text-primary transition-colors cursor-pointer focus:outline-none"
-                                        >
-                                          {station.name} <span className="text-[9px] opacity-60 font-normal ml-1">({stationReports.length})</span>
-                                        </span>
-                                      </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="pb-0 pl-4 border-l border-neutral-100 ml-2.5">
-                                      {stationReports.length === 0 ? (
-                                        <p className="text-[8px] uppercase text-neutral-300 italic py-1">Sin reportes</p>
-                                      ) : (
-                                        <Accordion type="multiple" className="w-full">
-                                          {stationReports.map((report: any) => {
-                                            const planillas = getPlanillasByReport(report.id);
-                                            return (
-                                              <AccordionItem key={report.id} value={report.id} className="border-none">
-                                                <AccordionTrigger className="py-0.5 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:hidden">
-                                                  <div className="flex items-center gap-2">
-                                                    <FileText className="h-2.5 w-2.5 text-neutral-400 group-hover:text-primary shrink-0" />
-                                                    <span 
-                                                      role="button"
-                                                      tabIndex={0}
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onSelectReport(station, report.id);
-                                                      }}
-                                                      className="text-[10px] text-black uppercase font-normal tracking-tight text-left hover:underline group-hover:text-primary transition-colors cursor-pointer focus:outline-none"
-                                                    >
-                                                      {report.oid} <span className="text-[9px] opacity-60 font-normal ml-1">({planillas.length})</span>
-                                                    </span>
-                                                  </div>
-                                                </AccordionTrigger>
-                                                <AccordionContent className="pb-1 pl-4 border-l border-neutral-100 ml-3">
-                                                  {planillas.length > 0 ? (
-                                                    <div className="space-y-0.5">
-                                                      {planillas.map((p) => (
-                                                        <div 
-                                                          role="button"
-                                                          tabIndex={0}
-                                                          key={p.formId} 
-                                                          onClick={() => onSelectPlanilla(station, report.id, p.formId, p.templateId)}
-                                                          className="flex items-center gap-1.5 text-[9px] text-black uppercase hover:text-primary transition-colors group w-full text-left py-0.5 cursor-pointer focus:outline-none"
-                                                        >
-                                                          <div className="w-1 h-1 rounded-full bg-primary/40 shrink-0 group-hover:bg-primary" />
-                                                          <span className="hover:underline underline-offset-2 truncate">
-                                                            {getProtocolLabel(p.templateId, p.medium, p.protocol, p.customName)} • {formatDateShort(p.timestamp)} <span className="opacity-60 font-normal ml-1">({p.count})</span>
-                                                          </span>
-                                                        </div>
-                                                      ))}
-                                                    </div>
-                                                  ) : (
-                                                    <p className="text-[8px] text-neutral-300 uppercase italic">Sin planillas</p>
-                                                  )}
-                                                </AccordionContent>
-                                              </AccordionItem>
-                                            );
-                                          })}
-                                        </Accordion>
-                                      )}
-                                    </AccordionContent>
-                                  </AccordionItem>
-                                );
-                              })}
-                            </Accordion>
+                            {basinReports.length === 0 ? (
+                              <p className="text-[8px] uppercase text-neutral-300 italic py-1 pl-2">Sin reportes</p>
+                            ) : (
+                              <Accordion type="multiple" className="w-full">
+                                {basinReports.map((report: any) => {
+                                  const planillas = getPlanillasByReport(report.id);
+                                  const station = stationMap.get(report.stationId) || {
+                                    id: report.stationId || '',
+                                    name: report.stationId || 'Estación',
+                                    latitude: -34.6,
+                                    longitude: -58.4,
+                                    basinCode
+                                  };
+                                  const stationName = station?.name 
+                                    ? (station.aka ? `${station.name} (${station.aka})` : station.name)
+                                    : (report.stationId || 'Sin estación');
+
+                                  return (
+                                    <AccordionItem key={report.id} value={report.id} className="border-none">
+                                      <AccordionTrigger className="py-0.5 px-2 hover:no-underline hover:bg-neutral-50 rounded-none group transition-colors [&>svg]:hidden">
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                          <FileText className="h-2.5 w-2.5 text-neutral-400 group-hover:text-primary shrink-0" />
+                                          <TooltipProvider delayDuration={150}>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <span 
+                                                  role="button"
+                                                  tabIndex={0}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onSelectReport(station, report.id);
+                                                  }}
+                                                  className="text-[10px] text-black uppercase font-normal tracking-tight text-left hover:underline group-hover:text-primary transition-colors cursor-pointer focus:outline-none truncate"
+                                                >
+                                                  {report.oid} <span className="text-[9px] opacity-60 font-normal ml-0.5">({planillas.length})</span>
+                                                </span>
+                                              </TooltipTrigger>
+                                              <TooltipContent side="top" className="text-[10px] py-1 px-2 bg-neutral-900 text-white rounded shadow-md z-50">
+                                                Estación: {stationName}
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+
+                                          {report.trelloCardName && report.trelloCardName !== 'sin-proyecto' && (
+                                            <TooltipProvider delayDuration={150}>
+                                              <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                  <span 
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={(e) => e.stopPropagation()} 
+                                                    className="inline-flex items-center text-[#0079BF] hover:text-[#005a8e] shrink-0 ml-0.5 cursor-help"
+                                                    title={report.trelloCardName}
+                                                  >
+                                                    <TrelloIcon className="h-2.5 w-2.5" />
+                                                  </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" className="text-[10px] py-1 px-2 bg-neutral-900 text-white rounded shadow-md z-50">
+                                                  Proyecto Trello: {report.trelloCardName}
+                                                </TooltipContent>
+                                              </Tooltip>
+                                            </TooltipProvider>
+                                          )}
+                                        </div>
+                                      </AccordionTrigger>
+                                      <AccordionContent className="pb-1 pl-4 border-l border-neutral-100 ml-3">
+                                        {planillas.length > 0 ? (
+                                          <div className="space-y-0.5">
+                                            {planillas.map((p) => (
+                                              <div 
+                                                role="button"
+                                                tabIndex={0}
+                                                key={p.formId} 
+                                                onClick={() => onSelectPlanilla(station, report.id, p.formId, p.templateId)}
+                                                className="flex items-center gap-1.5 text-[9px] text-black uppercase hover:text-primary transition-colors group w-full text-left py-0.5 cursor-pointer focus:outline-none"
+                                              >
+                                                <div className="w-1 h-1 rounded-full bg-primary/40 shrink-0 group-hover:bg-primary" />
+                                                <span className="hover:underline underline-offset-2 truncate">
+                                                  {getProtocolLabel(p.templateId, p.medium, p.protocol, p.customName)} • {formatDateShort(p.timestamp)} <span className="opacity-60 font-normal ml-1">({p.count})</span>
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <p className="text-[8px] text-neutral-300 uppercase italic">Sin planillas</p>
+                                        )}
+                                      </AccordionContent>
+                                    </AccordionItem>
+                                  );
+                                })}
+                              </Accordion>
+                            )}
                           </AccordionContent>
                         </AccordionItem>
                       ))
